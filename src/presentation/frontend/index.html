@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrantPulse - Monitoreo de Financiamientos</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-top">
+                <h1>GrantPulse</h1>
+                <nav>
+                    <button class="nav-link active" id="navGrants">Convocatorias</button>
+                    <button class="nav-link" id="navConfig">Configuración</button>
+                </nav>
+            </div>
+            <p>Monitoreo inteligente de fondos institucionales chilenos</p>
+        </div>
+    </header>
+
+    <main class="container" id="grantsPage">
+        <section class="filters">
+            <select id="statusFilter" aria-label="Filtrar por estado">
+                <option value="">Todos los estados</option>
+                <option value="ABIERTO">Abiertos</option>
+                <option value="CERRADO">Cerrados</option>
+            </select>
+            <button id="refreshBtn" class="btn primary">Actualizar Datos</button>
+        </section>
+
+        <section class="grants-grid" id="grantsContainer">
+            <!-- Cargando... -->
+            <div class="loader" id="loader">Cargando convocatorias...</div>
+        </section>
+    </main>
+
+    <main class="container hidden" id="configPage">
+        <section class="config-section">
+            <header class="section-header">
+                <h2>Canales de Telegram</h2>
+                <p>Configura múltiples destinos para las alertas en tiempo real.</p>
+            </header>
+
+            <form id="telegramForm" class="config-form">
+                <div class="form-group">
+                    <label for="tgNombre">Nombre Descriptivo</label>
+                    <input type="text" id="tgNombre" placeholder="ej: Alertas Equipo Innovación" required>
+                </div>
+                <div class="form-group">
+                    <label for="tgToken">Bot Token</label>
+                    <input type="password" id="tgToken" placeholder="8581822135:AA..." required>
+                </div>
+                <div class="form-group">
+                    <label for="tgChatId">Chat ID</label>
+                    <input type="text" id="tgChatId" placeholder="-100..." required>
+                </div>
+                <button type="submit" class="btn primary">Añadir Canal</button>
+            </form>
+
+            <div class="config-list" id="telegramList">
+                <!-- Cargando... -->
+            </div>
+        </section>
+
+        <section class="config-section" style="margin-top: 2rem;">
+            <header class="section-header">
+                <h2>Canales de Email (SMTP)</h2>
+                <p>Envía reportes por correo electrónico.</p>
+            </header>
+
+            <form id="emailForm" class="config-form-email">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="emNombre">Nombre</label>
+                        <input type="text" id="emNombre" placeholder="Alertas Socios" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emHost">Servidor SMTP</label>
+                        <input type="text" id="emHost" placeholder="smtp.gmail.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emPort">Puerto</label>
+                        <input type="number" id="emPort" value="587" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="emUser">Usuario</label>
+                        <input type="text" id="emUser" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emPass">Password</label>
+                        <input type="password" id="emPass" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="emFrom">De (From Email)</label>
+                        <input type="email" id="emFrom" placeholder="no-reply@tuapp.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emTargets">Para (Emails separados por coma)</label>
+                        <input type="text" id="emTargets" placeholder="uno@test.com, dos@test.com" required>
+                    </div>
+                    <button type="submit" class="btn primary">Añadir Canal</button>
+                </div>
+            </form>
+
+            <div class="config-list" id="emailList">
+                <!-- Cargando... -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal para el historial de cambios -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal">
+            <header class="modal-header">
+                <h2 id="modalTitle">Historial de Cambios</h2>
+                <button class="close-btn" id="closeModalBtn">&times;</button>
+            </header>
+            <div class="modal-body" id="historyContainer">
+                <div class="loader">Cargando historial...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
