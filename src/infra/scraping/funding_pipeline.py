@@ -25,6 +25,7 @@ from src.infra.scraping.html_static import HtmlStaticScraper
 from src.infra.scraping.json_api import JsonApiScraper
 from src.infra.scraping.llm_scraper import LlmScraper
 from src.infra.scraping.rss_feed import RssFeedScraper
+from src.infra.scraping.subdere_homepage import SubdereHomepageScraper
 from src.infra.scraping.wp_ajax import WpAjaxScraper
 from src.infra.sources.catalog import SourceProfile, resolve_source_profile
 
@@ -61,6 +62,7 @@ class CompositeFundingScraper(ScraperPort):
         wp_ajax: ScraperPort | None = None,
         rss_feed: ScraperPort | None = None,
         curl_cffi: ScraperPort | None = None,
+        subdere_homepage: ScraperPort | None = None,
         sleep_fn: Any = asyncio.sleep,
     ) -> None:
         self._profile = profile
@@ -71,6 +73,7 @@ class CompositeFundingScraper(ScraperPort):
         self._wp_ajax = wp_ajax or WpAjaxScraper()
         self._rss_feed = rss_feed or RssFeedScraper()
         self._curl_cffi = curl_cffi or CurlCffiScraper()
+        self._subdere_homepage = subdere_homepage or SubdereHomepageScraper()
         self._sleep = sleep_fn
         self._metrics = PipelineMetrics(step_metrics=[])
         self._state: _AttemptState | None = None
@@ -94,6 +97,8 @@ class CompositeFundingScraper(ScraperPort):
             return await self._wp_ajax.fetch(fuente)
         if kind == "rss_feed":
             return await self._rss_feed.fetch(fuente)
+        if kind == "subdere_homepage":
+            return await self._subdere_homepage.fetch(fuente)
         raise ScrapingError(f"Fetch kind no soportado: {kind}")
 
     async def _extract_with_kind(
@@ -116,6 +121,8 @@ class CompositeFundingScraper(ScraperPort):
             return await self._rss_feed.extract(snapshot, fuente, **kwargs)
         if kind == "curl_cffi":
             return await self._curl_cffi.extract(snapshot, fuente, **kwargs)
+        if kind == "subdere_homepage":
+            return await self._subdere_homepage.extract(snapshot, fuente, **kwargs)
         raise ScrapingError(f"Extract kind no soportado: {kind}")
 
     def _explicit_empty(self, content: str) -> bool:
@@ -299,6 +306,8 @@ def build_scraper_for_source(fuente: Fuente, fallback_strategy: str | None = Non
         return RssFeedScraper()
     if estrategia == "curl_cffi":
         return CurlCffiScraper()
+    if estrategia == "subdere_homepage":
+        return SubdereHomepageScraper()
     return HtmlStaticScraper(timeout=15)
 
 

@@ -9,10 +9,9 @@ def test_load_subdere_rules():
     filepath = Path("rules/subdere.yaml")
     rules = load_rules_from_yaml(filepath)
     assert rules.nombre == "SUBDERE"
-    assert rules.estrategia == "html_static"
+    assert rules.estrategia == "subdere_homepage"
     assert rules.selectores is not None
-    assert rules.selectores.identificador == ".field-content a"
-    assert rules.selectores.contenedor_items == "div.views-row"
+    assert "sala-de-prensa" in rules.selectores.contenedor_items
 
 
 def test_load_fia_rules():

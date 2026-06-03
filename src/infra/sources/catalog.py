@@ -170,22 +170,17 @@ _FOSIS = SourceProfile(
 _SUBDERE = SourceProfile(
     key="SUBDERE",
     root_url="https://www.subdere.gob.cl/",
-    list_url="https://www.subdere.gob.cl/programas",
+    list_url="https://www.subdere.gob.cl/",
     steps=(
         ScrapeStep(
-            fetcher="curl_cffi",
-            extractor="html_static",
-            url="https://www.subdere.gob.cl/programas",
-            note="curl_cffi con impersonación Chrome para saltar WAF/403.",
-        ),
-        ScrapeStep(
-            fetcher="browser",
-            extractor="html_static",
-            url="https://www.subdere.gob.cl/programas",
-            note="Fallback Playwright si curl_cffi y httpx reciben 403.",
+            fetcher="subdere_homepage",
+            extractor="subdere_homepage",
+            url="https://www.subdere.gob.cl/",
+            note="Homepage scraping: el WAF bloquea /programas con 403. La homepage retorna 200 con noticias y programas destacados.",
         ),
     ),
     empty_state_markers=("No hay", "sin programas", "No se encontraron"),
+    note="El sitio bloquea /programas, /sala-de-prensa y la mayoría de rutas con 403. Solo la homepage (/) retorna 200.",
 )
 
 _PROCHILE = SourceProfile(

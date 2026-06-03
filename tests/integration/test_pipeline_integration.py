@@ -41,8 +41,8 @@ class TestCatalogProfiles:
         profile = resolve_source_profile(profile_key)
         assert profile is not None
         step = profile.steps[0]
-        assert step.fetcher in {"html_static", "json_api", "rss_feed", "wp_ajax", "curl_cffi", "browser", "llm"}
-        assert step.extractor in {"html_static", "json_api", "rss_feed", "wp_ajax", "curl_cffi", "llm"}
+        assert step.fetcher in {"html_static", "json_api", "rss_feed", "wp_ajax", "curl_cffi", "browser", "llm", "subdere_homepage"}
+        assert step.extractor in {"html_static", "json_api", "rss_feed", "wp_ajax", "curl_cffi", "llm", "subdere_homepage"}
 
 
 class TestPipelineFallback:
@@ -93,11 +93,11 @@ class TestPipelineFallback:
         assert len(profile.steps) >= 2
 
     @pytest.mark.asyncio
-    async def test_subdere_has_browser_fallback(self) -> None:
+    async def test_subdere_uses_homepage_strategy(self) -> None:
         profile = resolve_source_profile("SUBDERE")
         assert profile is not None
         fetchers = [s.fetcher for s in profile.steps]
-        assert "browser" in fetchers
+        assert "subdere_homepage" in fetchers
 
 
 class TestBuildScraperFactory:
