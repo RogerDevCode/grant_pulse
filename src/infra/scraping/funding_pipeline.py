@@ -88,16 +88,6 @@ class CompositeFundingScraper(ScraperPort):
             return await self._browser.fetch(fuente)
         if kind == "llm":
             return await self._llm.fetch(fuente)
-        if kind == "corfo_especializado":
-            from src.infra.scraping.corfo import CorfoScraper
-
-            specialized = CorfoScraper()
-            return await specialized.fetch(fuente)
-        if kind == "resilient":
-            from src.infra.scraping.resilient import ResilientFetcher
-
-            resilient = ResilientFetcher()
-            return await resilient.fetch(fuente)
         if kind == "curl_cffi":
             return await self._curl_cffi.fetch(fuente)
         if kind == "wp_ajax":
