@@ -210,6 +210,7 @@ class WpAjaxScraper(ScraperPort):
             tree = HTMLParser(html_content)
         except Exception as e:
             msg = f"Fallo parseando HTML del AJAX response para {fuente.nombre}"
+            logger.error(msg, exc=e)
             raise ExtractionError(msg) from e
 
         selectores = fuente.configuracion_reglas.selectores

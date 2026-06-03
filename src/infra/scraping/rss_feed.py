@@ -244,8 +244,12 @@ class RssFeedScraper(ScraperPort):
                 processed += 1
 
             except Exception as e:
-                logger.warning(f"Error parseando item de feed RSS: {e}")
+                logger.warning("Error parseando item de feed RSS", index=processed, exc=e)
                 continue
+
+        if not resultados and items:
+            msg = f"Se encontraron items en el feed RSS pero ninguno pudo ser parseado para {fuente.nombre}"
+            raise ExtractionError(msg)
 
         logger.info(
             "RssFeedScraper: extracción completada",

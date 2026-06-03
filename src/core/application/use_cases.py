@@ -47,6 +47,7 @@ class MonitoreoUseCase:
         7. Notify (NotificationPort) + Persist Notification Results
         """
         logger.info("Iniciando caso de uso de monitoreo", fuente_id=str(fuente.id), fuente_nombre=fuente.nombre)
+        errores_persistencia = 0
         try:
             # 1. Fetch
             snapshot = await self.scraper.fetch(fuente)
@@ -97,8 +98,9 @@ class MonitoreoUseCase:
                     if evento.es_relevante:
                         conv_notif = nuevas_dict.get(evento.convocatoria_id)
                         if conv_notif:
+                            notif_result: NotificacionResult | None = None
                             try:
-                                result = await self.notifier.notify_event(evento, conv_notif, fuente)
+                                notif_result = await self.notifier.notify_event(evento, conv_notif, fuente)
                             except NotificationError as e:
                                 logger.error(
                                     "Notificación falló para evento",
@@ -106,7 +108,7 @@ class MonitoreoUseCase:
                                     error=str(e),
                                     exc=e,
                                 )
-                                result = NotificacionResult(
+                                notif_result = NotificacionResult(
                                     evento_id=evento.id,
                                     canal="UNKNOWN",
                                     destinatario="fallo",
@@ -114,21 +116,24 @@ class MonitoreoUseCase:
                                     error_log=str(e),
                                 )
 
-                            if self.notificacion_repo:
+                            if notif_result is not None and self.notificacion_repo:
                                 try:
-                                    await self.notificacion_repo.save(result)
+                                    await self.notificacion_repo.save(notif_result)
                                 except Exception as e:
                                     logger.error(
                                         "No se pudo persistir resultado de notificación",
                                         evento_id=str(evento.id),
                                         exc=e,
                                     )
+                                    errores_persistencia += 1
 
+            status = "exitosamente" if errores_persistencia == 0 else "con errores de persistencia de notificaciones"
             logger.info(
-                "Monitoreo finalizado exitosamente",
+                f"Monitoreo finalizado {status}",
                 fuente_id=str(fuente.id),
                 nuevas_encontradas=len(nuevas_convocatorias),
                 eventos_generados=len(eventos),
+                errores_persistencia_notificaciones=errores_persistencia,
             )
             return eventos
 

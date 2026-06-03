@@ -90,7 +90,7 @@ async def _get_notifier(session: AsyncSession) -> NotificationPort:
                 )
                 adapters.append(email_adapter)
     except Exception as e:
-        logger.error(f"Error cargando notificaciones dinámicas: {e}")
+        logger.error("Error cargando notificaciones dinámicas desde BD, se usarán solo adaptadores estáticos", exc=e)
 
     return CompositeNotificationAdapter(adapters)
 
@@ -145,8 +145,9 @@ async def run_single_source(filepath: Path) -> None:
             eventos = await use_case.ejecutar_monitoreo(fuente_db)
             await session.commit()
             logger.info(f"Proceso finalizado. Eventos generados: {len(eventos)}")
-        except Exception:
+        except Exception as e:
             await session.rollback()
+            logger.error("Error en monitoreo de fuente, session rollback ejecutado", exc=e)
             raise
 
 
@@ -169,6 +170,8 @@ async def run_all_active_sources() -> None:
         logger.warning("No hay fuentes activas configuradas en la base de datos.")
         return
 
+    failed_fuentes: list[str] = []
+
     for fuente in fuentes_activas:
         async with AsyncSessionLocal() as session:
             try:
@@ -189,6 +192,12 @@ async def run_all_active_sources() -> None:
             except Exception as e:
                 await session.rollback()
                 logger.error(f"Worker falló para fuente {fuente.nombre}: {e}", exc=e)
+                failed_fuentes.append(fuente.nombre)
+
+    if failed_fuentes:
+        logger.error("Fuentes con error en batch", count=len(failed_fuentes), fuentes=failed_fuentes)
+    else:
+        logger.info("Batch completado sin errores", total_fuentes=len(fuentes_activas))
 
 
 async def sync_all_rules() -> None:
@@ -200,12 +209,20 @@ async def sync_all_rules() -> None:
         logger.error(f"Directorio de reglas no encontrado: {rules_path}")
         return
 
+    failed_files: list[str] = []
+
     for yaml_file in rules_path.glob("*.yaml"):
         logger.info(f"Sincronizando regla: {yaml_file.name}")
         try:
             await run_single_source(yaml_file)
         except Exception as e:
-            logger.error(f"Error procesando {yaml_file.name}: {e}")
+            logger.error(f"Error procesando {yaml_file.name}", exc=e)
+            failed_files.append(yaml_file.name)
+
+    if failed_files:
+        logger.error("Archivos con error en sync-rules", count=len(failed_files), archivos=failed_files)
+    else:
+        logger.info("sync-rules completado sin errores")
 
 
 def main() -> None:

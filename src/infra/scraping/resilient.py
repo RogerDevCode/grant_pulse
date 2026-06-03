@@ -54,7 +54,7 @@ class ResilientFetcher(ScraperPort):
 
         except Exception as e:
             msg = f"Error en ResilientFetcher para {url}: {e}"
-            logger.error(msg)
+            logger.error(msg, exc=e)
             raise NetworkError(msg) from e
 
     async def extract(self, snapshot: Snapshot, fuente: Fuente, **kwargs: Any) -> list[dict[str, str | None]]:
