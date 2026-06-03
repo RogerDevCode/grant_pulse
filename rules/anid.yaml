@@ -1,0 +1,22 @@
+nombre: "ANID"
+url_busqueda: "https://anid.cl/concursos/"
+estrategia: "browser"
+selectores:
+  contenedor_items: "div.jet-listing-grid__item"
+  identificador: "h3.elementor-heading-title"
+  titulo: "h3.elementor-heading-title"
+  descripcion: ".elementor-widget-image"
+  link_detalle: "a.jet-engine-listing-overlay-link"
+  estado: ".elementor-element-dec92ef .jet-listing-dynamic-field__content"
+  fecha_cierre: ".elementor-element-d4cfb2b .jet-listing-dynamic-field__content"
+normalizadores:
+  fecha_cierre:
+    regex_extraction: "Cierre: (\\d{1,2} de [a-zA-Z]+, \\d{4})"
+    formato_salida: "%d de %B, %Y"
+    idioma: "es"
+alertas:
+  campos_sensibles:
+    - "estado"
+    - "fecha_cierre"
+  ignorar_cambios_en:
+    - "descripcion"

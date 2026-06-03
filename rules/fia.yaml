@@ -1,0 +1,29 @@
+nombre: "FIA"
+url_busqueda: "https://www.fia.cl/wp-json/wp/v2/convocatorias?per_page=100"
+estrategia: "json_api"
+
+json_mapping:
+  root_path: ""
+  identificador: "id"
+  titulo: "title.rendered"
+  descripcion: "excerpt.rendered"
+  link_detalle: "link"
+  estado: "status"
+  paginacion:
+    total_pages_header: "X-WP-TotalPages"
+    total_items_header: "X-WP-Total"
+    page_param: "page"
+    per_page_param: "per_page"
+    max_pages: 50
+
+normalizadores:
+  fecha_cierre:
+    regex_extraction: "(\\d{2}/\\d{2}/\\d{4})"
+    formato_salida: "%d/%m/%Y"
+
+alertas:
+  campos_sensibles:
+    - "estado"
+    - "fecha_cierre"
+  ignorar_cambios_en:
+    - "descripcion"

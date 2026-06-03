@@ -1,0 +1,24 @@
+nombre: "CORFO"
+url_busqueda: "https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/"
+estrategia: "wp_ajax"
+
+selectores:
+  contenedor_items: ".caja-resultados_uno"
+  identificador: "h4"
+  titulo: "h4"
+  descripcion: ".contenido-caja_prog > p"
+  link_detalle: ".foot-caja_result a"
+  estado: "h6"
+  fecha_cierre: ".cierre span"
+
+normalizadores:
+  fecha_cierre:
+    regex_extraction: "(\\d{2}/\\d{2}/\\d{4})"
+    formato_salida: "%d/%m/%Y"
+
+alertas:
+  campos_sensibles:
+    - "estado"
+    - "fecha_cierre"
+  ignorar_cambios_en:
+    - "descripcion"

@@ -1,133 +1,277 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GrantPulse - Monitoreo de Financiamientos</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GrantPulse</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <div class="header-top">
-                <h1>GrantPulse</h1>
-                <nav>
-                    <button class="nav-link active" id="navGrants">Convocatorias</button>
-                    <button class="nav-link" id="navConfig">Configuración</button>
-                </nav>
-            </div>
-            <p>Monitoreo inteligente de fondos institucionales chilenos</p>
-        </div>
-    </header>
-
-    <main class="container" id="grantsPage">
-        <section class="filters">
-            <select id="statusFilter" aria-label="Filtrar por estado">
-                <option value="">Todos los estados</option>
-                <option value="ABIERTO">Abiertos</option>
-                <option value="CERRADO">Cerrados</option>
-            </select>
-            <button id="refreshBtn" class="btn primary">Actualizar Datos</button>
-        </section>
-
-        <section class="grants-grid" id="grantsContainer">
-            <!-- Cargando... -->
-            <div class="loader" id="loader">Cargando convocatorias...</div>
-        </section>
-    </main>
-
-    <main class="container hidden" id="configPage">
-        <section class="config-section">
-            <header class="section-header">
-                <h2>Canales de Telegram</h2>
-                <p>Configura múltiples destinos para las alertas en tiempo real.</p>
-            </header>
-
-            <form id="telegramForm" class="config-form">
-                <div class="form-group">
-                    <label for="tgNombre">Nombre Descriptivo</label>
-                    <input type="text" id="tgNombre" placeholder="ej: Alertas Equipo Innovación" required>
-                </div>
-                <div class="form-group">
-                    <label for="tgToken">Bot Token</label>
-                    <input type="password" id="tgToken" placeholder="8581822135:AA..." required>
-                </div>
-                <div class="form-group">
-                    <label for="tgChatId">Chat ID</label>
-                    <input type="text" id="tgChatId" placeholder="-100..." required>
-                </div>
-                <button type="submit" class="btn primary">Añadir Canal</button>
-            </form>
-
-            <div class="config-list" id="telegramList">
-                <!-- Cargando... -->
-            </div>
-        </section>
-
-        <section class="config-section" style="margin-top: 2rem;">
-            <header class="section-header">
-                <h2>Canales de Email (SMTP)</h2>
-                <p>Envía reportes por correo electrónico.</p>
-            </header>
-
-            <form id="emailForm" class="config-form-email">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="emNombre">Nombre</label>
-                        <input type="text" id="emNombre" placeholder="Alertas Socios" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="emHost">Servidor SMTP</label>
-                        <input type="text" id="emHost" placeholder="smtp.gmail.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="emPort">Puerto</label>
-                        <input type="number" id="emPort" value="587" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="emUser">Usuario</label>
-                        <input type="text" id="emUser" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="emPass">Password</label>
-                        <input type="password" id="emPass" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="emFrom">De (From Email)</label>
-                        <input type="email" id="emFrom" placeholder="no-reply@tuapp.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="emTargets">Para (Emails separados por coma)</label>
-                        <input type="text" id="emTargets" placeholder="uno@test.com, dos@test.com" required>
-                    </div>
-                    <button type="submit" class="btn primary">Añadir Canal</button>
-                </div>
-            </form>
-
-            <div class="config-list" id="emailList">
-                <!-- Cargando... -->
-            </div>
-        </section>
-    </main>
-
-    <!-- Modal para el historial de cambios -->
-    <div class="modal-overlay" id="historyModal">
-        <div class="modal">
-            <header class="modal-header">
-                <h2 id="modalTitle">Historial de Cambios</h2>
-                <button class="close-btn" id="closeModalBtn">&times;</button>
-            </header>
-            <div class="modal-body" id="historyContainer">
-                <div class="loader">Cargando historial...</div>
-            </div>
-        </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">GP</div>
+      <div class="brand-text">
+        <span class="brand-name">GrantPulse</span>
+        <span class="brand-sub">Monitor de Fondos</span>
+      </div>
     </div>
 
-    <script src="app.js"></script>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-page="dashboard">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-item" data-page="convocatorias">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span>Convocatorias</span>
+      </button>
+      <button class="nav-item" data-page="fuentes">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span>Fuentes</span>
+      </button>
+      <button class="nav-item" data-page="notificaciones">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Notificaciones</span>
+      </button>
+      <button class="nav-item" data-page="audit">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Audit Log</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="nav-item" id="mobileToggle" title="Colapsar menú">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+        <span>Colapsar</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="topbar">
+      <button class="mobile-menu-btn" id="mobileMenuBtn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <h1 class="page-title" id="pageTitle">Dashboard</h1>
+      <div class="topbar-actions">
+        <span class="last-sync" id="lastSync"></span>
+        <button class="btn-icon" id="refreshAllBtn" title="Refrescar datos">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- DASHBOARD -->
+      <section class="page active" id="page-dashboard">
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="dashboard-grid">
+          <div class="card">
+            <div class="card-header"><h3>Fuentes Activas</h3></div>
+            <div class="card-body" id="dashFuentes"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Últimas Aperturas</h3></div>
+            <div class="card-body" id="dashAperturas"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONVOCATORIAS -->
+      <section class="page" id="page-convocatorias">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-box">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="searchInput" placeholder="Buscar convocatoria...">
+            </div>
+            <select id="filterEstado" aria-label="Filtrar por estado">
+              <option value="">Todos</option>
+              <option value="ABIERTO">Abiertas</option>
+              <option value="CERRADO">Cerradas</option>
+              <option value="PROXIMAMENTE">Próximamente</option>
+            </select>
+            <select id="filterFuente" aria-label="Filtrar por fuente">
+              <option value="">Todas las fuentes</option>
+            </select>
+          </div>
+          <div class="toolbar-right">
+            <span class="result-count" id="resultCount"></span>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table" id="convocatoriasTable">
+            <thead>
+              <tr>
+                <th>Estado</th>
+                <th>Título</th>
+                <th>Fuente</th>
+                <th>Monto</th>
+                <th>Cierre</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="convocatoriasBody"></tbody>
+          </table>
+          <div class="empty-state" id="convocatoriasEmpty" style="display:none">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <p>No se encontraron convocatorias</p>
+          </div>
+          <div class="loader" id="convocatoriasLoader">Cargando...</div>
+        </div>
+        <div class="pagination" id="convPagination"></div>
+      </section>
+
+      <!-- FUENTES -->
+      <section class="page" id="page-fuentes">
+        <div class="table-wrapper">
+          <table class="data-table" id="fuentesTable">
+            <thead>
+              <tr>
+                <th>Estado</th>
+                <th>Fuente</th>
+                <th>Convocatorias</th>
+                <th>Abiertas</th>
+                <th>Última Ejecución</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="fuentesBody"></tbody>
+          </table>
+          <div class="loader" id="fuentesLoader">Cargando...</div>
+        </div>
+      </section>
+
+      <!-- NOTIFICACIONES -->
+      <section class="page" id="page-notificaciones">
+        <div class="split-layout">
+          <div class="split-main">
+            <div class="card">
+              <div class="card-header">
+                <h3>Canales de Notificación</h3>
+              </div>
+              <div class="card-body" id="notifConfigList"></div>
+            </div>
+            <div class="card" style="margin-top:1.5rem">
+              <div class="card-header">
+                <h3>Historial de Envíos</h3>
+              </div>
+              <div class="card-body" id="notifHistoryList"></div>
+            </div>
+          </div>
+          <div class="split-side">
+            <div class="card">
+              <div class="card-header"><h3>Nuevo Canal</h3></div>
+              <div class="card-body">
+                <div class="tab-bar" id="notifTypeTabs">
+                  <button class="tab active" data-type="TELEGRAM">Telegram</button>
+                  <button class="tab" data-type="EMAIL">Email</button>
+                </div>
+
+                <form id="telegramForm" class="notif-form active">
+                  <div class="field">
+                    <label>Nombre</label>
+                    <input type="text" id="tgNombre" placeholder="Ej: Alertas Innovación" required>
+                  </div>
+                  <div class="field">
+                    <label>Bot Token</label>
+                    <input type="password" id="tgToken" placeholder="123456:ABC-DEF..." required>
+                  </div>
+                  <div class="field">
+                    <label>Chat ID</label>
+                    <input type="text" id="tgChatId" placeholder="-1001234567890" required>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Guardar Canal</button>
+                </form>
+
+                <form id="emailForm" class="notif-form">
+                  <div class="field">
+                    <label>Nombre</label>
+                    <input type="text" id="emNombre" placeholder="Ej: Alertas Socios" required>
+                  </div>
+                  <div class="field-row">
+                    <div class="field">
+                      <label>Servidor SMTP</label>
+                      <input type="text" id="emHost" placeholder="smtp.gmail.com" required>
+                    </div>
+                    <div class="field" style="max-width:100px">
+                      <label>Puerto</label>
+                      <input type="number" id="emPort" value="587" required>
+                    </div>
+                  </div>
+                  <div class="field-row">
+                    <div class="field">
+                      <label>Usuario</label>
+                      <input type="text" id="emUser" required>
+                    </div>
+                    <div class="field">
+                      <label>Password</label>
+                      <input type="password" id="emPass" required>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label>From Email</label>
+                    <input type="email" id="emFrom" placeholder="no-reply@ejemplo.com" required>
+                  </div>
+                  <div class="field">
+                    <label>Destinatarios (separar con coma)</label>
+                    <input type="text" id="emTargets" placeholder="a@b.com, c@d.com" required>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Guardar Canal</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AUDIT LOG -->
+      <section class="page" id="page-audit">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <select id="filterAuditNivel" aria-label="Filtrar por nivel">
+              <option value="">Todos los niveles</option>
+              <option value="ERROR">Error</option>
+              <option value="WARNING">Warning</option>
+              <option value="INFO">Info</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table" id="auditTable">
+            <thead>
+              <tr>
+                <th>Nivel</th>
+                <th>Módulo</th>
+                <th>Mensaje</th>
+                <th>Fuente</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody id="auditBody"></tbody>
+          </table>
+          <div class="loader" id="auditLoader">Cargando...</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL DETALLE CONVOCATORIA -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal">
+      <header class="modal-header">
+        <h2 id="detailModalTitle">Detalle</h2>
+        <button class="modal-close" id="detailModalClose">&times;</button>
+      </header>
+      <div class="modal-body" id="detailModalBody"></div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/static/app.js"></script>
 </body>
 </html>

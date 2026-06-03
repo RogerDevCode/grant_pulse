@@ -1,0 +1,16 @@
+nombre: "ANID_LLM"
+url_busqueda: "https://anid.cl/concursos/"
+estrategia: "llm"
+selectores: # Requerido por el esquema de validación actual
+  contenedor_items: "body"
+  identificador: "titulo"
+  titulo: "h3"
+  descripcion: "p"
+  link_detalle: "a"
+  estado: "span"
+normalizadores:
+  fecha_cierre:
+    regex_extraction: "(\\d{1,2} de [a-zA-Z]+, \\d{4})"
+    formato_salida: "%d de %B, %Y"
+alertas:
+  campos_sensibles: ["estado", "fecha_cierre"]

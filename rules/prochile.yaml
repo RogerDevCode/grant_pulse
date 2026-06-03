@@ -1,0 +1,11 @@
+nombre: "PROCHILE"
+url_busqueda: "https://www.prochile.gob.cl/herramientas/concursos/"
+estrategia: "html_static"
+selectores:
+  contenedor_items: ".tab-pane .shadow-sm"
+  identificador: ".text-gris"
+  titulo: ".text-gris"
+  link_detalle: "a"
+normalizadores: {}
+alertas:
+  campos_sensibles: ["titulo"]

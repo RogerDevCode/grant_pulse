@@ -1,0 +1,24 @@
+nombre: "SERCOTEC"
+url_busqueda: "https://www.sercotec.cl/wp-json/wp/v2/programas"
+estrategia: "json_api"
+json_mapping:
+  root_path: ""
+  identificador: "slug"
+  titulo: "title.rendered"
+  descripcion: "content.rendered"
+  link_detalle: "link"
+  estado: "status"
+selectores:
+  contenedor_items: ".card.h-100"
+  identificador: "h3.card-title"
+  titulo: "h3.card-title"
+  descripcion: ".card-text"
+  link_detalle: "a.stretched-link"
+  estado: ".badge"
+  fecha_cierre: ".card-footer"
+normalizadores:
+  fecha_cierre:
+    regex_extraction: "(\\d{2}/\\d{2}/\\d{4})"
+    formato_salida: "%d/%m/%Y"
+alertas:
+  campos_sensibles: ["estado", "fecha_cierre"]

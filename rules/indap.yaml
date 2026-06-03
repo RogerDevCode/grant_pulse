@@ -1,0 +1,17 @@
+nombre: "INDAP"
+url_busqueda: "https://www.indap.gob.cl/plataforma-de-servicios/"
+estrategia: "html_static"
+selectores:
+  contenedor_items: ".views-row"
+  identificador: ".views-field-title a"
+  titulo: ".views-field-title a"
+  descripcion: ".views-field-body"
+  link_detalle: ".views-field-title a"
+  estado: ".views-field-field-estado"
+  fecha_cierre: ".views-field-field-fecha-de-cierre"
+normalizadores:
+  fecha_cierre:
+    regex_extraction: "(\\d{2}/\\d{2}/\\d{4})"
+    formato_salida: "%d/%m/%Y"
+alertas:
+  campos_sensibles: ["estado", "fecha_cierre"]
