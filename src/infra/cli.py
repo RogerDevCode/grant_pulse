@@ -19,7 +19,7 @@ from src.core.domain.ports import (
     NotificationPort,
     ScraperPort,
 )
-from src.infra.db.connection import get_db_session
+from src.infra.db.connection import AsyncSessionLocal
 from src.infra.db.repository import (
     SQLConvocatoriaRepository,
     SQLFuenteRepository,
@@ -99,7 +99,6 @@ async def run_single_source(filepath: Path) -> None:
     """Ejecuta el ciclo de monitoreo para una fuente específica desde un YAML."""
     logger.info("Iniciando worker para fuente específica", filepath=str(filepath))
 
-    # Cargar y validar YAML (Fail-fast si el YAML es inválido)
     rules_config = load_rules_from_yaml(filepath)
     source_profile = source_profile_for_name(rules_config.nombre)
     if source_profile:
@@ -111,50 +110,44 @@ async def run_single_source(filepath: Path) -> None:
             profile=source_profile.key,
         )
 
-    # Iniciar sesión de BD
-    async for session in get_db_session():
-        # Instanciar repositorios
-        fuente_repo = SQLFuenteRepository(session)
-        snapshot_repo = SQLSnapshotRepository(session)
-        convocatoria_repo = SQLConvocatoriaRepository(session)
+    async with AsyncSessionLocal() as session:
+        try:
+            fuente_repo = SQLFuenteRepository(session)
+            snapshot_repo = SQLSnapshotRepository(session)
+            convocatoria_repo = SQLConvocatoriaRepository(session)
 
-        # Sincronizar Fuente con la Base de Datos
-        fuente_db = await fuente_repo.get_by_nombre(rules_config.nombre)
+            fuente_db = await fuente_repo.get_by_nombre(rules_config.nombre)
 
-        if not fuente_db:
-            # Si no existe, crearla en memoria y guardarla
-            fuente_db = Fuente(
-                id=uuid4(),
-                nombre=rules_config.nombre,
-                url_base=cast(Any, source_profile.root_url if source_profile else rules_config.url_busqueda),
-                configuracion_reglas=rules_config,
-                activa=True,
+            if not fuente_db:
+                fuente_db = Fuente(
+                    id=uuid4(),
+                    nombre=rules_config.nombre,
+                    url_base=cast(Any, source_profile.root_url if source_profile else rules_config.url_busqueda),
+                    configuracion_reglas=rules_config,
+                    activa=True,
+                )
+            else:
+                fuente_db.configuracion_reglas = rules_config
+                fuente_db.url_base = cast(Any, source_profile.root_url if source_profile else rules_config.url_busqueda)
+
+            fuente_db = _apply_source_profile(fuente_db)
+            fuente_db = await fuente_repo.save(fuente_db)
+
+            scraper = _get_scraper(fuente_db)
+            notifier = await _get_notifier(session)
+            notificacion_repo = SQLNotificacionRepository(session)
+
+            use_case = MonitoreoUseCase(
+                scraper=scraper, snapshot_repo=snapshot_repo, convocatoria_repo=convocatoria_repo, notifier=notifier,
+                notificacion_repo=notificacion_repo,
             )
-        else:
-            # Si existe, actualizamos sus reglas en memoria por si el YAML cambió
-            fuente_db.configuracion_reglas = rules_config
-            fuente_db.url_base = cast(Any, source_profile.root_url if source_profile else rules_config.url_busqueda)
 
-        fuente_db = _apply_source_profile(fuente_db)
-
-        # Persistimos la fuente (Upsert)
-        fuente_db = await fuente_repo.save(fuente_db)
-
-        # Instanciar scraper adecuado
-        scraper = _get_scraper(fuente_db)
-
-        # Instanciar notificador
-        notifier = await _get_notifier(session)
-        notificacion_repo = SQLNotificacionRepository(session)
-
-        # Instanciar y ejecutar el orquestador
-        use_case = MonitoreoUseCase(
-            scraper=scraper, snapshot_repo=snapshot_repo, convocatoria_repo=convocatoria_repo, notifier=notifier,
-            notificacion_repo=notificacion_repo,
-        )
-
-        eventos = await use_case.ejecutar_monitoreo(fuente_db)
-        logger.info(f"Proceso finalizado. Eventos generados: {len(eventos)}")
+            eventos = await use_case.ejecutar_monitoreo(fuente_db)
+            await session.commit()
+            logger.info(f"Proceso finalizado. Eventos generados: {len(eventos)}")
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def run_all_active_sources() -> None:
@@ -162,36 +155,40 @@ async def run_all_active_sources() -> None:
     logger.info("Iniciando worker para todas las fuentes activas")
 
     fuentes_activas: list[Fuente] = []
-    try:
-        async for session in get_db_session():
+    async with AsyncSessionLocal() as session:
+        try:
             fuente_repo = SQLFuenteRepository(session)
             fuentes_activas = await fuente_repo.get_all_active()
-    except Exception as e:
-        logger.error(f"Error consultando fuentes activas al iniciar: {e}", exc=e)
-        raise
+            await session.commit()
+        except Exception as e:
+            await session.rollback()
+            logger.error(f"Error consultando fuentes activas al iniciar: {e}", exc=e)
+            raise
 
     if not fuentes_activas:
         logger.warning("No hay fuentes activas configuradas en la base de datos.")
         return
 
     for fuente in fuentes_activas:
-        try:
-            async for session in get_db_session():
+        async with AsyncSessionLocal() as session:
+            try:
                 snapshot_repo = SQLSnapshotRepository(session)
-            convocatoria_repo = SQLConvocatoriaRepository(session)
-            notificacion_repo = SQLNotificacionRepository(session)
-            fuente = _apply_source_profile(fuente)
-            scraper = _get_scraper(fuente)
-            notifier = await _get_notifier(session)
+                convocatoria_repo = SQLConvocatoriaRepository(session)
+                notificacion_repo = SQLNotificacionRepository(session)
+                fuente = _apply_source_profile(fuente)
+                scraper = _get_scraper(fuente)
+                notifier = await _get_notifier(session)
 
-            use_case = MonitoreoUseCase(
-                scraper=scraper, snapshot_repo=snapshot_repo, convocatoria_repo=convocatoria_repo, notifier=notifier,
-                notificacion_repo=notificacion_repo,
-            )
+                use_case = MonitoreoUseCase(
+                    scraper=scraper, snapshot_repo=snapshot_repo, convocatoria_repo=convocatoria_repo, notifier=notifier,
+                    notificacion_repo=notificacion_repo,
+                )
 
-            await use_case.ejecutar_monitoreo(fuente)
-        except Exception as e:
-            logger.error(f"Worker falló para fuente {fuente.nombre}: {e}", exc=e)
+                await use_case.ejecutar_monitoreo(fuente)
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                logger.error(f"Worker falló para fuente {fuente.nombre}: {e}", exc=e)
 
 
 async def sync_all_rules() -> None:

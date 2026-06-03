@@ -173,10 +173,16 @@ _SUBDERE = SourceProfile(
     list_url="https://www.subdere.gob.cl/programas",
     steps=(
         ScrapeStep(
-            fetcher="html_static",
+            fetcher="curl_cffi",
             extractor="html_static",
             url="https://www.subdere.gob.cl/programas",
-            note="Programas continuos, sin WAF.",
+            note="curl_cffi con impersonación Chrome para saltar WAF/403.",
+        ),
+        ScrapeStep(
+            fetcher="browser",
+            extractor="html_static",
+            url="https://www.subdere.gob.cl/programas",
+            note="Fallback Playwright si curl_cffi y httpx reciben 403.",
         ),
     ),
     empty_state_markers=("No hay", "sin programas", "No se encontraron"),

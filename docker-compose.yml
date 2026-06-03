@@ -19,7 +19,7 @@ services:
   api:
     build: .
     restart: unless-stopped
-    command: ["uvicorn", "src.presentation.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: ["uvicorn", "src.presentation.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
     env_file:
       - .env
     environment:
@@ -31,12 +31,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   worker:
     build: .
     restart: unless-stopped
-    # Ejecuta el cli cada 12 horas asumiendo que el contenedor no muere, pero
-    # como la arquitectura pide correrlo 1 o 2 veces al dia, podemos emular un cron con un sleep en un sh
     command: ["sh", "-c", "while true; do python -m src.infra.cli run-all; sleep 43200; done"]
     env_file:
       - .env
@@ -46,6 +50,8 @@ services:
       - .:/app
     depends_on:
       db:
+        condition: service_healthy
+      api:
         condition: service_healthy
 
 volumes:

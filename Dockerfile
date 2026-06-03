@@ -9,25 +9,25 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Instalar dependencias del sistema para Playwright y PostgreSQL
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       gcc \
-       libpq-dev \
-       curl \
-       gnupg \
+    gcc \
+    libpq-dev \
+    curl \
+    gnupg \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar dependencias de Python
 COPY pyproject.toml .
 RUN pip install .
 
-# Instalar navegadores de Playwright y sus dependencias de sistema
-# Usamos solo chromium para mantener la imagen lo más liviana posible
 RUN playwright install --with-deps chromium
 
-# Copiar el resto del código
+RUN groupadd --gid 1000 appuser \
+    && useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser \
+    && chown -R appuser:appuser /app /ms-playwright
+
+USER appuser
+
 COPY . .
 
-# Comando por defecto
 CMD ["python", "--version"]
