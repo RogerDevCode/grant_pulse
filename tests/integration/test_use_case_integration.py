@@ -146,7 +146,7 @@ async def test_full_pipeline_with_notifications(mock_fuente: Fuente) -> None:
     notifier = MockNotifier()
 
     raw_items: list[dict[str, str | None]] = [
-        {"identificador": "EXT01", "titulo": "Existente", "url_detalle": "/1", "estado": "CERRADO"},
+        {"identificador": "EXT01", "titulo": "Existente Modificado", "url_detalle": "/1", "estado": "PROXIMAMENTE"},
         {"identificador": "EXT02", "titulo": "Nueva", "url_detalle": "/2", "estado": "ABIERTO"},
     ]
     scraper = MockScraper(raw_items)
@@ -185,7 +185,7 @@ async def test_notification_error_creates_fallback_result(mock_fuente: Fuente) -
     notifier = MockNotifier(fail=True)
 
     raw_items: list[dict[str, str | None]] = [
-        {"identificador": "EXT01", "titulo": "Existente", "url_detalle": "/1", "estado": "CERRADO"},
+        {"identificador": "EXT01", "titulo": "Existente", "url_detalle": "/1", "estado": "PROXIMAMENTE"},
     ]
     scraper = MockScraper(raw_items)
 
@@ -221,7 +221,7 @@ async def test_notificacion_persistence_error_tracked(mock_fuente: Fuente) -> No
     notifier = MockNotifier()
 
     raw_items: list[dict[str, str | None]] = [
-        {"identificador": "EXT01", "titulo": "Existente", "url_detalle": "/1", "estado": "CERRADO"},
+        {"identificador": "EXT01", "titulo": "Existente", "url_detalle": "/1", "estado": "PROXIMAMENTE"},
     ]
     scraper = MockScraper(raw_items)
 

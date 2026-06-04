@@ -4,6 +4,7 @@ Gestión de conexión asíncrona a PostgreSQL 17 mediante SQLAlchemy 2.0.
 
 from collections.abc import AsyncGenerator
 
+from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -17,19 +18,18 @@ from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Configuración del motor asíncrono de SQLAlchemy
 try:
     engine = create_async_engine(
         settings.DATABASE_URL,
-        echo=False,  # Cambiar a True en desarrollo si es necesario debuguear SQL
-        pool_pre_ping=True,  # Verifica conexiones muertas antes de usarlas
-        pool_recycle=3600,  # Recicla conexiones cada 1 hora
+        echo=False,
+        pool_pre_ping=True,
+        pool_recycle=3600,
     )
 
     AsyncSessionLocal = async_sessionmaker(
         bind=engine,
         class_=AsyncSession,
-        expire_on_commit=False,  # Evita consultas adicionales innecesarias tras commits
+        expire_on_commit=False,
     )
 except Exception as e:
     msg = f"Error al inicializar el motor de base de datos asíncrono: {e}"
@@ -48,6 +48,8 @@ async def get_db_session() -> AsyncGenerator[AsyncSession]:
             msg = f"Error de transacción de base de datos: {e}"
             logger.error(msg, exc=e)
             raise PersistenceError(msg) from e
+        except HTTPException:
+            raise
         except Exception as e:
             await session.rollback()
             msg = f"Error inesperado en la sesión de base de datos: {e}"

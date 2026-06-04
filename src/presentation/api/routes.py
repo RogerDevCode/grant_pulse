@@ -203,6 +203,26 @@ async def get_convocatoria_detail(convocatoria_id: UUID, session: DbSession) -> 
     )
 
 
+@router.delete("/convocatorias/{convocatoria_id}", status_code=204)
+async def delete_convocatoria(convocatoria_id: UUID, session: DbSession) -> None:
+    result = await session.execute(select(ConvocatoriaORM).where(ConvocatoriaORM.id == convocatoria_id))
+    orm = result.scalar_one_or_none()
+    if not orm:
+        raise HTTPException(status_code=404, detail="Convocatoria no encontrada")
+    await session.delete(orm)
+    await session.flush()
+
+
+@router.delete("/fuentes/{fuente_id}", status_code=204)
+async def delete_fuente(fuente_id: UUID, session: DbSession) -> None:
+    result = await session.execute(select(FuenteORM).where(FuenteORM.id == fuente_id))
+    orm = result.scalar_one_or_none()
+    if not orm:
+        raise HTTPException(status_code=404, detail="Fuente no encontrada")
+    await session.delete(orm)
+    await session.flush()
+
+
 @router.get("/audit-logs", response_model=list[AuditLogResponse])
 async def list_audit_logs(
     session: DbSession,

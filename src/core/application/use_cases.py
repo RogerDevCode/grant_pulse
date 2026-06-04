@@ -11,15 +11,14 @@ from src.core.domain.ports import (
     SnapshotRepository,
 )
 from src.core.domain.services import ChangeDetectorService
+from src.core.domain.vigencia import filtrar_vigentes
 from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
 
 
 class MonitoreoUseCase:
-    """
-    Caso de uso principal para ejecutar un ciclo de monitoreo sobre una fuente.
-    """
+    """Caso de uso principal para ejecutar un ciclo de monitoreo sobre una fuente."""
 
     def __init__(
         self,
@@ -41,24 +40,21 @@ class MonitoreoUseCase:
         1. Fetch (Scraper)
         2. Extract (Scraper)
         3. Normalize (DataNormalizer)
-        4. Obtain previous state (ConvocatoriaRepository)
-        5. Detect Changes (ChangeDetectorService)
-        6. Persist (Repositories)
-        7. Notify (NotificationPort) + Persist Notification Results
+        4. Vigencia filter (filtrar_vigentes)
+        5. Obtain previous state (ConvocatoriaRepository)
+        6. Detect Changes (ChangeDetectorService)
+        7. Persist (Repositories)
+        8. Notify (NotificationPort) + Persist Notification Results
         """
         logger.info("Iniciando caso de uso de monitoreo", fuente_id=str(fuente.id), fuente_nombre=fuente.nombre)
         errores_persistencia = 0
         try:
-            # 1. Fetch
             snapshot = await self.scraper.fetch(fuente)
 
-            # 2. Extract
             raw_items = await self.scraper.extract(snapshot, fuente)
 
-            # 3. Normalize
             nuevas_convocatorias = DataNormalizer.normalize_and_map(raw_items, fuente)
 
-            # 3b. Deduplicate by identificador_externo (keep last occurrence)
             seen: dict[str, Convocatoria] = {}
             for conv in nuevas_convocatorias:
                 seen[conv.identificador_externo] = conv
@@ -71,17 +67,25 @@ class MonitoreoUseCase:
                     fuente=fuente.nombre,
                 )
 
-            # 4. Obtener estado anterior
+            pre_vigencia = len(nuevas_convocatorias)
+            nuevas_convocatorias = filtrar_vigentes(nuevas_convocatorias)
+            descartadas_vigencia = pre_vigencia - len(nuevas_convocatorias)
+            if descartadas_vigencia > 0:
+                logger.info(
+                    "Convocatorias descartadas por vigencia",
+                    fuente=fuente.nombre,
+                    antes=pre_vigencia,
+                    despues=len(nuevas_convocatorias),
+                    descartadas=descartadas_vigencia,
+                )
+
             antiguas_lista = await self.convocatoria_repo.get_all_by_fuente(fuente.id)
             antiguas_dict = {c.identificador_externo: c for c in antiguas_lista}
 
-            # 5. Detección de Cambios
             eventos = ChangeDetectorService.detect_changes(nuevas_convocatorias, antiguas_dict, fuente)
 
-            # Construir dict DESPUÉS de detect_changes (que sincroniza IDs)
             nuevas_dict = {c.id: c for c in nuevas_convocatorias}
 
-            # 6. Persistencia
             await self.snapshot_repo.save(snapshot)
 
             for conv in nuevas_convocatorias:
@@ -92,7 +96,6 @@ class MonitoreoUseCase:
             for evento in eventos:
                 await self.convocatoria_repo.save_evento_cambio(evento, snapshot.id)
 
-            # 7. Notificaciones + Persistencia de resultados
             if self.notifier:
                 for evento in eventos:
                     if evento.es_relevante:

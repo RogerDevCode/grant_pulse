@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 import httpx
 
 from src.core.domain.entities import Fuente, Snapshot
+from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import ExtractionError, NetworkError
 from src.core.domain.ports import ScraperPort
 from src.infra.logging import get_logger
@@ -220,7 +221,7 @@ class JsonApiScraper(ScraperPort):
                     "url_detalle": _coerce_text(get_by_path(raw_item, mapping.link_detalle))
                     if mapping.link_detalle
                     else None,
-                    "estado": _coerce_text(get_by_path(raw_item, mapping.estado)) if mapping.estado else None,
+                    "estado": normalize_estado(_coerce_text(get_by_path(raw_item, mapping.estado))) if mapping.estado else "DESCONOCIDO",
                     "fecha_cierre": _coerce_text(get_by_path(raw_item, mapping.fecha_cierre))
                     if mapping.fecha_cierre
                     else None,

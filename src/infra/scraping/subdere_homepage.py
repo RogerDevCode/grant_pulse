@@ -24,6 +24,7 @@ import httpx
 from selectolax.lexbor import LexborHTMLParser
 
 from src.core.domain.entities import Fuente, Snapshot
+from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import ExtractionError, NetworkError
 from src.core.domain.ports import ScraperPort
 from src.infra.logging import get_logger
@@ -43,16 +44,6 @@ _CONVOCATORIA_KEYWORDS = re.compile(
     re.IGNORECASE,
 )
 
-_STATUS_PATTERNS = [
-    (re.compile(r"\bABIERT[OA]\b", re.IGNORECASE), "ABIERTO"),
-    (re.compile(r"\bCERRAD[OA]\b", re.IGNORECASE), "CERRADO"),
-    (re.compile(r"\bPRÓ?XIMAMENTE\b", re.IGNORECASE), "PROXIMAMENTE"),
-    (re.compile(r"\bPOSTUL[AO]\b", re.IGNORECASE), "ABIERTO"),
-    (re.compile(r"\bADJUDICAD[OA]\b", re.IGNORECASE), "ADJUDICADO"),
-    (re.compile(r"\bSUSPENDID[OA]\b", re.IGNORECASE), "SUSPENDIDO"),
-    (re.compile(r"\bVIGENTE\b", re.IGNORECASE), "ABIERTO"),
-]
-
 _DATE_PATTERN = re.compile(
     r"(\w+,\s+\d{1,2}\s+\w+\s+\d{4})|(\d{1,2}\s+de\s+\w+(?:\s+de\s+\d{4})?)|"
     r"(\w+\s+\d{1,2},?\s+\d{4})",
@@ -69,10 +60,7 @@ _REALISTIC_HEADERS = {
 
 
 def _detect_status(text: str) -> str:
-    for pattern, status in _STATUS_PATTERNS:
-        if pattern.search(text):
-            return status
-    return "DESCONOCIDO"
+    return normalize_estado(text)
 
 
 def _extract_date(text: str) -> str | None:

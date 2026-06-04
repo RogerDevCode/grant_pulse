@@ -2,8 +2,8 @@
 Adaptador de scraping que utiliza LLMs para extraer datos de forma inteligente.
 
 Este scraper actúa en dos fases:
-  1. fetch(): Descarga el HTML con headers realistas (User-Agent de navegador).
-  2. extract(): Delega la extracción al OpenRouterClient con contexto de institución.
+1. fetch(): Descarga el HTML con headers realistas (User-Agent de navegador).
+2. extract(): Delega la extracción al OpenRouterClient con contexto de institución.
 
 Es el motor de extracción de último recurso cuando los selectores CSS fallan,
 o el motor principal para fuentes cuya estructura HTML es demasiado dinámica.
@@ -16,6 +16,7 @@ from typing import Any
 import httpx
 
 from src.core.domain.entities import Fuente, Snapshot
+from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import ExtractionError, NetworkError
 from src.core.domain.ports import ScraperPort
 from src.infra.llm.client import StructuredLLMClient, build_llm_client
@@ -33,7 +34,6 @@ _REALISTIC_HEADERS = {
     "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
 }
 
-# Esquema de campos que se le pide al LLM que extraiga
 _FIELDS_SCHEMA: dict[str, str] = {
     "identificador": "ID único, slug o código del fondo. Si no existe, genera uno con las primeras 4 palabras del título.",
     "titulo": "Nombre completo de la convocatoria o fondo.",
@@ -138,13 +138,16 @@ class LlmScraper(ScraperPort):
             )
             return []
 
-        # Normalizar tipos: todos los valores deben ser str | None para el pipeline
         normalized: list[dict[str, str | None]] = []
         for item in raw_items:
             row: dict[str, str | None] = {}
             for key in _FIELDS_SCHEMA:
                 val = item.get(key)
-                row[key] = str(val).strip() if val is not None and str(val).strip() else None
+                raw_val = str(val).strip() if val is not None and str(val).strip() else None
+                if key == "estado":
+                    row[key] = normalize_estado(raw_val)
+                else:
+                    row[key] = raw_val
             normalized.append(row)
 
         logger.info(

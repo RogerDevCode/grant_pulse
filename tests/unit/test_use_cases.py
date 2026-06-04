@@ -112,7 +112,7 @@ async def test_monitoreo_flujo_feliz_con_cambios(mock_fuente_uc: Fuente) -> None
             "identificador": "EXT01",
             "titulo": "Viejo",
             "url_detalle": "/1",
-            "estado": "CERRADO",  # Cambio de estado!
+            "estado": "PROXIMAMENTE",  # Cambio de estado (vigente)
         },
         {"identificador": "EXT02", "titulo": "Nuevo Fondo", "url_detalle": "/2", "estado": "ABIERTO"},
     ]
@@ -150,3 +150,25 @@ async def test_monitoreo_falla_rapido_en_red(mock_fuente_uc: Fuente) -> None:
     # Nada se debe haber guardado
     assert len(repo_snaps.saved) == 0
     assert len(repo_convs.saved_convocatorias) == 0
+
+
+@pytest.mark.asyncio
+async def test_vigencia_filter_discards_cerrado(mock_fuente_uc: Fuente) -> None:
+    repo_convs = MockConvocatoriaRepository(existing=[])
+    repo_snaps = MockSnapshotRepository()
+
+    raw_items: list[dict[str, str | None]] = [
+        {"identificador": "EXT01", "titulo": "Cerrada", "url_detalle": "/1", "estado": "CERRADO"},
+        {"identificador": "EXT02", "titulo": "Abierta", "url_detalle": "/2", "estado": "ABIERTO"},
+    ]
+    scraper = MockScraper(raw_items)
+
+    uc = MonitoreoUseCase(scraper, repo_snaps, repo_convs)
+
+    eventos = await uc.ejecutar_monitoreo(mock_fuente_uc)
+
+    assert len(eventos) == 1
+    assert eventos[0].tipo == "APERTURA"
+    saved_ids = {c.identificador_externo for c in repo_convs.saved_convocatorias}
+    assert "EXT02" in saved_ids
+    assert "EXT01" not in saved_ids

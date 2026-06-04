@@ -12,11 +12,44 @@ import httpx
 from selectolax.parser import HTMLParser
 
 from src.core.domain.entities import Fuente, Snapshot
+from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import ExtractionError, NetworkError
 from src.core.domain.ports import ScraperPort
 from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def _resolve_node(root: Any, selector: str) -> Any | None:
+    if selector == "self":
+        return root
+    if selector.startswith("attr:"):
+        return root
+    return root.css_first(selector)
+
+
+def _extract_text_or_attr(root: Any | None, selector: str) -> str | None:
+    if root is None:
+        return None
+    if selector.startswith("attr:"):
+        attr_name = selector.split(":", 1)[1]
+        attr_val = root.attributes.get(attr_name)
+        if isinstance(attr_val, str):
+            value = attr_val.strip()
+            return value or None
+        return None
+    value = root.text(strip=True).strip()
+    return value or None
+
+
+def _apply_normalizer(raw_text: str | None, field_name: str, fuente: Fuente) -> str | None:
+    if not raw_text:
+        return None
+    norm_cfg = getattr(fuente.configuracion_reglas.normalizadores, field_name, None)
+    if not norm_cfg or not norm_cfg.regex_extraction:
+        return raw_text
+    match = re.search(norm_cfg.regex_extraction, raw_text)
+    return match.group(1).strip() if match else raw_text
 
 
 class HtmlStaticScraper(ScraperPort):
@@ -66,7 +99,7 @@ class HtmlStaticScraper(ScraperPort):
         )
         return snapshot
 
-    async def extract(self, snapshot: Snapshot, fuente: Fuente, **kwargs: Any) -> list[dict[str, str | None]]: # noqa: ARG002
+    async def extract(self, snapshot: Snapshot, fuente: Fuente, **kwargs: Any) -> list[dict[str, str | None]]:  # noqa: ARG002
         logger.info("Iniciando extracción", snapshot_id=str(snapshot.id), fuente_id=str(fuente.id))
 
         try:
@@ -91,52 +124,21 @@ class HtmlStaticScraper(ScraperPort):
             )
             return []
 
-        def resolve_node(root: Any, selector: str) -> Any | None:
-            if selector == "self":
-                return root
-            if selector.startswith("attr:"):
-                return root
-            return root.css_first(selector)
-
-        def extract_text_or_attr(root: Any | None, selector: str) -> str | None:
-            if root is None:
-                return None
-            if selector.startswith("attr:"):
-                attr_name = selector.split(":", 1)[1]
-                attr_val = root.attributes.get(attr_name)
-                if isinstance(attr_val, str):
-                    value = attr_val.strip()
-                    return value or None
-                return None
-            value = root.text(strip=True).strip()
-            return value or None
-
-        def apply_normalizer(raw_text: str | None, field_name: str) -> str | None:
-            if not raw_text:
-                return None
-            norm_cfg = getattr(fuente.configuracion_reglas.normalizadores, field_name, None)
-            if not norm_cfg or not norm_cfg.regex_extraction:
-                return raw_text
-            match = re.search(norm_cfg.regex_extraction, raw_text)
-            return match.group(1).strip() if match else raw_text
-
         resultados: list[dict[str, str | None]] = []
 
         for index, nodo in enumerate(items_nodos):
             try:
                 item_data: dict[str, str | None] = {}
 
-                # Título
-                titulo_nodo = resolve_node(nodo, selectores.titulo)
-                titulo_text = extract_text_or_attr(titulo_nodo, selectores.titulo)
-                titulo_text = apply_normalizer(titulo_text, "titulo") or titulo_text
+                titulo_nodo = _resolve_node(nodo, selectores.titulo)
+                titulo_text = _extract_text_or_attr(titulo_nodo, selectores.titulo)
+                titulo_text = _apply_normalizer(titulo_text, "titulo", fuente) or titulo_text
                 item_data["titulo"] = titulo_text
 
-                # Identificador (con fallback al hash del título)
-                identificador_nodo = resolve_node(nodo, selectores.identificador)
-                identificador_raw = extract_text_or_attr(identificador_nodo, selectores.identificador)
+                identificador_nodo = _resolve_node(nodo, selectores.identificador)
+                identificador_raw = _extract_text_or_attr(identificador_nodo, selectores.identificador)
                 if identificador_raw and selectores.identificador == selectores.titulo:
-                    identificador_raw = apply_normalizer(identificador_raw, "titulo") or identificador_raw
+                    identificador_raw = _apply_normalizer(identificador_raw, "titulo", fuente) or identificador_raw
 
                 if not identificador_raw and titulo_text:
                     identificador_raw = "hash-" + hashlib.md5(titulo_text.encode("utf-8")).hexdigest()[:10]
@@ -151,17 +153,15 @@ class HtmlStaticScraper(ScraperPort):
                     logger.debug(f"Item #{index} no tiene título. Saltando.")
                     continue
 
-                # Descripción
                 if selectores.descripcion:
-                    desc_nodo = resolve_node(nodo, selectores.descripcion)
-                    item_data["descripcion"] = extract_text_or_attr(desc_nodo, selectores.descripcion)
+                    desc_nodo = _resolve_node(nodo, selectores.descripcion)
+                    item_data["descripcion"] = _extract_text_or_attr(desc_nodo, selectores.descripcion)
                 else:
                     item_data["descripcion"] = None
 
-                # Enlace
                 link_nodo = None
                 if selectores.link_detalle:
-                    link_nodo = resolve_node(nodo, selectores.link_detalle)
+                    link_nodo = _resolve_node(nodo, selectores.link_detalle)
                 if not link_nodo and nodo.tag == "a":
                     link_nodo = nodo
                 href_val = link_nodo.attributes.get("href") if link_nodo else None
@@ -170,35 +170,24 @@ class HtmlStaticScraper(ScraperPort):
                 else:
                     item_data["url_detalle"] = None
 
-                # Estado
                 if selectores.estado:
-                    estado_nodo = resolve_node(nodo, selectores.estado)
-                    estado_text = extract_text_or_attr(estado_nodo, selectores.estado)
-                    estado_raw = estado_text.upper() if estado_text else "DESCONOCIDO"
-                    if "ABIERT" in estado_raw or "POSTULA" in estado_raw:
-                        item_data["estado"] = "ABIERTO"
-                    elif "CERRAD" in estado_raw or "FINALIZAD" in estado_raw:
-                        item_data["estado"] = "CERRADO"
-                    elif "PROXIMAMENTE" in estado_raw or "PRÓXIMAMENTE" in estado_raw:
-                        item_data["estado"] = "PROXIMAMENTE"
-                    else:
-                        item_data["estado"] = estado_raw if estado_raw else "DESCONOCIDO"
+                    estado_nodo = _resolve_node(nodo, selectores.estado)
+                    estado_text = _extract_text_or_attr(estado_nodo, selectores.estado)
+                    item_data["estado"] = normalize_estado(estado_text)
                 else:
                     item_data["estado"] = "DESCONOCIDO"
 
-                # Fecha cierre
                 if selectores.fecha_cierre:
-                    fc_nodo = resolve_node(nodo, selectores.fecha_cierre)
-                    raw_fc = extract_text_or_attr(fc_nodo, selectores.fecha_cierre)
-                    item_data["fecha_cierre"] = apply_normalizer(raw_fc, "fecha_cierre")
+                    fc_nodo = _resolve_node(nodo, selectores.fecha_cierre)
+                    raw_fc = _extract_text_or_attr(fc_nodo, selectores.fecha_cierre)
+                    item_data["fecha_cierre"] = _apply_normalizer(raw_fc, "fecha_cierre", fuente)
                 else:
                     item_data["fecha_cierre"] = None
 
-                # Monto
                 if selectores.monto:
-                    monto_nodo = resolve_node(nodo, selectores.monto)
-                    raw_monto = extract_text_or_attr(monto_nodo, selectores.monto)
-                    item_data["monto"] = apply_normalizer(raw_monto, "monto")
+                    monto_nodo = _resolve_node(nodo, selectores.monto)
+                    raw_monto = _extract_text_or_attr(monto_nodo, selectores.monto)
+                    item_data["monto"] = _apply_normalizer(raw_monto, "monto", fuente)
                 else:
                     item_data["monto"] = None
 

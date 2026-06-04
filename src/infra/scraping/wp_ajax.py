@@ -13,11 +13,13 @@ import json
 import re
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urljoin
 
 import httpx
 from selectolax.parser import HTMLParser
 
 from src.core.domain.entities import Fuente, Snapshot
+from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import ExtractionError, NetworkError
 from src.core.domain.ports import ScraperPort
 from src.infra.logging import get_logger
@@ -37,6 +39,28 @@ _BROWSER_HEADERS = {
 }
 
 
+def _resolve_node(root: Any, selector: str) -> Any | None:
+    if selector == "self":
+        return root
+    if selector.startswith("attr:"):
+        return root
+    return root.css_first(selector)
+
+
+def _extract_text_or_attr(root: Any | None, selector: str) -> str | None:
+    if root is None:
+        return None
+    if selector.startswith("attr:"):
+        attr_name = selector.split(":", 1)[1]
+        attr_val = root.attributes.get(attr_name)
+        if isinstance(attr_val, str):
+            value = attr_val.strip()
+            return value or None
+        return None
+    value = root.text(strip=True).strip()
+    return value or None
+
+
 class WpAjaxScraper(ScraperPort):
     """
     Adaptador que extrae convocatorias vía WordPress admin-ajax.php.
@@ -44,13 +68,6 @@ class WpAjaxScraper(ScraperPort):
     Requiere que la fuente tenga en configuracion_reglas:
     - url_busqueda: la página principal que contiene el nonce
     - selectores: para extraer items del HTML embebido en la respuesta AJAX
-
-    Parámetros extra via kwargs:
-    - ajax_action: nombre del action de WordPress (ej: 'filter_convocatorias')
-    - ajax_url: URL del endpoint admin-ajax.php (si difiere de la default)
-    - post_type: tipo de post WordPress (ej: 'convocatoria')
-    - max_pages: máximo de páginas a iterar (default: 12)
-    - page_size: items por página (default: 10)
     """
 
     def __init__(self, timeout: int = 20, max_pages: int = 12) -> None:
@@ -83,8 +100,6 @@ class WpAjaxScraper(ScraperPort):
         ajax_url = ajaxurl_match.group(1).replace("\\/", "/") if ajaxurl_match else ""
 
         if not ajax_url:
-            from urllib.parse import urljoin
-
             ajax_url = urljoin(page_url, "/wp-admin/admin-ajax.php")
 
         logger.info(
@@ -228,29 +243,7 @@ class WpAjaxScraper(ScraperPort):
             )
             return []
 
-        from urllib.parse import urljoin
-
         resultados: list[dict[str, str | None]] = []
-
-        def _resolve_node(root: Any, selector: str) -> Any | None:
-            if selector == "self":
-                return root
-            if selector.startswith("attr:"):
-                return root
-            return root.css_first(selector)
-
-        def _extract_text_or_attr(root: Any | None, selector: str) -> str | None:
-            if root is None:
-                return None
-            if selector.startswith("attr:"):
-                attr_name = selector.split(":", 1)[1]
-                attr_val = root.attributes.get(attr_name)
-                if isinstance(attr_val, str):
-                    value = attr_val.strip()
-                    return value or None
-                return None
-            value = root.text(strip=True).strip()
-            return value or None
 
         for index, nodo in enumerate(items_nodos):
             try:
@@ -289,17 +282,7 @@ class WpAjaxScraper(ScraperPort):
                 if selectores.estado:
                     estado_nodo = _resolve_node(nodo, selectores.estado)
                     estado_text = _extract_text_or_attr(estado_nodo, selectores.estado)
-                    estado_raw = estado_text.upper() if estado_text else "DESCONOCIDO"
-                    if "ABIERT" in estado_raw or "POSTULA" in estado_raw:
-                        item_data["estado"] = "ABIERTO"
-                    elif "CERRAD" in estado_raw or "FINALIZAD" in estado_raw:
-                        item_data["estado"] = "CERRADO"
-                    elif "PROXIMAMENTE" in estado_raw or "PRÓXIMAMENTE" in estado_raw:
-                        item_data["estado"] = "PROXIMAMENTE"
-                    elif "ADJUDICAD" in estado_raw or "SUSPENDID" in estado_raw:
-                        item_data["estado"] = estado_raw if estado_raw else "DESCONOCIDO"
-                    else:
-                        item_data["estado"] = estado_raw if estado_raw else "DESCONOCIDO"
+                    item_data["estado"] = normalize_estado(estado_text)
                 else:
                     item_data["estado"] = "DESCONOCIDO"
 

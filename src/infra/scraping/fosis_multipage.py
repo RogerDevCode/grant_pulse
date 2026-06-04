@@ -27,6 +27,7 @@ import httpx
 from selectolax.parser import HTMLParser
 
 from src.core.domain.entities import Fuente, Snapshot
+from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import ExtractionError, NetworkError
 from src.core.domain.ports import ScraperPort
 from src.infra.logging import get_logger
@@ -53,22 +54,9 @@ _REALISTIC_HEADERS = {
     "Accept-Language": "es-CL,es;q=0.9",
 }
 
-_STATUS_MAP = {
-    "ABIERT": "ABIERTO",
-    "CERRAD": "CERRADO",
-    "POSTULA": "ABIERTO",
-    "VIGENTE": "ABIERTO",
-    "PRÓXIM": "PROXIMAMENTE",
-    "PROXIM": "PROXIMAMENTE",
-}
-
 
 def _detect_status(text: str) -> str:
-    upper = text.upper()
-    for key, value in _STATUS_MAP.items():
-        if key in upper:
-            return value
-    return "DESCONOCIDO"
+    return normalize_estado(text)
 
 
 class FosisMultiPageScraper(ScraperPort):

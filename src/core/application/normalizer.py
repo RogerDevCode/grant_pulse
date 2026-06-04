@@ -6,6 +6,7 @@ import re
 from datetime import UTC, datetime
 
 from src.core.domain.entities import Convocatoria, Fuente
+from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import NormalizationError
 from src.infra.logging import get_logger
 
@@ -111,8 +112,8 @@ class DataNormalizer:
                 )
                 skipped += 1
                 continue
-            if not estado:
-                estado = "DESCONOCIDO"
+
+            estado = normalize_estado(estado)
 
             url_final = (
                 str(fuente.url_base).rstrip("/") + "/" + url_detalle.lstrip("/")
@@ -120,8 +121,10 @@ class DataNormalizer:
                 else url_detalle
             )
 
+            fecha_cierre_val: datetime | None = None
+            monto_val: float | None = None
+
             try:
-                fecha_cierre_val: datetime | None = None
                 raw_fecha_cierre = item.get("fecha_cierre")
                 if raw_fecha_cierre and norm_config.fecha_cierre:
                     texto_fecha = raw_fecha_cierre
@@ -149,7 +152,6 @@ class DataNormalizer:
                     skipped += 1
                     continue
 
-                monto_val: float | None = None
                 raw_monto = item.get("monto")
                 if raw_monto and norm_config.monto:
                     texto_monto = raw_monto
@@ -163,6 +165,9 @@ class DataNormalizer:
                 logger.warning(msg, exc=e)
                 skipped += 1
                 continue
+
+            if estado == "DESCONOCIDO" and fecha_cierre_val is not None and fecha_cierre_val >= now:
+                estado = "ABIERTO"
 
             convocatoria = Convocatoria(
                 fuente_id=fuente.id,

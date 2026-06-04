@@ -14,13 +14,14 @@ from datetime import UTC, datetime
 from typing import Any
 
 from src.core.domain.entities import Convocatoria
+from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.fecha_utils import parse_fecha_chilena
 from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
 
-_ESTADOS_NO_VIGENTES = frozenset({"CERRADO", "CERRADA", "ADJUDICADO", "ADJUDICADA", "SUSPENDIDO", "SUSPENDIDA", "FINALIZADO", "FINALIZADA"})
-_ESTADOS_VIGENTES = frozenset({"ABIERTO", "ABIERTA", "PROXIMAMENTE", "VIGENTE", "PUBLISH"})
+_ESTADOS_NO_VIGENTES = frozenset({"CERRADO", "ADJUDICADO", "SUSPENDIDO", "FINALIZADO"})
+_ESTADOS_VIGENTES = frozenset({"ABIERTO", "PROXIMAMENTE"})
 
 
 def es_convocatoria_vigente(
@@ -37,7 +38,7 @@ def es_convocatoria_vigente(
     4. Sin estado ni fecha de cierre → True (conservador: se asume vigente)
     """
     ahora = referencia or datetime.now(UTC)
-    estado = (convocatoria.estado or "").strip().upper()
+    estado = normalize_estado(convocatoria.estado)
 
     if estado in _ESTADOS_NO_VIGENTES:
         return False
@@ -73,7 +74,7 @@ def filtrar_vigentes(
     descartadas_fecha = 0
 
     for c in convocatorias:
-        estado = (c.estado or "").strip().upper()
+        estado = normalize_estado(c.estado)
 
         if estado in _ESTADOS_NO_VIGENTES:
             descartadas_estado += 1
@@ -120,7 +121,7 @@ def filtrar_vigentes_raw(
     descartadas = 0
 
     for item in items:
-        estado = str(item.get("estado") or "").strip().upper()
+        estado = normalize_estado(item.get("estado"))
 
         if estado in _ESTADOS_NO_VIGENTES:
             descartadas += 1

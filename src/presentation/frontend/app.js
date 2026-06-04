@@ -1,6 +1,6 @@
 /**
  * GrantPulse — Frontend SPA
- * Vanilla JS, no framework. Server-side filtering, pagination, full CRUD.
+ * Vanilla JS, no framework. Full CRUD, server-side pagination, confirm dialogs.
  */
 
 const API = '/api/v1';
@@ -20,28 +20,30 @@ const state = {
   convOffset: 0,
   convTotal: 0,
   searchTimeout: null,
+  confirmCb: null,
 };
 
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
   convocatorias: 'Convocatorias',
   fuentes: 'Fuentes',
+  eventos: 'Eventos',
   notificaciones: 'Notificaciones',
   audit: 'Audit Log',
 };
 
 function fmt(n) {
-  if (n == null) return '—';
+  if (n == null) return '\u2014';
   return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n);
 }
 
 function fmtDate(d) {
-  if (!d) return '—';
+  if (!d) return '\u2014';
   return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function fmtDateTime(d) {
-  if (!d) return '—';
+  if (!d) return '\u2014';
   return new Date(d).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
@@ -60,10 +62,10 @@ function fmtRelative(d) {
 function badgeClass(estado) {
   const e = (estado || '').toUpperCase();
   if (e.includes('ABIERT')) return 'badge-green';
-  if (e.includes('CERRAD') || e.includes('FINALIZAD')) return 'badge-red';
+  if (e.includes('CERRAD') || e.includes('FINALIZAD') || e.includes('ADJUDICAD') || e.includes('SUSPENDID')) return 'badge-red';
   if (e.includes('PROXIMA')) return 'badge-amber';
   if (e === 'PUBLISH' || e === 'DESCONOCIDO') return 'badge-gray';
-  return 'badge-blue';
+  return 'badge-cyan';
 }
 
 function escHtml(s) {
@@ -73,7 +75,7 @@ function escHtml(s) {
 }
 
 function translateField(f) {
-  const m = { estado: 'Estado', fecha_cierre: 'Fecha de Cierre', monto: 'Monto', titulo: 'Título', descripcion: 'Descripción', url_detalle: 'Enlace' };
+  const m = { estado: 'Estado', fecha_cierre: 'Fecha de Cierre', monto: 'Monto', titulo: 'T\u00edtulo', descripcion: 'Descripci\u00f3n', url_detalle: 'Enlace' };
   return m[f] || f;
 }
 
@@ -82,7 +84,14 @@ function toast(msg, type = 'info') {
   el.className = `toast ${type}`;
   el.textContent = msg;
   $('#toastContainer').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+  setTimeout(() => el.remove(), 4000);
+}
+
+function confirm(title, msg, cb) {
+  $('#confirmModalTitle').textContent = title;
+  $('#confirmModalMsg').textContent = msg;
+  state.confirmCb = cb;
+  $('#confirmModal').classList.add('active');
 }
 
 /* ── NAVIGATION ─────────────────────── */
@@ -101,6 +110,7 @@ function loadPage(page) {
     case 'dashboard': loadDashboard(); break;
     case 'convocatorias': loadConvocatorias(); break;
     case 'fuentes': loadFuentes(); break;
+    case 'eventos': loadEventos(); break;
     case 'notificaciones': loadNotificaciones(); break;
     case 'audit': loadAudit(); break;
   }
@@ -157,7 +167,7 @@ async function renderDashFuentes() {
       <li>
         <span class="badge ${f.activa ? 'badge-green' : 'badge-gray'}" style="font-size:0.6rem">${f.activa ? 'ON' : 'OFF'}</span>
         <span style="font-weight:500;color:var(--text-0)">${escHtml(f.nombre)}</span>
-        <span style="margin-left:auto;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-3)">${f.abiertas} abiertas</span>
+        <span style="margin-left:auto;font-family:var(--font-mono);font-size:0.72rem;color:var(--text-3)">${f.abiertas} abiertas</span>
       </li>
     `).join('') + '</ul>';
   } catch (e) { /* ignore */ }
@@ -225,16 +235,21 @@ function renderConvocatorias(items) {
     <tr>
       <td><span class="badge ${badgeClass(c.estado)}">${escHtml(c.estado)}</span></td>
       <td><span class="cell-title" title="${escHtml(c.titulo)}">${escHtml(c.titulo)}</span></td>
-      <td><span class="cell-fuente">${escHtml(c.fuente_nombre || '—')}</span></td>
-      <td><span class="cell-monto">${c.monto != null ? fmt(c.monto) : '—'}</span></td>
+      <td><span class="cell-fuente">${escHtml(c.fuente_nombre || '\u2014')}</span></td>
+      <td><span class="cell-monto">${c.monto != null ? fmt(c.monto) : '\u2014'}</span></td>
       <td><span class="cell-date">${fmtDate(c.fecha_cierre)}</span></td>
       <td>
-        <button class="btn-icon-sm" onclick="viewDetail('${c.id}')" title="Ver detalle">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-        ${c.url_detalle ? `<a class="btn-icon-sm" href="${c.url_detalle}" target="_blank" rel="noopener" title="Ver en portal">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        </a>` : ''}
+        <div style="display:flex;gap:2px">
+          <button class="btn-icon-sm" onclick="viewDetail('${c.id}')" title="Ver detalle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          ${c.url_detalle ? `<a class="btn-icon-sm" href="${c.url_detalle}" target="_blank" rel="noopener" title="Ver en portal">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>` : ''}
+          <button class="btn-icon-sm danger" onclick="deleteConvocatoria('${c.id}', '${escHtml(c.titulo).replace(/'/g, "\\'")}')" title="Eliminar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
       </td>
     </tr>
   `).join('');
@@ -279,13 +294,13 @@ window.viewDetail = async function(id) {
     body.innerHTML = `
       <div class="detail-grid">
         <div class="detail-field"><label>Estado</label><span class="badge ${badgeClass(data.estado)}">${escHtml(data.estado)}</span></div>
-        <div class="detail-field"><label>Fuente</label><span>${escHtml(data.fuente_nombre || '—')}</span></div>
-        <div class="detail-field"><label>Monto</label><span>${data.monto != null ? fmt(data.monto) : '—'}</span></div>
+        <div class="detail-field"><label>Fuente</label><span>${escHtml(data.fuente_nombre || '\u2014')}</span></div>
+        <div class="detail-field"><label>Monto</label><span>${data.monto != null ? fmt(data.monto) : '\u2014'}</span></div>
         <div class="detail-field"><label>Fecha Cierre</label><span>${fmtDate(data.fecha_cierre)}</span></div>
         <div class="detail-field"><label>Fecha Apertura</label><span>${fmtDate(data.fecha_apertura)}</span></div>
         <div class="detail-field"><label>Actualizado</label><span>${fmtDateTime(data.actualizado_en)}</span></div>
       </div>
-      ${data.descripcion ? `<div class="detail-section"><h3>Descripción</h3><p style="font-size:0.88rem;color:var(--text-1);line-height:1.6">${escHtml(data.descripcion)}</p></div>` : ''}
+      ${data.descripcion ? `<div class="detail-section"><h3>Descripci\u00f3n</h3><p style="font-size:0.88rem;color:var(--text-1);line-height:1.6">${escHtml(data.descripcion)}</p></div>` : ''}
       ${data.url_detalle ? `<div class="detail-section"><a href="${data.url_detalle}" target="_blank" rel="noopener" class="btn btn-primary" style="display:inline-flex">Ver en Portal &rarr;</a></div>` : ''}
       <div class="detail-section">
         <h3>Historial de Cambios (${data.historial_cambios.length})</h3>
@@ -301,7 +316,7 @@ function renderHistory(events) {
   return events.map(ev => `
     <div class="timeline-item">
       <div class="timeline-date">${fmtDateTime(ev.fecha_deteccion)}</div>
-      <span class="timeline-type ${ev.tipo === 'APERTURA' ? 'apertura' : 'modificacion'}">${ev.tipo} ${ev.es_relevante ? '★' : ''}</span>
+      <span class="timeline-type ${ev.tipo === 'APERTURA' ? 'apertura' : 'modificacion'}">${ev.tipo} ${ev.es_relevante ? '\u2605' : ''}</span>
       <ul class="delta-list">
         ${ev.deltas.map(d => `
           <li>
@@ -315,6 +330,20 @@ function renderHistory(events) {
     </div>
   `).join('');
 }
+
+/* ── DELETE CONVOCATORIA ─────────────── */
+
+window.deleteConvocatoria = function(id, titulo) {
+  confirm('Eliminar Convocatoria', `\u00bfEliminar "${titulo}"? Esta acci\u00f3n no se puede deshacer.`, async () => {
+    try {
+      await apiFetch(`/convocatorias/${id}`, { method: 'DELETE' });
+      toast('Convocatoria eliminada', 'success');
+      loadConvocatorias();
+    } catch (e) {
+      toast('Error al eliminar convocatoria', 'error');
+    }
+  });
+};
 
 /* ── FUENTES ─────────────────────────── */
 
@@ -347,7 +376,11 @@ function renderFuentes(fuentes) {
       <td><span style="font-weight:600;color:var(--green)">${f.abiertas}</span></td>
       <td><span class="cell-date">${fmtRelative(f.ultima_ejecucion)}</span></td>
       <td>
-        <span class="badge ${f.activa ? 'badge-green' : 'badge-gray'}">${f.activa ? 'Activa' : 'Inactiva'}</span>
+        <div style="display:flex;gap:2px">
+          <button class="btn-icon-sm danger" onclick="deleteFuente('${f.id}', '${escHtml(f.nombre).replace(/'/g, "\\'")}')" title="Eliminar fuente">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
       </td>
     </tr>
   `).join('');
@@ -370,6 +403,83 @@ window.toggleFuente = async function(id, btn) {
     toast('Error al cambiar estado', 'error');
   }
 };
+
+/* ── DELETE FUENTE ────────────────────── */
+
+window.deleteFuente = function(id, nombre) {
+  confirm('Eliminar Fuente', `\u00bfEliminar "${nombre}" y todas sus convocatorias? Esta acci\u00f3n no se puede deshacer.`, async () => {
+    try {
+      await apiFetch(`/fuentes/${id}`, { method: 'DELETE' });
+      toast('Fuente eliminada', 'success');
+      loadFuentes();
+    } catch (e) {
+      toast('Error al eliminar fuente', 'error');
+    }
+  });
+};
+
+/* ── EVENTOS ──────────────────────────── */
+
+async function loadEventos() {
+  $('#eventosLoader').style.display = '';
+  $('#eventosEmpty').style.display = 'none';
+  try {
+    const fuentes = await apiFetch('/fuentes');
+    populateEventoFuenteFilter(fuentes);
+    const allConv = await apiFetch('/convocatorias?limit=200');
+    const tipoFilter = $('#filterEventoTipo').value;
+    const fuenteFilter = $('#filterEventoFuente').value;
+
+    let eventos = [];
+    const batchSize = 10;
+    const convToCheck = fuenteFilter ? allConv.filter(c => c.fuente_id === fuenteFilter) : allConv;
+
+    for (let i = 0; i < Math.min(convToCheck.length, batchSize); i++) {
+      try {
+        const detail = await apiFetch(`/convocatorias/${convToCheck[i].id}`);
+        for (const ev of detail.historial_cambios) {
+          if (tipoFilter && ev.tipo !== tipoFilter) continue;
+          eventos.push({ ...ev, convocatoria_titulo: detail.titulo, fuente_nombre: detail.fuente_nombre });
+        }
+      } catch (e) { /* skip */ }
+    }
+
+    eventos.sort((a, b) => new Date(b.fecha_deteccion).getTime() - new Date(a.fecha_deteccion).getTime());
+    renderEventos(eventos);
+  } catch (e) {
+    toast('Error al cargar eventos', 'error');
+  } finally {
+    $('#eventosLoader').style.display = 'none';
+  }
+}
+
+function populateEventoFuenteFilter(fuentes) {
+  const sel = $('#filterEventoFuente');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Todas las fuentes</option>' + fuentes.map(f => `<option value="${f.id}">${escHtml(f.nombre)}</option>`).join('');
+  sel.value = current;
+}
+
+function renderEventos(eventos) {
+  const body = $('#eventosBody');
+  if (!eventos.length) {
+    body.innerHTML = '';
+    $('#eventosEmpty').style.display = '';
+    return;
+  }
+  body.innerHTML = eventos.map(ev => `
+    <tr>
+      <td><span class="badge ${ev.tipo === 'APERTURA' ? 'badge-green' : 'badge-blue'}">${escHtml(ev.tipo)}</span></td>
+      <td><span class="cell-title">${escHtml(ev.convocatoria_titulo)}</span></td>
+      <td><span class="cell-fuente">${escHtml(ev.fuente_nombre || '\u2014')}</span></td>
+      <td>
+        ${ev.deltas.length ? `<span class="badge badge-gray">${ev.deltas.length} cambios</span>` : '<span style="color:var(--text-3)">\u2014</span>'}
+      </td>
+      <td>${ev.es_relevante ? '<span style="color:var(--amber)">\u2605</span>' : '<span style="color:var(--text-3)">\u2014</span>'}</td>
+      <td><span class="cell-date">${fmtDateTime(ev.fecha_deteccion)}</span></td>
+    </tr>
+  `).join('');
+}
 
 /* ── NOTIFICACIONES ───────────────────── */
 
@@ -395,8 +505,8 @@ function renderNotifConfigs(configs) {
   el.innerHTML = configs.map(c => {
     const isTg = c.tipo === 'TELEGRAM';
     const detail = isTg
-      ? `Chat: ${c.configuracion.chat_id || '—'} · Token: ****${(c.configuracion.token || '').slice(-4)}`
-      : `${c.configuracion.host || '—'} → ${(c.configuracion.target_emails || []).join(', ')}`;
+      ? `Chat: ${c.configuracion.chat_id || '\u2014'} \u00b7 Token: ****${(c.configuracion.token || '').slice(-4)}`
+      : `${c.configuracion.host || '\u2014'} \u2192 ${(c.configuracion.target_emails || []).join(', ')}`;
     return `
       <div class="config-item">
         <div class="config-icon ${isTg ? 'tg' : 'em'}">${isTg ? 'TG' : '@ '}</div>
@@ -406,7 +516,7 @@ function renderNotifConfigs(configs) {
         </div>
         <div class="config-actions">
           <button class="toggle ${c.activa ? 'on' : ''}" onclick="toggleNotifConfig('${c.id}', this)"></button>
-          <button class="btn-icon-sm" onclick="deleteNotifConfig('${c.id}')" title="Eliminar">
+          <button class="btn-icon-sm danger" onclick="deleteNotifConfig('${c.id}', '${escHtml(c.nombre).replace(/'/g, "\\'")}')" title="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button>
         </div>
@@ -417,11 +527,11 @@ function renderNotifConfigs(configs) {
 
 function renderNotifHistory(history) {
   const el = $('#notifHistoryList');
-  if (!history.length) { el.innerHTML = '<p style="color:var(--text-3);font-size:0.85rem;padding:1rem 0">Sin envíos registrados</p>'; return; }
+  if (!history.length) { el.innerHTML = '<p style="color:var(--text-3);font-size:0.85rem;padding:1rem 0">Sin env\u00edos registrados</p>'; return; }
 
   el.innerHTML = history.map(n => `
     <div class="notif-item">
-      <span class="badge ${n.estado === 'ENVIADO' ? 'badge-green' : n.estado === 'ERROR' ? 'badge-red' : 'badge-gray'}" style="font-size:0.6rem">${escHtml(n.estado)}</span>
+      <span class="badge ${n.estado === 'ENVIADO' ? 'badge-green' : n.estado === 'FALLIDO' ? 'badge-red' : 'badge-gray'}" style="font-size:0.6rem">${escHtml(n.estado)}</span>
       <span class="notif-dest">${escHtml(n.destinatario)}</span>
       <span class="badge ${n.canal === 'TELEGRAM' ? 'badge-blue' : 'badge-amber'}" style="font-size:0.6rem">${escHtml(n.canal)}</span>
       <span class="notif-date">${fmtRelative(n.enviado_en)}</span>
@@ -439,15 +549,16 @@ window.toggleNotifConfig = async function(id, btn) {
   }
 };
 
-window.deleteNotifConfig = async function(id) {
-  if (!confirm('¿Eliminar este canal de notificación?')) return;
-  try {
-    await apiFetch(`/config/notificaciones/${id}`, { method: 'DELETE' });
-    toast('Canal eliminado', 'success');
-    loadNotificaciones();
-  } catch (e) {
-    toast('Error al eliminar', 'error');
-  }
+window.deleteNotifConfig = function(id, nombre) {
+  confirm('Eliminar Canal', `\u00bfEliminar el canal "${nombre}"?`, async () => {
+    try {
+      await apiFetch(`/config/notificaciones/${id}`, { method: 'DELETE' });
+      toast('Canal eliminado', 'success');
+      loadNotificaciones();
+    } catch (e) {
+      toast('Error al eliminar', 'error');
+    }
+  });
 };
 
 /* ── AUDIT LOG ────────────────────────── */
@@ -478,9 +589,9 @@ function renderAudit(logs) {
     return `
       <tr>
         <td><span class="badge ${badge}">${escHtml(l.nivel)}</span></td>
-        <td><span style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-2)">${escHtml(l.modulo)}</span></td>
+        <td><span style="font-family:var(--font-mono);font-size:0.76rem;color:var(--text-2)">${escHtml(l.modulo)}</span></td>
         <td><span style="max-width:400px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(l.mensaje)}">${escHtml(l.mensaje)}</span></td>
-        <td><span class="cell-fuente">${escHtml(l.fuente_nombre || '—')}</span></td>
+        <td><span class="cell-fuente">${escHtml(l.fuente_nombre || '\u2014')}</span></td>
         <td><span class="cell-date">${fmtDateTime(l.creado_en)}</span></td>
       </tr>
     `;
@@ -569,7 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#sidebar').classList.toggle('mobile-open');
   });
 
-  $('#mobileToggle').addEventListener('click', () => {
+  $('#sidebarToggle').addEventListener('click', () => {
     const sb = $('#sidebar');
     sb.classList.toggle('collapsed');
     document.body.classList.toggle('sidebar-collapsed');
@@ -591,6 +702,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === $('#detailModal')) $('#detailModal').classList.remove('active');
   });
 
+  $('#confirmModalClose').addEventListener('click', () => {
+    $('#confirmModal').classList.remove('active');
+    state.confirmCb = null;
+  });
+
+  $('#confirmModalCancel').addEventListener('click', () => {
+    $('#confirmModal').classList.remove('active');
+    state.confirmCb = null;
+  });
+
+  $('#confirmModalOk').addEventListener('click', () => {
+    $('#confirmModal').classList.remove('active');
+    if (state.confirmCb) { state.confirmCb(); state.confirmCb = null; }
+  });
+
+  $('#confirmModal').addEventListener('click', (e) => {
+    if (e.target === $('#confirmModal')) {
+      $('#confirmModal').classList.remove('active');
+      state.confirmCb = null;
+    }
+  });
+
   $('#filterEstado').addEventListener('change', () => { state.convOffset = 0; loadConvocatorias(); });
   $('#filterFuente').addEventListener('change', () => { state.convOffset = 0; loadConvocatorias(); });
 
@@ -601,10 +734,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('#filterAuditNivel').addEventListener('change', loadAudit);
 
+  $('#filterEventoTipo').addEventListener('change', loadEventos);
+  $('#filterEventoFuente').addEventListener('change', loadEventos);
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       $('#detailModal').classList.remove('active');
+      $('#confirmModal').classList.remove('active');
       $('#sidebar').classList.remove('mobile-open');
+      state.confirmCb = null;
     }
   });
 
