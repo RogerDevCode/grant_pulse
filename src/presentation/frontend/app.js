@@ -193,6 +193,8 @@ async function loadConvocatorias() {
   const estado = $('#filterEstado').value;
   const fuenteId = $('#filterFuente').value;
   const search = $('#searchInput').value.trim();
+  const orden = $('#filterOrden').value;
+  const region = $('#filterRegion').value;
 
   $('#convocatoriasLoader').style.display = '';
   $('#convocatoriasEmpty').style.display = 'none';
@@ -204,6 +206,8 @@ async function loadConvocatorias() {
     if (estado) params.set('estado', estado);
     if (fuenteId) params.set('fuente_id', fuenteId);
     if (search) params.set('search', search);
+    if (orden) params.set('orden', orden);
+    if (region) params.set('region', region);
 
     const data = await apiFetch(`/convocatorias?${params}`);
     state.convocatorias = data;
@@ -232,10 +236,11 @@ function renderConvocatorias(items) {
     return;
   }
   body.innerHTML = items.map(c => `
-    <tr>
+    <tr style="cursor: pointer;" onclick="viewDetail('${c.id}')">
       <td><span class="badge ${badgeClass(c.estado)}">${escHtml(c.estado)}</span></td>
       <td><span class="cell-title" title="${escHtml(c.titulo)}">${escHtml(c.titulo)}</span></td>
       <td><span class="cell-fuente">${escHtml(c.fuente_nombre || '\u2014')}</span></td>
+      <td><span class="cell-region">${escHtml(c.region || 'Nacional')}</span></td>
       <td><span class="cell-monto">${c.monto != null ? fmt(c.monto) : '\u2014'}</span></td>
       <td><span class="cell-date">${fmtDate(c.fecha_cierre)}</span></td>
       <td>
@@ -243,10 +248,10 @@ function renderConvocatorias(items) {
           <button class="btn-icon-sm" onclick="viewDetail('${c.id}')" title="Ver detalle">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
-          ${c.url_detalle ? `<a class="btn-icon-sm" href="${c.url_detalle}" target="_blank" rel="noopener" title="Ver en portal">
+          ${c.url_detalle ? `<a class="btn-icon-sm" href="${c.url_detalle}" target="_blank" rel="noopener" title="Ver en portal" onclick="event.stopPropagation();">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>` : ''}
-          <button class="btn-icon-sm danger" onclick="deleteConvocatoria('${c.id}', '${escHtml(c.titulo).replace(/'/g, "\\'")}')" title="Eliminar">
+          <button class="btn-icon-sm danger" onclick="event.stopPropagation(); deleteConvocatoria('${c.id}', '${escHtml(c.titulo).replace(/'/g, "\\'")}')" title="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button>
         </div>
@@ -289,22 +294,46 @@ window.viewDetail = async function(id) {
 
   try {
     const data = await apiFetch(`/convocatorias/${id}`);
-    $('#detailModalTitle').textContent = data.titulo;
+    $('#detailModalTitle').textContent = 'Tarjeta Resumen';
 
     body.innerHTML = `
-      <div class="detail-grid">
-        <div class="detail-field"><label>Estado</label><span class="badge ${badgeClass(data.estado)}">${escHtml(data.estado)}</span></div>
-        <div class="detail-field"><label>Fuente</label><span>${escHtml(data.fuente_nombre || '\u2014')}</span></div>
-        <div class="detail-field"><label>Monto</label><span>${data.monto != null ? fmt(data.monto) : '\u2014'}</span></div>
-        <div class="detail-field"><label>Fecha Cierre</label><span>${fmtDate(data.fecha_cierre)}</span></div>
-        <div class="detail-field"><label>Fecha Apertura</label><span>${fmtDate(data.fecha_apertura)}</span></div>
-        <div class="detail-field"><label>Actualizado</label><span>${fmtDateTime(data.actualizado_en)}</span></div>
+      <div style="background: var(--bg-2); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 1.5rem; border-left: 4px solid var(--accent);">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; align-items: center;">
+          <span class="badge ${badgeClass(data.estado)}">${escHtml(data.estado)}</span>
+          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-3);">${escHtml(data.fuente_nombre || '\u2014')}</span>
+        </div>
+        <h2 style="font-size: 1.4rem; color: var(--text-0); font-family: var(--font-display); line-height: 1.2; margin-top: 0.5rem;">${escHtml(data.titulo)}</h2>
       </div>
-      ${data.descripcion ? `<div class="detail-section"><h3>Descripci\u00f3n</h3><p style="font-size:0.88rem;color:var(--text-1);line-height:1.6">${escHtml(data.descripcion)}</p></div>` : ''}
-      ${data.url_detalle ? `<div class="detail-section"><a href="${data.url_detalle}" target="_blank" rel="noopener" class="btn btn-primary" style="display:inline-flex">Ver en Portal &rarr;</a></div>` : ''}
-      <div class="detail-section">
-        <h3>Historial de Cambios (${data.historial_cambios.length})</h3>
-        ${data.historial_cambios.length ? renderHistory(data.historial_cambios) : '<p style="color:var(--text-3);font-size:0.85rem">Sin cambios registrados</p>'}
+
+      <div class="detail-grid">
+        <div class="detail-field"><label>Monto a Financiar</label><span style="color: var(--green); font-size: 1.1rem; font-weight: 600;">${data.monto != null ? fmt(data.monto) : '\u2014'}</span></div>
+        <div class="detail-field"><label>Fecha Cierre</label><span style="color: var(--amber); font-weight: 500;">${fmtDate(data.fecha_cierre)}</span></div>
+        <div class="detail-field"><label>Fecha Apertura</label><span>${fmtDate(data.fecha_apertura)}</span></div>
+        <div class="detail-field"><label>Región</label><span>${escHtml(data.region || 'Nacional')}</span></div>
+        <div class="detail-field"><label>Última Actualización</label><span>${fmtDateTime(data.actualizado_en)}</span></div>
+      </div>
+
+      ${data.descripcion ? `
+      <div class="detail-section" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+        <h3 style="color: var(--text-0); margin-bottom: 0.5rem;">Descripción del Proyecto</h3>
+        <p style="font-size:0.88rem;color:var(--text-1);line-height:1.6; white-space: pre-wrap;">${escHtml(data.descripcion)}</p>
+      </div>` : ''}
+
+      ${data.url_detalle ? `
+      <div class="detail-section" style="margin-top: 1.5rem;">
+        <a href="${data.url_detalle}" target="_blank" rel="noopener" class="btn btn-primary btn-block" style="padding: 0.8rem; font-size: 0.95rem; background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 100%); border: none;">
+          Ir a Postulación / Ver Bases Oficiales &rarr;
+        </a>
+      </div>` : ''}
+
+      <div class="detail-section" style="margin-top: 2rem; border-top: 1px dashed var(--border); padding-top: 1.5rem;">
+        <h3 style="display: flex; justify-content: space-between; align-items: center;">
+          Historial de Seguimiento
+          <span class="badge badge-gray">${data.historial_cambios.length} registros</span>
+        </h3>
+        <div style="margin-top: 1rem;">
+          ${data.historial_cambios.length ? renderHistory(data.historial_cambios) : '<p style="color:var(--text-3);font-size:0.85rem; text-align: center; padding: 1rem; background: var(--bg-2); border-radius: var(--radius-sm);">No hay cambios documentados</p>'}
+        </div>
       </div>
     `;
   } catch (e) {
@@ -726,6 +755,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('#filterEstado').addEventListener('change', () => { state.convOffset = 0; loadConvocatorias(); });
   $('#filterFuente').addEventListener('change', () => { state.convOffset = 0; loadConvocatorias(); });
+  $('#filterOrden').addEventListener('change', () => { state.convOffset = 0; loadConvocatorias(); });
+  $('#filterRegion').addEventListener('change', () => { state.convOffset = 0; loadConvocatorias(); });
 
   $('#searchInput').addEventListener('input', () => {
     clearTimeout(state.searchTimeout);

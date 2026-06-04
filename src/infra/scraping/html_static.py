@@ -191,6 +191,13 @@ class HtmlStaticScraper(ScraperPort):
                 else:
                     item_data["monto"] = None
 
+                if selectores.region:
+                    region_nodo = _resolve_node(nodo, selectores.region)
+                    raw_region = _extract_text_or_attr(region_nodo, selectores.region)
+                    item_data["region"] = _apply_normalizer(raw_region, "region", fuente)
+                else:
+                    item_data["region"] = None
+
                 resultados.append(item_data)
 
             except Exception as e:

@@ -20,6 +20,7 @@ class SelectorConfig(BaseModel):
     estado: str | None = Field(default=None, description="Selector CSS para el estado de la convocatoria")
     fecha_cierre: str | None = Field(default=None, description="Selector CSS para la fecha de cierre")
     monto: str | None = Field(default=None, description="Selector CSS para el monto máximo")
+    region: str | None = Field(default=None, description="Selector CSS para la región")
 
 
 class JsonMappingConfig(BaseModel):
@@ -33,6 +34,7 @@ class JsonMappingConfig(BaseModel):
     estado: str | None = Field(default=None, description="Path al estado")
     fecha_cierre: str | None = Field(default=None, description="Path a la fecha de cierre")
     monto: str | None = Field(default=None, description="Path al monto")
+    region: str | None = Field(default=None, description="Path a la región")
     paginacion: "PaginationConfig" = Field(default_factory=lambda: PaginationConfig(), description="Configuración de paginación")
 
 
@@ -60,6 +62,7 @@ class NormalizerConfig(BaseModel):
     titulo: NormalizerItem | None = None
     fecha_cierre: NormalizerItem | None = None
     monto: NormalizerItem | None = None
+    region: NormalizerItem | None = None
 
 
 class AlertsConfig(BaseModel):
@@ -113,6 +116,7 @@ class Convocatoria(BaseModel):
     fecha_apertura: datetime | None = None
     fecha_cierre: datetime | None = None
     monto: float | None = None
+    region: str | None = None
     estado: str
     metadatos: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
     creado_en: datetime = Field(default_factory=lambda: datetime.now(UTC))

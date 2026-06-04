@@ -101,7 +101,11 @@ async def toggle_fuente(fuente_id: UUID, session: DbSession) -> FuenteToggleResp
     if not orm:
         raise HTTPException(status_code=404, detail="Fuente no encontrada")
     orm.activa = not orm.activa
-    orm.actualizado_en = datetime.now(UTC)
+    fecha_cierre: datetime | None
+    monto: float | None
+    region: str | None = None
+    estado: str
+    actualizado_en: datetime.now(UTC)
     await session.flush()
     return FuenteToggleResponse(id=orm.id, nombre=orm.nombre, activa=orm.activa)
 
@@ -112,16 +116,29 @@ async def list_convocatorias(
     estado: str | None = Query(None, description="Filtrar por estado"),
     fuente_id: UUID | None = Query(None, description="Filtrar por ID de fuente"),  # noqa: B008
     search: str | None = Query(None, description="Buscar en título"),
+    orden: str | None = Query("actualizacion", description="Orden"),
+    region: str | None = Query(None, description="Filtrar por región (Nacional, Metropolitana, etc.)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[ConvocatoriaResponse]:
-    query = select(ConvocatoriaORM).order_by(ConvocatoriaORM.actualizado_en.desc())
+    query = select(ConvocatoriaORM)
     if estado:
         query = query.where(ConvocatoriaORM.estado == estado)
+    if region:
+        query = query.where(ConvocatoriaORM.region == region)
     if fuente_id:
         query = query.where(ConvocatoriaORM.fuente_id == fuente_id)
     if search:
         query = query.where(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
+        
+    if orden == "por_vencer":
+        query = query.where(ConvocatoriaORM.fecha_cierre.isnot(None), ConvocatoriaORM.fecha_cierre >= datetime.now(UTC))
+        query = query.order_by(ConvocatoriaORM.fecha_cierre.asc())
+    elif orden == "recientes_creacion":
+        query = query.order_by(ConvocatoriaORM.creado_en.desc())
+    else:
+        query = query.order_by(ConvocatoriaORM.actualizado_en.desc())
+
     query = query.limit(limit).offset(offset)
     result = await session.execute(query)
     orms = result.scalars().all()
@@ -143,6 +160,7 @@ async def list_convocatorias(
                 fecha_apertura=orm.fecha_apertura,
                 fecha_cierre=orm.fecha_cierre,
                 monto=float(orm.monto) if orm.monto is not None else None,
+                region=orm.region,
                 estado=orm.estado,
                 actualizado_en=orm.actualizado_en,
             )
@@ -197,6 +215,7 @@ async def get_convocatoria_detail(convocatoria_id: UUID, session: DbSession) -> 
         fecha_apertura=orm.fecha_apertura,
         fecha_cierre=orm.fecha_cierre,
         monto=float(orm.monto) if orm.monto is not None else None,
+        region=orm.region,
         estado=orm.estado,
         actualizado_en=orm.actualizado_en,
         historial_cambios=eventos,

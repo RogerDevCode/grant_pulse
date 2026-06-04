@@ -226,6 +226,7 @@ class JsonApiScraper(ScraperPort):
                     if mapping.fecha_cierre
                     else None,
                     "monto": _coerce_text(get_by_path(raw_item, mapping.monto)) if mapping.monto else None,
+                    "region": _coerce_text(get_by_path(raw_item, mapping.region)) if mapping.region else None,
                 }
 
                 if not item_data["identificador"]:

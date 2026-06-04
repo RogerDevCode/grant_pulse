@@ -24,7 +24,6 @@ _STATUS_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bSUSPENDID[OA]\b", re.IGNORECASE), "SUSPENDIDO"),
     (re.compile(r"\bFINALIZAD[OA]\b", re.IGNORECASE), "FINALIZADO"),
     (re.compile(r"\bVIGENTE\b", re.IGNORECASE), "ABIERTO"),
-    (re.compile(r"\bPUBLISH\b", re.IGNORECASE), "ABIERTO"),
 ]
 
 

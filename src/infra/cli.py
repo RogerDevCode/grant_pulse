@@ -239,6 +239,9 @@ def main() -> None:
     # Comando para sincronizar y correr todo el directorio de reglas
     subparsers.add_parser("sync-rules", help="Escanea el directorio de reglas y ejecuta todas las fuentes encontradas")
 
+    # Comando para limpiar la BD
+    subparsers.add_parser("clean-db", help="Elimina convocatorias antiguas e inactivas (>6 meses)")
+
     args = parser.parse_args()
 
     try:
@@ -248,6 +251,9 @@ def main() -> None:
             asyncio.run(run_all_active_sources())
         elif args.command == "sync-rules":
             asyncio.run(sync_all_rules())
+        elif args.command == "clean-db":
+            from src.infra.maintenance import run_clean_db
+            asyncio.run(run_clean_db())
     except GrantPulseError as e:
         logger.error("Error de dominio finalizando el worker", exc=e)
         sys.exit(1)

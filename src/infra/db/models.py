@@ -97,6 +97,7 @@ class ConvocatoriaORM(Base):
     fecha_apertura: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     fecha_cierre: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     monto: Mapped[float | None] = mapped_column(NUMERIC(15, 2), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(100), nullable=True)
     estado: Mapped[str] = mapped_column(String(100), nullable=False)
     metadatos: Mapped[dict[str, int | float | str | bool | None]] = mapped_column(JSONB, nullable=False, default=dict)
     creado_en: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC))

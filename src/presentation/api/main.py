@@ -21,6 +21,12 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]: # noqa: ARG001
     logger.info("Iniciando aplicación API GrantPulse")
+    
+    # Ejecutar búsqueda inicial automáticamente en background
+    import asyncio
+    from src.infra.cli import sync_all_rules
+    asyncio.create_task(sync_all_rules())
+
     yield
     logger.info("Cerrando aplicación API GrantPulse")
 

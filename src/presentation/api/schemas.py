@@ -35,6 +35,7 @@ class ConvocatoriaResponse(BaseModel):
     fecha_apertura: datetime | None
     fecha_cierre: datetime | None
     monto: float | None
+    region: str | None = None
     estado: str
     actualizado_en: datetime
 

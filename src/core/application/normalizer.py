@@ -177,6 +177,7 @@ class DataNormalizer:
                 url_detalle=url_final,  # type: ignore
                 fecha_cierre=fecha_cierre_val,
                 monto=monto_val,
+                region=item.get("region"),
                 estado=estado,
             )
             convocatorias.append(convocatoria)
