@@ -151,20 +151,13 @@ _FOSIS = SourceProfile(
     list_url="https://www.fosis.gob.cl/es/programas/autonomia-economica/",
     steps=(
         ScrapeStep(
-            fetcher="html_static",
-            extractor="html_static",
+            fetcher="fosis_multipage",
+            extractor="fosis_multipage",
             url="https://www.fosis.gob.cl/es/programas/autonomia-economica/",
-            note="Django CMS subpágina autonomía económica (10 programas).",
-        ),
-        ScrapeStep(
-            fetcher="curl_cffi",
-            extractor="html_static",
-            url="https://www.fosis.gob.cl/es/programas/autonomia-economica/",
-            note="Fallback curl_cffi si httpx recibe bloqueos.",
+            note="Multi-subpágina: 4 categorías de programas + convocatoria-alianzas (~30+ items únicos).",
         ),
     ),
     empty_state_markers=("No hay", "sin programas", "No se encontraron"),
-    note="TODO: agregar agregación multi-subpágina (autonomia-desarrollo/ tiene 11 programas más).",
 )
 
 _SUBDERE = SourceProfile(

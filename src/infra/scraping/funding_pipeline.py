@@ -21,6 +21,7 @@ from src.core.domain.ports import ScraperPort
 from src.infra.logging import get_logger
 from src.infra.scraping.browser import PlaywrightScraper
 from src.infra.scraping.curl_cffi import CurlCffiScraper
+from src.infra.scraping.fosis_multipage import FosisMultiPageScraper
 from src.infra.scraping.html_static import HtmlStaticScraper
 from src.infra.scraping.json_api import JsonApiScraper
 from src.infra.scraping.llm_scraper import LlmScraper
@@ -63,6 +64,7 @@ class CompositeFundingScraper(ScraperPort):
         rss_feed: ScraperPort | None = None,
         curl_cffi: ScraperPort | None = None,
         subdere_homepage: ScraperPort | None = None,
+        fosis_multipage: ScraperPort | None = None,
         sleep_fn: Any = asyncio.sleep,
     ) -> None:
         self._profile = profile
@@ -74,6 +76,7 @@ class CompositeFundingScraper(ScraperPort):
         self._rss_feed = rss_feed or RssFeedScraper()
         self._curl_cffi = curl_cffi or CurlCffiScraper()
         self._subdere_homepage = subdere_homepage or SubdereHomepageScraper()
+        self._fosis_multipage = fosis_multipage or FosisMultiPageScraper()
         self._sleep = sleep_fn
         self._metrics = PipelineMetrics(step_metrics=[])
         self._state: _AttemptState | None = None
@@ -99,6 +102,8 @@ class CompositeFundingScraper(ScraperPort):
             return await self._rss_feed.fetch(fuente)
         if kind == "subdere_homepage":
             return await self._subdere_homepage.fetch(fuente)
+        if kind == "fosis_multipage":
+            return await self._fosis_multipage.fetch(fuente)
         raise ScrapingError(f"Fetch kind no soportado: {kind}")
 
     async def _extract_with_kind(
@@ -123,6 +128,8 @@ class CompositeFundingScraper(ScraperPort):
             return await self._curl_cffi.extract(snapshot, fuente, **kwargs)
         if kind == "subdere_homepage":
             return await self._subdere_homepage.extract(snapshot, fuente, **kwargs)
+        if kind == "fosis_multipage":
+            return await self._fosis_multipage.extract(snapshot, fuente, **kwargs)
         raise ScrapingError(f"Extract kind no soportado: {kind}")
 
     def _explicit_empty(self, content: str) -> bool:
@@ -308,6 +315,8 @@ def build_scraper_for_source(fuente: Fuente, fallback_strategy: str | None = Non
         return CurlCffiScraper()
     if estrategia == "subdere_homepage":
         return SubdereHomepageScraper()
+    if estrategia == "fosis_multipage":
+        return FosisMultiPageScraper()
     return HtmlStaticScraper(timeout=15)
 
 

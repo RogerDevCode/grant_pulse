@@ -39,7 +39,7 @@ def test_load_fosis_rules():
     filepath = Path("rules/fosis.yaml")
     rules = load_rules_from_yaml(filepath)
     assert rules.nombre == "FOSIS"
-    assert rules.estrategia == "html_static"
+    assert rules.estrategia == "fosis_multipage"
     assert rules.selectores is not None
     assert rules.selectores.contenedor_items == "div[style*='background-color']"
 

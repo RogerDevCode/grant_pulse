@@ -1,6 +1,6 @@
 nombre: "FOSIS"
 url_busqueda: "https://www.fosis.gob.cl/es/programas/autonomia-economica/"
-estrategia: "html_static"
+estrategia: "fosis_multipage"
 selectores:
   contenedor_items: "div[style*='background-color']"
   identificador: "h2"

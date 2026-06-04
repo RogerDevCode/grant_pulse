@@ -205,7 +205,7 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
                     ConvocatoriaORM.identificador_externo == convocatoria.identificador_externo,
                 )
             )
-            orm = result.scalar_one_or_none()
+            orm = result.scalars().first()
 
             if not orm:
                 orm = ConvocatoriaORM(

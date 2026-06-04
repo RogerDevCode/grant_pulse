@@ -41,8 +41,8 @@ class TestCatalogProfiles:
         profile = resolve_source_profile(profile_key)
         assert profile is not None
         step = profile.steps[0]
-        assert step.fetcher in {"html_static", "json_api", "rss_feed", "wp_ajax", "curl_cffi", "browser", "llm", "subdere_homepage"}
-        assert step.extractor in {"html_static", "json_api", "rss_feed", "wp_ajax", "curl_cffi", "llm", "subdere_homepage"}
+        assert step.fetcher in {"html_static", "json_api", "rss_feed", "wp_ajax", "curl_cffi", "browser", "llm", "subdere_homepage", "fosis_multipage"}
+        assert step.extractor in {"html_static", "json_api", "rss_feed", "wp_ajax", "curl_cffi", "llm", "subdere_homepage", "fosis_multipage"}
 
 
 class TestPipelineFallback:
@@ -87,10 +87,10 @@ class TestPipelineFallback:
         assert profile.steps[0].fetcher == "json_api"
 
     @pytest.mark.asyncio
-    async def test_fosis_has_fallback(self) -> None:
+    async def test_fosis_uses_multipage_strategy(self) -> None:
         profile = resolve_source_profile("FOSIS")
         assert profile is not None
-        assert len(profile.steps) >= 2
+        assert profile.steps[0].fetcher == "fosis_multipage"
 
     @pytest.mark.asyncio
     async def test_subdere_uses_homepage_strategy(self) -> None:
@@ -228,9 +228,6 @@ class TestPipelineFallbackExecution:
 
         last_error = NetworkError("All failed")
 
-        with (
-            patch.object(scraper._html_static, "fetch", side_effect=NetworkError("Step 1 failed")),
-            patch.object(scraper._curl_cffi, "fetch", side_effect=last_error),
-        ):
+        with patch.object(scraper._fosis_multipage, "fetch", side_effect=last_error):
             with pytest.raises(NetworkError, match="All failed"):
                 await scraper.fetch(fuente)

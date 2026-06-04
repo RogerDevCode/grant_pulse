@@ -80,9 +80,8 @@ async def test_fuente_repository_get_by_id_db_error(mock_session: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_convocatoria_repository_save_insert(mock_session: Any, dummy_fuente: Fuente) -> None:
-    # Setup: no existing conv (scalar_one_or_none returns None)
     mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = None
+    mock_result.scalars.return_value.first.return_value = None
     mock_session.execute.return_value = mock_result
 
     conv = Convocatoria(
@@ -97,7 +96,7 @@ async def test_convocatoria_repository_save_insert(mock_session: Any, dummy_fuen
     result = await repo.save(conv)
 
     assert result.identificador_externo == "EXT-123"
-    mock_session.add.assert_called_once()  # Fue un insert
+    mock_session.add.assert_called_once()
     mock_session.flush.assert_called_once()
 
 
@@ -116,7 +115,7 @@ async def test_convocatoria_repository_save_update(mock_session: Any, dummy_fuen
     )
 
     mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = existing_orm
+    mock_result.scalars.return_value.first.return_value = existing_orm
     mock_session.execute.return_value = mock_result
 
     # Nueva info

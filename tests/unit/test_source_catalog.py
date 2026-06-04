@@ -66,17 +66,16 @@ def test_anid_primary_step_is_rss_feed() -> None:
     assert profile.steps[0].extractor == "rss_feed"
 
 
-def test_fosis_primary_step_is_html_static() -> None:
+def test_fosis_primary_step_is_multipage() -> None:
     profile = resolve_source_profile("FOSIS")
     assert profile is not None
-    assert profile.steps[0].fetcher == "html_static"
+    assert profile.steps[0].fetcher == "fosis_multipage"
 
 
-def test_fosis_secondary_step_is_curl_cffi() -> None:
+def test_fosis_has_single_step() -> None:
     profile = resolve_source_profile("FOSIS")
     assert profile is not None
-    assert len(profile.steps) >= 2
-    assert profile.steps[1].fetcher == "curl_cffi"
+    assert len(profile.steps) == 1
 
 
 def test_prochile_primary_step_is_curl_cffi() -> None:
