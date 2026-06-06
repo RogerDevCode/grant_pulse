@@ -42,7 +42,7 @@ class MockScraper(ScraperPort):
             fuente_id=fuente.id, contenido_crudo="<html>mock</html>", hash_contenido="123", estado_ejecucion="SUCCESS"
         )
 
-    async def extract(self, snapshot: Snapshot, fuente: Fuente) -> list[dict[str, str | None]]:  # noqa: ARG002
+    async def extract(self, snapshot: Snapshot, fuente: Fuente, **kwargs: Any) -> list[dict[str, str | None]]:  # noqa: ARG002
         return self.raw_items
 
 

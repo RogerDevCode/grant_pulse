@@ -15,6 +15,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+from src.core.application.run_context import get_run_id
 from src.core.domain.entities import Fuente, Snapshot
 from src.core.domain.exceptions import ExtractionError, NetworkError, ScrapingError
 from src.core.domain.ports import ScraperPort
@@ -196,7 +197,7 @@ class CompositeFundingScraper(ScraperPort):
         self._metrics.final_status = "FETCH_FAILED"
         self._metrics.execution_time_seconds = time.monotonic() - start_time
         msg = f"No se pudo obtener ningún snapshot para {fuente.nombre} usando el perfil {self._profile.key}"
-        logger.error(msg, fuente=fuente.nombre, profile=self._profile.key, exc=last_error)
+        logger.error(msg, fuente=fuente.nombre, profile=self._profile.key, exc=last_error, run_id=get_run_id())
         if isinstance(last_error, NetworkError):
             raise last_error
         raise NetworkError(msg) from last_error

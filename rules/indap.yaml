@@ -5,13 +5,14 @@ selectores:
   contenedor_items: ".views-row"
   identificador: ".views-field-title a"
   titulo: ".views-field-title a"
-  descripcion: ".views-field-body"
+  descripcion: ".views-field-field-resumen-programa"
   link_detalle: ".views-field-title a"
-  estado: ".views-field-field-estado"
-  fecha_cierre: ".views-field-field-fecha-de-cierre"
-normalizadores:
-  fecha_cierre:
-    regex_extraction: "(\\d{2}/\\d{2}/\\d{4})"
-    formato_salida: "%d/%m/%Y"
+  # NOTA: INDAP no expone estado ni fecha_cierre en la vista de lista.
+  # Son programas institucionales permanentes, no convocatorias con fecha de cierre.
+  # Se monitorizan cambios de título y descripción únicamente.
+  estado: null
+  fecha_cierre: null
+normalizadores: {}
 alertas:
-  campos_sensibles: ["estado", "fecha_cierre"]
+  campos_sensibles: ["titulo"]
+  ignorar_cambios_en: ["descripcion"]

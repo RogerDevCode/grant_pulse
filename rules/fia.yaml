@@ -2,13 +2,29 @@ nombre: "FIA"
 url_busqueda: "https://www.fia.cl/wp-json/wp/v2/convocatorias?per_page=100"
 estrategia: "json_api"
 
+# NOTA: La API WP de FIA no expone:
+#   - excerpt.rendered (siempre None — el plugin que lo genera no está activo)
+#   - campos ACF (siempre [] — acf-to-rest-api no está configurado públicamente)
+#   - fecha_cierre explícita (está dentro del content.rendered como HTML)
+#   - status útil ('publish' no indica apertura/cierre)
+#
+# Lo que sí se puede extraer:
+#   - id, title.rendered, link, date (creación), modified (última modificación)
+#
+# fecha_cierre requiere regex sobre content.rendered — se maneja en el pipeline
+# con el normalizador configurado abajo.
+
 json_mapping:
-  root_path: ""
+  root_path: ""             # La respuesta es directamente una lista []
   identificador: "id"
   titulo: "title.rendered"
-  descripcion: "excerpt.rendered"
+  descripcion: null         # excerpt.rendered siempre vacío en FIA
   link_detalle: "link"
-  estado: "status"
+  estado: null              # 'publish' no es útil; siempre mapeará a DESCONOCIDO
+  fecha_apertura: "date"    # Fecha de publicación en WP (proxy de apertura)
+  fecha_cierre: null        # No existe como campo directo — extraer de content.rendered
+  monto: null
+  region: null
   paginacion:
     total_pages_header: "X-WP-TotalPages"
     total_items_header: "X-WP-Total"
@@ -16,14 +32,13 @@ json_mapping:
     per_page_param: "per_page"
     max_pages: 50
 
+# El normalizador de fecha_cierre opera sobre el campo 'content' del item
+# cuando el pipeline implementa extracción de fecha desde HTML embebido.
 normalizadores:
   fecha_cierre:
-    regex_extraction: "(\\d{2}/\\d{2}/\\d{4})"
+    regex_extraction: "(?:Cierre|Fecha\\s+de\\s+cierre|Plazo)[:\\s]+([\\d]{1,2}[/\\-\\.][\\d]{1,2}[/\\-\\.][\\d]{2,4})"
     formato_salida: "%d/%m/%Y"
 
 alertas:
-  campos_sensibles:
-    - "estado"
-    - "fecha_cierre"
-  ignorar_cambios_en:
-    - "descripcion"
+  campos_sensibles: ["titulo", "fecha_apertura"]
+  ignorar_cambios_en: ["descripcion"]

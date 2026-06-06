@@ -22,7 +22,7 @@ class TestCatalogProfiles:
 
     @pytest.fixture(params=[p.key for p in iter_source_profiles()])
     def profile_key(self, request: pytest.FixtureRequest) -> str:
-        return request.param
+        return str(request.param)
 
     def test_profile_resolves(self, profile_key: str) -> None:
         profile = resolve_source_profile(profile_key)
@@ -35,7 +35,7 @@ class TestCatalogProfiles:
         assert profile is not None
         scraper = CompositeFundingScraper(profile)
         assert scraper is not None
-        assert scraper._profile is profile
+        assert scraper._profile is profile  # pyright: ignore[reportPrivateUsage]
 
     def test_profile_first_step_has_fetcher_and_extractor(self, profile_key: str) -> None:
         profile = resolve_source_profile(profile_key)

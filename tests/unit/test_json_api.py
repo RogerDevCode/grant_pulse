@@ -1,6 +1,7 @@
 """Tests para la ruta JSON API."""
 
 import json
+from typing import Any
 from uuid import uuid4
 
 import httpx
@@ -117,8 +118,7 @@ async def test_fetch_paginated_consolidates_all_pages(fuente_paginada: Fuente) -
 
     snapshot = await scraper.fetch(fuente_paginada)
 
-    data = json.loads(snapshot.contenido_crudo)
-    assert isinstance(data, list)
+    data: list[Any] = json.loads(snapshot.contenido_crudo)
     assert len(data) == 2
     assert data[0]["id"] == 1
     assert data[1]["id"] == 2

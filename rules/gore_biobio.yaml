@@ -1,0 +1,22 @@
+nombre: "GORE Biobío"
+# NOTA: GORE Biobío no tiene un endpoint dedicado de convocatorias.
+# La página /fondos/ renderiza con JavaScript (Avada theme) — no parseable estáticamente.
+# El WP REST API de posts con ?search=fondo retorna noticias generales irrelevantes.
+# Usamos browser sobre /fondos/ para obtener el HTML renderizado.
+url_busqueda: "https://gorebiobio.cl/fondos/"
+estrategia: "browser"
+region_defecto: "Biobío"
+
+selectores:
+  # Avada grid: cada artículo es un .w-grid-item con post ID en sus clases.
+  contenedor_items: "article.w-grid-item"
+  identificador: "a.fusion-rollover-link"
+  titulo: "h2.fusion-post-title, h3.fusion-post-title, .fusion-post-title a, .title a"
+  descripcion: ".fusion-post-content p, .entry-content p"
+  link_detalle: "a.fusion-rollover-link"
+  estado: null
+  fecha_cierre: null
+
+alertas:
+  campos_sensibles: ["titulo"]
+  ignorar_cambios_en: ["descripcion"]

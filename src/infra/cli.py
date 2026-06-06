@@ -6,12 +6,14 @@ Permite ejecutar el scraping basado en un archivo YAML específico o correr toda
 import argparse
 import asyncio
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.application.run_context import clear_run_id, new_run_id
 from src.core.application.use_cases import MonitoreoUseCase
 from src.core.domain.entities import Fuente
 from src.core.domain.exceptions import GrantPulseError
@@ -97,7 +99,8 @@ async def _get_notifier(session: AsyncSession) -> NotificationPort:
 
 async def run_single_source(filepath: Path) -> None:
     """Ejecuta el ciclo de monitoreo para una fuente específica desde un YAML."""
-    logger.info("Iniciando worker para fuente específica", filepath=str(filepath))
+    run_id = new_run_id()
+    logger.info("Iniciando worker para fuente específica", filepath=str(filepath), run_id=run_id)
 
     rules_config = load_rules_from_yaml(filepath)
     source_profile = source_profile_for_name(rules_config.nombre)
@@ -153,7 +156,8 @@ async def run_single_source(filepath: Path) -> None:
 
 async def run_all_active_sources() -> None:
     """Ejecuta el ciclo de monitoreo para todas las fuentes activas en la BD."""
-    logger.info("Iniciando worker para todas las fuentes activas")
+    run_id = new_run_id()
+    logger.info("Iniciando worker para todas las fuentes activas", run_id=run_id)
 
     fuentes_activas: list[Fuente] = []
     async with AsyncSessionLocal() as session:
@@ -173,6 +177,7 @@ async def run_all_active_sources() -> None:
     failed_fuentes: list[str] = []
 
     for fuente in fuentes_activas:
+        fuente_run_id = new_run_id()
         async with AsyncSessionLocal() as session:
             try:
                 snapshot_repo = SQLSnapshotRepository(session)
@@ -191,22 +196,73 @@ async def run_all_active_sources() -> None:
                 await session.commit()
             except Exception as e:
                 await session.rollback()
-                logger.error(f"Worker falló para fuente {fuente.nombre}: {e}", exc=e)
+                logger.error(f"Worker falló para fuente {fuente.nombre}: {e}", exc=e, fuente_id=str(fuente.id), run_id=fuente_run_id)
                 failed_fuentes.append(fuente.nombre)
+
+    # Generar reporte de calidad
+    async with AsyncSessionLocal() as session:
+        from src.infra.quality_report import generar_reporte_calidad
+        report_path = Path("reports") / f"quality_report_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.md"
+        try:
+            await generar_reporte_calidad(session, report_path)
+        except Exception as e:
+            logger.error("Error generando reporte de calidad", exc=e, run_id=run_id)
 
     if failed_fuentes:
         logger.error("Fuentes con error en batch", count=len(failed_fuentes), fuentes=failed_fuentes)
     else:
         logger.info("Batch completado sin errores", total_fuentes=len(fuentes_activas))
+    clear_run_id()
+
+
+async def sync_single_source_config(filepath: Path) -> None:
+    """Carga un archivo YAML de reglas y lo sincroniza con la base de datos sin ejecutar el monitoreo."""
+    rules_config = load_rules_from_yaml(filepath)
+    source_profile = source_profile_for_name(rules_config.nombre)
+    if source_profile:
+        rules_config = rules_config.model_copy(update={"url_busqueda": source_profile.list_url})
+        logger.info(
+            "Aplicando URL canónica desde registry duro",
+            fuente=rules_config.nombre,
+            url_busqueda=str(rules_config.url_busqueda),
+            profile=source_profile.key,
+        )
+
+    async with AsyncSessionLocal() as session:
+        try:
+            fuente_repo = SQLFuenteRepository(session)
+            fuente_db = await fuente_repo.get_by_nombre(rules_config.nombre)
+
+            if not fuente_db:
+                fuente_db = Fuente(
+                    id=uuid4(),
+                    nombre=rules_config.nombre,
+                    url_base=cast(Any, source_profile.root_url if source_profile else rules_config.url_busqueda),
+                    configuracion_reglas=rules_config,
+                    activa=True,
+                )
+            else:
+                fuente_db.configuracion_reglas = rules_config
+                fuente_db.url_base = cast(Any, source_profile.root_url if source_profile else rules_config.url_busqueda)
+
+            fuente_db = _apply_source_profile(fuente_db)
+            await fuente_repo.save(fuente_db)
+            await session.commit()
+            logger.info("Configuración de fuente sincronizada exitosamente", fuente=rules_config.nombre)
+        except Exception as e:
+            await session.rollback()
+            logger.error("Error sincronizando configuración de fuente", fuente=rules_config.nombre, exc=e)
+            raise
 
 
 async def sync_all_rules() -> None:
     """Escanea el directorio de reglas y sincroniza todas las fuentes."""
     from src.infra.config import settings
 
+    run_id = new_run_id()
     rules_path = Path(settings.RULES_DIR)
     if not rules_path.exists():
-        logger.error(f"Directorio de reglas no encontrado: {rules_path}")
+        logger.error(f"Directorio de reglas no encontrado: {rules_path}", run_id=run_id)
         return
 
     failed_files: list[str] = []
@@ -214,7 +270,7 @@ async def sync_all_rules() -> None:
     for yaml_file in rules_path.glob("*.yaml"):
         logger.info(f"Sincronizando regla: {yaml_file.name}")
         try:
-            await run_single_source(yaml_file)
+            await sync_single_source_config(yaml_file)
         except Exception as e:
             logger.error(f"Error procesando {yaml_file.name}", exc=e)
             failed_files.append(yaml_file.name)
@@ -223,6 +279,7 @@ async def sync_all_rules() -> None:
         logger.error("Archivos con error en sync-rules", count=len(failed_files), archivos=failed_files)
     else:
         logger.info("sync-rules completado sin errores")
+    clear_run_id()
 
 
 def main() -> None:

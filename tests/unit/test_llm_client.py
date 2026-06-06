@@ -15,7 +15,7 @@ class _NoopRateLimiter:
         return 0.0
 
 
-async def _noop_sleep(_: float) -> None:
+async def _noop_sleep(_delay: float) -> None:
     return None
 
 
@@ -164,8 +164,8 @@ async def test_chat_completion_cascada_modelo_falla() -> None:
     client = OpenRouterClient()
     client.api_key = "test-key-123"
     client.models = ["modelo-a:free", "modelo-b:free"]
-    client._rate_limiter = _NoopRateLimiter()
-    client._sleep = _noop_sleep
+    client._rate_limiter = _NoopRateLimiter()  # type: ignore[assignment]
+    client._sleep = _noop_sleep  # type: ignore[assignment]
 
     payload_ok = json.dumps({"choices": [{"message": {"content": '{"items": []}'}}]})
 
@@ -196,16 +196,16 @@ async def test_chat_completion_todos_modelos_fallan_lanza_scraping_error() -> No
     client = OpenRouterClient()
     client.api_key = "test-key-123"
     client.models = ["modelo-a:free", "modelo-b:free"]
-    client._rate_limiter = _NoopRateLimiter()
-    client._sleep = _noop_sleep
+    client._rate_limiter = _NoopRateLimiter()  # type: ignore[assignment]
+    client._sleep = _noop_sleep  # type: ignore[assignment]
 
     with respx.mock:
         respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
             return_value=Response(503, text="Service unavailable")
         )
 
-        with pytest.raises(ScrapingError, match="FALLO_LLM_TOTAL"):
-            await client.chat_completion("test prompt")
+    with pytest.raises(ScrapingError, match="FALLO_LLM_TOTAL"):
+        await client.chat_completion("test prompt")
 
 
 @pytest.mark.asyncio
@@ -218,8 +218,8 @@ async def test_chat_completion_sin_api_key_lanza_scraping_error() -> None:
 
     client = OpenRouterClient()
     client.api_key = None
-    client._rate_limiter = _NoopRateLimiter()
-    client._sleep = _noop_sleep
+    client._rate_limiter = _NoopRateLimiter()  # type: ignore[assignment]
+    client._sleep = _noop_sleep  # type: ignore[assignment]
 
     with pytest.raises(ScrapingError, match="OPENROUTER_API_KEY"):
         await client.chat_completion("test prompt")

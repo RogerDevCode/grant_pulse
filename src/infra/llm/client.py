@@ -50,7 +50,7 @@ _NOISE_SELECTORS = (
 )
 _DEFAULT_FIELDS_SCHEMA: dict[str, str] = {
     "identificador": "ID único, slug o código del fondo. Si no existe, genera uno corto y estable.",
-    "titulo": "Nombre completo de la convocatoria o fondo.",
+    "titulo": "Nombre completo de la convocatoria o fondo de financiamiento.",
     "descripcion": "Breve descripción del fondo. null si no aparece.",
     "url_detalle": "URL absoluta al detalle del fondo. Si es relativa, resolverla con la base.",
     "estado": "Uno de: ABIERTO, CERRADO, PROXIMAMENTE, ADJUDICADO.",
@@ -509,14 +509,22 @@ class OpenRouterClient:
         schema_str = _default_extraction_prompt(effective_schema)
         institution_suffix = f" del portal de {institution_name}" if institution_name else ""
 
+        from datetime import UTC, datetime
+
+        hoy = datetime.now(UTC).strftime("%Y-%m-%d")
+        fecha_minima_iso = (datetime.now(UTC) - __import__("datetime").timedelta(days=90)).strftime("%Y-%m-%d")
         system_prompt = (
-            "Eres un agente de extracción de datos estructurados especializado en convocatorias y financiamiento. "
+            "Eres un agente de extracción de datos estructurados especializado en convocatorias "
+            "y fondos de financiamiento para proyectos del ecosistema chileno. "
             "Devuelves únicamente JSON válido, sin comentarios ni texto adicional."
         )
         prompt = (
             f"Analiza el siguiente documento Markdown extraído{institution_suffix} ({base_url}).\n\n"
             "OBJETIVO:\n"
-            "Extrae todas las convocatorias, fondos o programas de financiamiento que estén listados en el contenido.\n\n"
+            "Extrae SOLO convocatorias, fondos o programas que entreguen financiamiento directo a proyectos, "
+            "emprendimientos o empresas. Esto incluye subsidios, fondos concursables, programas de cofinanciamiento, "
+            "semillas, capital semilla, fondos de innovación, becas de investigación, y similares.\n\n"
+            f"FECHA DE REFERENCIA: {hoy}. Fecha mínima de relevancia: {fecha_minima_iso} (hace 3 meses).\n\n"
             "ESQUEMA OBLIGATORIO POR ITEM:\n"
             f"{schema_str}\n\n"
             "REGLAS OBLIGATORIAS:\n"
@@ -528,6 +536,18 @@ class OpenRouterClient:
             "6. Prioriza convocatorias abiertas o activas. Si el estado no es claro, conserva el texto literal observado.\n"
             "7. URL relativa => URL absoluta usando la base del portal.\n"
             "8. No agregues texto fuera del JSON.\n\n"
+            "CRITERIOS DE EXCLUSIÓN OBLIGATORIOS (no extraigas estos items):\n"
+            "- Licitaciones de obras, servicios o compras públicas (no son financiamiento a proyectos).\n"
+            "- Solicitudes de cotización, compras de maquinaria o equipos institucionales.\n"
+            "- Contrataciones de consultoría, asesoría o auditoría interna de la institución.\n"
+            "- Documentos administrativos: resoluciones de adjudicación, actas, declaraciones juradas, formatos.\n"
+            "- Normativas, ordenanzas, códigos de ética, políticas institucionales.\n"
+            "- Informes, estudios, diagnósticos, planes estratégicos sin componente de financiamiento.\n"
+            "- Convocatorias cuyo año de cierre sea anterior a " + fecha_minima_iso + ".\n"
+            "- Eventos, giras, campañas de difusión o capacitaciones sin fondo concursable.\n"
+            "- Certificaciones, sellos o acreditaciones sin componente financiero.\n\n"
+            "SOLO extrae items que representen una oportunidad de financiamiento para un tercero (persona, "
+            "empresa, ONG, universidad) que postula a recibir recursos para ejecutar un proyecto.\n\n"
             f"DOCUMENTO:\n{markdown_content}"
         )
 

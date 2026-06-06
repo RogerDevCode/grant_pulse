@@ -4,10 +4,14 @@ from src.infra.sources.catalog import iter_source_profiles, resolve_source_profi
 
 
 def test_resolve_source_profile_aliases() -> None:
-    assert resolve_source_profile("CORFO").key == "CORFO"
-    assert resolve_source_profile("CORFO_API").key == "CORFO"
-    assert resolve_source_profile("CORFO_AJAX").key == "CORFO"
-    assert resolve_source_profile("ANID_LLM").key == "ANID"
+    assert resolve_source_profile("CORFO") is not None
+    assert resolve_source_profile("CORFO").key == "CORFO"  # type: ignore[union-attr]
+    assert resolve_source_profile("CORFO_API") is not None
+    assert resolve_source_profile("CORFO_API").key == "CORFO"  # type: ignore[union-attr]
+    assert resolve_source_profile("CORFO_AJAX") is not None
+    assert resolve_source_profile("CORFO_AJAX").key == "CORFO"  # type: ignore[union-attr]
+    assert resolve_source_profile("ANID_LLM") is not None
+    assert resolve_source_profile("ANID_LLM").key == "ANID"  # type: ignore[union-attr]
 
 
 def test_registry_includes_expected_institutions() -> None:

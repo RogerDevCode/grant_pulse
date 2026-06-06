@@ -1,11 +1,48 @@
 nombre: "PROCHILE"
 url_busqueda: "https://www.prochile.gob.cl/herramientas/concursos/"
 estrategia: "html_static"
+
+# NOTA: La página de concursos de PROCHILE lista 100+ items mezclando:
+#   - La convocatoria real (ej: "Convocatoria Concurso Silvoagropecuario 2026")
+#   - Documentos adjuntos de la misma convocatoria:
+#       "Bases Concurso Silvoagropecuario 2026"      → PDF
+#       "Modificación Convocatoria ..."               → PDF
+#       "Productos Admisibles ..."                    → PDF
+#   - Convocatorias de años anteriores (2025, 2024...)
+#
+# Todos los links apuntan a PDFs en /docs/default-source/...
+# No hay distinción directa entre convocatoria y documento adjunto en el HTML.
+#
+# Estrategia actual: filtrar por patrones de título para aislar las convocatorias
+# principales y excluir documentos de soporte.
+
 selectores:
   contenedor_items: ".tab-pane .shadow-sm"
   identificador: ".text-gris"
   titulo: ".text-gris"
   link_detalle: "a"
+  estado: null      # No hay indicador de estado
+  fecha_cierre: null
+
+# Excluir documentos adjuntos y de soporte que no son la convocatoria principal.
+# Estos patrones se aplican al TÍTULO del item.
+excluir_patrones_titulo:
+  - "^Bases "           # "Bases Concurso..."
+  - "^Modificación "    # "Modificación Convocatoria..."
+  - "^Productos Admisibles"
+  - "^Anexo "
+  - "^Formulario "
+  - "^Instructivo "
+  - "^Resolución "
+  - "^Acta "
+  - "^Nómina "
+  - "^Lista "
+
+# Excluir links que apuntan directamente a PDFs (son documentos, no páginas).
+excluir_patrones_url:
+  - "/docs/default-source/"
+
 normalizadores: {}
+
 alertas:
   campos_sensibles: ["titulo"]

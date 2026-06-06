@@ -26,6 +26,20 @@ _STATUS_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bVIGENTE\b", re.IGNORECASE), "ABIERTO"),
 ]
 
+# Mapeo explícito de estados de WordPress REST API.
+# 'publish' = post publicado = convocatoria activa/vigente.
+# 'draft', 'private', 'pending', 'trash' no son estados de apertura útiles.
+# NOTA: 'publish' indica que el post está visible, NO necesariamente que la
+# convocatoria esté abierta; se usa como proxy en ausencia de campo mejor.
+_WP_STATUS_MAP: dict[str, str] = {
+    "publish": "ABIERTO",
+    "draft": "DESCONOCIDO",
+    "private": "DESCONOCIDO",
+    "pending": "DESCONOCIDO",
+    "trash": "CERRADO",
+    "future": "PROXIMAMENTE",
+}
+
 
 def normalize_estado(raw: str | None) -> str:
     """
@@ -56,6 +70,11 @@ def normalize_estado(raw: str | None) -> str:
 
     if upper in _CANONICAL_ALL:
         return upper
+
+    # Mapeo directo de estados WordPress antes de evaluar patrones regex.
+    wp_mapped = _WP_STATUS_MAP.get(text.lower())
+    if wp_mapped:
+        return wp_mapped
 
     for pattern, canonical in _STATUS_PATTERNS:
         if pattern.search(text):

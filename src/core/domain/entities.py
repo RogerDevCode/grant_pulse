@@ -32,9 +32,11 @@ class JsonMappingConfig(BaseModel):
     descripcion: str | None = Field(default=None, description="Path a la descripción")
     link_detalle: str | None = Field(default=None, description="Path al enlace de detalle")
     estado: str | None = Field(default=None, description="Path al estado")
+    fecha_apertura: str | None = Field(default=None, description="Path a la fecha de apertura de la convocatoria")
     fecha_cierre: str | None = Field(default=None, description="Path a la fecha de cierre")
     monto: str | None = Field(default=None, description="Path al monto")
     region: str | None = Field(default=None, description="Path a la región")
+    agrupar_por: str | None = Field(default=None, description="Path para agrupar items duplicados (ej: 'idInstrumento')")
     paginacion: "PaginationConfig" = Field(default_factory=lambda: PaginationConfig(), description="Configuración de paginación")
 
 
@@ -82,6 +84,15 @@ class RulesConfig(BaseModel):
     json_mapping: JsonMappingConfig | None = Field(default=None)
     normalizadores: NormalizerConfig = Field(default_factory=NormalizerConfig)
     alertas: AlertsConfig = Field(default_factory=AlertsConfig)
+    region_defecto: str | None = Field(default=None, description="Región por defecto para todas las convocatorias de esta fuente")
+    excluir_patrones_url: list[str] = Field(
+        default_factory=list,
+        description="Patrones de substring en la URL del item para excluirlo (ej: '.pdf', 'cdn.com')",
+    )
+    excluir_patrones_titulo: list[str] = Field(
+        default_factory=list,
+        description="Patrones regex en el título del item para excluirlo (ej: '^Bases ', '^Modificación ')",
+    )
 
 
 class Fuente(BaseModel):

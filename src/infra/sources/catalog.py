@@ -69,19 +69,26 @@ _CORFO = SourceProfile(
 _SERCOTEC = SourceProfile(
     key="SERCOTEC",
     root_url="https://www.sercotec.cl/",
-    list_url="https://www.sercotec.cl/wp-json/wp/v2/programas",
+    # URL con parámetros completos: sin ellos la API retorna solo 8 items (default backend).
+    # Con cantidad=500 trae todos los items (76 al 2026-06-06).
+    # La paginación es nativa via 'pagina': si items < cantidad, no hay más páginas.
+    list_url="https://apisctwidgets.sercotec.cl/api/convocatorias?idRegion=0&idTipoInstrumento=0&idEtapa=0&pagina=1&cantidad=500",
     steps=(
         ScrapeStep(
             fetcher="json_api",
             extractor="json_api",
-            url="https://www.sercotec.cl/wp-json/wp/v2/programas",
-            note="REST API nativa de WordPress.",
+            url="https://apisctwidgets.sercotec.cl/api/convocatorias?idRegion=0&idTipoInstrumento=0&idEtapa=0&pagina=1&cantidad=500",
+            note=(
+                "Widget API oficial con parámetros completos. "
+                "Sin params retorna solo 8 items (paginación por defecto del backend). "
+                "Con cantidad=500 trae todos. Cada codBp = 1 convocatoria-región independiente."
+            ),
         ),
         ScrapeStep(
             fetcher="html_static",
             extractor="html_static",
             url="https://www.sercotec.cl/convocatorias-regionales-2024/",
-            note="Fallback HTML estático.",
+            note="Fallback HTML estático (datos limitados).",
         ),
     ),
     empty_state_markers=("No hay", "sin resultados", "No se encontraron"),
@@ -90,12 +97,12 @@ _SERCOTEC = SourceProfile(
 _FIA = SourceProfile(
     key="FIA",
     root_url="https://www.fia.cl/",
-    list_url="https://www.fia.cl/wp-json/wp/v2/convocatorias?per_page=50",
+    list_url="https://www.fia.cl/wp-json/wp/v2/convocatorias?per_page=100",
     steps=(
         ScrapeStep(
             fetcher="json_api",
             extractor="json_api",
-            url="https://www.fia.cl/wp-json/wp/v2/convocatorias?per_page=50",
+            url="https://www.fia.cl/wp-json/wp/v2/convocatorias?per_page=100",
             note="REST API nativa de WordPress (CPT convocatorias, category=13).",
         ),
         ScrapeStep(

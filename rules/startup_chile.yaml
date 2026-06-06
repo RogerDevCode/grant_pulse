@@ -1,0 +1,11 @@
+nombre: "Start-Up Chile"
+url_busqueda: "https://startupchile.org/"
+estrategia: "llm"
+
+selectores:
+  contenedor_items: "body" # Ignorado por LLM, obligatorio en modelo
+  identificador: "h2"
+  titulo: "h2"
+
+alertas:
+  campos_sensibles: []

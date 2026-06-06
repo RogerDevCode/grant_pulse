@@ -170,7 +170,7 @@ class TestExtractAlianzas:
         )
 
         items = await scraper.extract(snapshot, fuente)
-        alianzas = [i for i in items if i["identificador"].startswith("alianza-")]
+        alianzas = [i for i in items if (i["identificador"] or "").startswith("alianza-")]
         assert len(alianzas) == 2
         assert alianzas[0]["identificador"] == "alianza-ambito-comercio"
         assert alianzas[1]["identificador"] == "alianza-ambito-capacitacion"

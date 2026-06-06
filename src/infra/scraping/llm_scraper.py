@@ -36,7 +36,7 @@ _REALISTIC_HEADERS = {
 
 _FIELDS_SCHEMA: dict[str, str] = {
     "identificador": "ID único, slug o código del fondo. Si no existe, genera uno con las primeras 4 palabras del título.",
-    "titulo": "Nombre completo de la convocatoria o fondo.",
+    "titulo": "Nombre completo de la convocatoria o fondo de financiamiento.",
     "descripcion": "Breve descripción del fondo (1-3 oraciones). null si no hay.",
     "url_detalle": "URL completa al detalle del fondo. Resolver relativas con la URL base.",
     "estado": "Estado del fondo: ABIERTO, CERRADO o PROXIMAMENTE.",

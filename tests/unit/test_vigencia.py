@@ -125,3 +125,48 @@ class TestFiltrarVigentesRaw:
         result = filtrar_vigentes_raw(items, referencia=_NOW)
         assert len(result) == 1
         assert result[0]["titulo"] == "Vigente"
+
+
+class TestVentanaTemporal:
+    _HACE_4_MESES = _NOW - timedelta(days=120)
+
+    def test_abierta_con_fecha_cierre_muy_antigua_descartada_por_ventana(self) -> None:
+        c = _conv("ABIERTO", fecha_cierre=self._HACE_4_MESES)
+        assert es_convocatoria_vigente(c, referencia=_NOW, meses_ventana=3) is False
+
+    def test_abierta_con_fecha_cierre_reciente_pasa_ventana(self) -> None:
+        c = _conv("ABIERTO", fecha_cierre=_PASADO)
+        assert es_convocatoria_vigente(c, referencia=_NOW, meses_ventana=3) is True
+
+    def test_abierta_sin_fecha_cierre_pasa_ventana(self) -> None:
+        c = _conv("ABIERTO", fecha_cierre=None)
+        assert es_convocatoria_vigente(c, referencia=_NOW, meses_ventana=3) is True
+
+    def test_ventana_cero_no_descarta(self) -> None:
+        c = _conv("ABIERTO", fecha_cierre=self._HACE_4_MESES)
+        assert es_convocatoria_vigente(c, referencia=_NOW, meses_ventana=0) is True
+
+    def test_filtrar_vigentes_descarta_por_ventana(self) -> None:
+        convocatorias = [
+            _conv("ABIERTO", fecha_cierre=self._HACE_4_MESES),
+            _conv("ABIERTO", fecha_cierre=_PASADO),
+            _conv("ABIERTO", fecha_cierre=None),
+        ]
+        result = filtrar_vigentes(convocatorias, referencia=_NOW, meses_ventana=3)
+        assert len(result) == 2
+
+    def test_filtrar_vigentes_raw_descarta_por_ventana(self) -> None:
+        items = [
+            {"titulo": "Vieja", "estado": "ABIERTO", "fecha_cierre": "01/01/2026"},
+            {"titulo": "Reciente", "estado": "ABIERTO", "fecha_cierre": "01/05/2026"},
+            {"titulo": "Sin fecha", "estado": "ABIERTO", "fecha_cierre": None},
+        ]
+        result = filtrar_vigentes_raw(items, referencia=_NOW, meses_ventana=3)
+        assert len(result) == 2
+        assert result[0]["titulo"] == "Reciente"
+
+    def test_ventana_personalizada_6_meses(self) -> None:
+        hace_5_meses = _NOW - timedelta(days=150)
+        c = _conv("ABIERTO", fecha_cierre=hace_5_meses)
+        assert es_convocatoria_vigente(c, referencia=_NOW, meses_ventana=6) is True
+        assert es_convocatoria_vigente(c, referencia=_NOW, meses_ventana=3) is False

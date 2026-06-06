@@ -52,6 +52,24 @@ def _apply_normalizer(raw_text: str | None, field_name: str, fuente: Fuente) -> 
     return match.group(1).strip() if match else raw_text
 
 
+def _should_exclude(titulo: str | None, url: str | None, fuente: Fuente) -> bool:
+    """Retorna True si el item debe ser excluido según los patrones configurados."""
+    reglas = fuente.configuracion_reglas
+
+    if titulo and reglas.excluir_patrones_titulo:
+        for patron in reglas.excluir_patrones_titulo:
+            if re.search(patron, titulo, re.IGNORECASE):
+                return True
+
+    if url and reglas.excluir_patrones_url:
+        url_lower = url.lower()
+        for patron in reglas.excluir_patrones_url:
+            if patron.lower() in url_lower:
+                return True
+
+    return False
+
+
 class HtmlStaticScraper(ScraperPort):
     """
     Adaptador de scraping que realiza peticiones GET simples y
@@ -197,6 +215,32 @@ class HtmlStaticScraper(ScraperPort):
                     item_data["region"] = _apply_normalizer(raw_region, "region", fuente)
                 else:
                     item_data["region"] = None
+
+                # --- FILTRO DE EXCLUSION ---
+                # Aplicar excluir_patrones_titulo y excluir_patrones_url
+                # antes de agregar el item al resultado.
+                href_for_filter = item_data.get("url_detalle")
+                if _should_exclude(titulo_text, href_for_filter, fuente):
+                    logger.debug(
+                        "Item excluido por patron de exclusión",
+                        titulo=titulo_text,
+                        url=href_for_filter,
+                        fuente=fuente.nombre,
+                    )
+                    continue
+
+                # --- EXTRACCION DE FECHA/MONTO DESDE TEXTO COMPLETO DEL NODO ---
+                # Algunos sitios (fondos.gob.cl) incluyen fechas y montos en el
+                # texto general del item, no en sub-selectores dedicados.
+                # Si los normalizadores están configurados pero los selectores
+                # específicos son null, intentamos extraer desde el texto completo.
+                nodo_full_text = nodo.text(strip=True)
+
+                if not item_data.get("fecha_cierre") and fuente.configuracion_reglas.normalizadores.fecha_cierre:
+                    item_data["fecha_cierre"] = _apply_normalizer(nodo_full_text, "fecha_cierre", fuente)
+
+                if not item_data.get("monto") and fuente.configuracion_reglas.normalizadores.monto:
+                    item_data["monto"] = _apply_normalizer(nodo_full_text, "monto", fuente)
 
                 resultados.append(item_data)
 

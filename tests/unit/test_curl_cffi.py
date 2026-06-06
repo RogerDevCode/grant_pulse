@@ -31,7 +31,7 @@ def test_curl_cffi_scraper_init_defaults() -> None:
 
 
 def test_curl_cffi_scraper_custom_impersonate() -> None:
-    scraper = CurlCffiScraper(timeout=15, impersonate="chrome131")  # type: ignore[arg-type]
+    scraper = CurlCffiScraper(timeout=15, impersonate="chrome131")
     assert scraper._timeout == 15
     assert scraper._impersonate == "chrome131"
 

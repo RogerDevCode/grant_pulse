@@ -25,13 +25,13 @@ def _make_settings(**overrides: object) -> MagicMock:
     return mock
 
 
-def test_build_llm_client_auto_nvidia():
+def test_build_llm_client_auto_nvidia() -> None:
     with patch("src.infra.llm.client.settings", _make_settings(NVIDIA_API_KEY="nvapi-test")):
         client = build_llm_client()
         assert isinstance(client, NvidiaClient)
 
 
-def test_build_llm_client_auto_groq():
+def test_build_llm_client_auto_groq() -> None:
     with patch(
         "src.infra.llm.client.settings",
         _make_settings(GROQ_API_KEY="gsk_test", NVIDIA_API_KEY=None),
@@ -41,7 +41,7 @@ def test_build_llm_client_auto_groq():
         assert not isinstance(client, NvidiaClient)
 
 
-def test_build_llm_client_auto_openrouter():
+def test_build_llm_client_auto_openrouter() -> None:
     with patch(
         "src.infra.llm.client.settings",
         _make_settings(OPENROUTER_API_KEY="sk-or-test", NVIDIA_API_KEY=None, GROQ_API_KEY=None),
@@ -51,20 +51,20 @@ def test_build_llm_client_auto_openrouter():
         assert not isinstance(client, NvidiaClient)
 
 
-def test_build_llm_client_explicit_groq():
+def test_build_llm_client_explicit_groq() -> None:
     with patch("src.infra.llm.client.settings", _make_settings(LLM_PROVIDER="groq")):
         client = build_llm_client()
         assert isinstance(client, GroqClient)
 
 
-def test_build_llm_client_explicit_nvidia():
+def test_build_llm_client_explicit_nvidia() -> None:
     with patch("src.infra.llm.client.settings", _make_settings(LLM_PROVIDER="nvidia")):
         client = build_llm_client()
         assert isinstance(client, NvidiaClient)
 
 
 @pytest.mark.asyncio
-async def test_groq_client_headers():
+async def test_groq_client_headers() -> None:
     with patch("src.infra.llm.client.settings", _make_settings(GROQ_API_KEY="gsk_test")):
         client = GroqClient()
         headers = client._build_headers()

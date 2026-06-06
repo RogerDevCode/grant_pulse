@@ -1,9 +1,11 @@
-.PHONY: up down restart logs migrate db-shell test lint format typecheck validate
+PYTHON ?= ./venv/bin/python
+
+.PHONY: up down restart logs migrate db-shell test lint format typecheck validate clean
 
 up:
-	@export APP_PORT=$$(./venv/bin/python -m src.infra.port_utils 8000); \
-	 export DB_PORT=$$(./venv/bin/python -m src.infra.port_utils 5432); \
-	 docker compose up -d
+	@export APP_PORT=$$($(PYTHON) -m src.infra.port_utils 8000); \
+	export DB_PORT=$$($(PYTHON) -m src.infra.port_utils 5432); \
+	docker compose up -d
 
 down:
 	docker compose down
@@ -20,19 +22,18 @@ migrate:
 db-shell:
 	docker compose exec db psql -U grantpulse -d grantpulse
 
-# Comandos locales asumiendo venv activo
 test:
-	pytest tests/
+	$(PYTHON) -m pytest tests/ -q
 
 lint:
-	ruff check .
+	$(PYTHON) -m ruff check .
 
 format:
-	ruff format .
+	$(PYTHON) -m ruff format .
 
 typecheck:
-	mypy src/ tests/
-	pyright src/ tests/
+	$(PYTHON) -m mypy src/ tests/
+	$(PYTHON) -m pyright src/ tests/
 
 validate: lint typecheck test
 	@echo "All validations passed!"

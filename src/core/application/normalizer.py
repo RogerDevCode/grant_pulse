@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from src.core.domain.entities import Convocatoria, Fuente
 from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import NormalizationError
+from src.core.domain.fecha_utils import parse_fecha_chilena
 from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
@@ -123,6 +124,7 @@ class DataNormalizer:
 
             fecha_cierre_val: datetime | None = None
             monto_val: float | None = None
+            skip_item = False
 
             try:
                 raw_fecha_cierre = item.get("fecha_cierre")
@@ -142,6 +144,14 @@ class DataNormalizer:
                             "fecha_cierre extraída pero sin formato_salida definido.",
                             item_id=identificador,
                         )
+                elif raw_fecha_cierre:
+                    fecha_cierre_val = parse_fecha_chilena(raw_fecha_cierre)
+                    if not fecha_cierre_val:
+                        logger.debug(
+                            "fecha_cierre presente pero no reconocida por parse_fecha_chilena",
+                            item_id=identificador,
+                            raw=raw_fecha_cierre,
+                        )
 
                 if fecha_cierre_val and fecha_cierre_val < now:
                     logger.info(
@@ -149,25 +159,29 @@ class DataNormalizer:
                         titulo=titulo,
                         fecha_cierre=fecha_cierre_val.isoformat(),
                     )
-                    skipped += 1
-                    continue
+                    skip_item = True
 
                 raw_monto = item.get("monto")
                 if raw_monto and norm_config.monto:
                     texto_monto = raw_monto
                     if norm_config.monto.regex_extraction:
                         texto_monto = _apply_regex(texto_monto, norm_config.monto.regex_extraction, "monto")
-
                     monto_val = _parse_float(texto_monto, "monto")
-
             except NormalizationError as e:
                 msg = f"Fallo al normalizar item {identificador} de la fuente {fuente.nombre}: {e}"
                 logger.warning(msg, exc=e)
+                skip_item = True
+
+            if skip_item:
                 skipped += 1
                 continue
 
             if estado == "DESCONOCIDO" and fecha_cierre_val is not None and fecha_cierre_val >= now:
                 estado = "ABIERTO"
+
+            region = item.get("region")
+            if not region and fuente.configuracion_reglas.region_defecto:
+                region = fuente.configuracion_reglas.region_defecto
 
             convocatoria = Convocatoria(
                 fuente_id=fuente.id,
@@ -177,7 +191,7 @@ class DataNormalizer:
                 url_detalle=url_final,  # type: ignore
                 fecha_cierre=fecha_cierre_val,
                 monto=monto_val,
-                region=item.get("region"),
+                region=region,
                 estado=estado,
             )
             convocatorias.append(convocatoria)

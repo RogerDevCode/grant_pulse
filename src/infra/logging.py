@@ -85,25 +85,38 @@ def configure_logging() -> None:
 
 
 class GrantPulseLogger:
-    """Clase envolvente sobre el logger estándar para forzar el uso de contexto estructurado."""
+    """Clase envolvente sobre el logger estándar para forzar el uso de contexto estructurado.
+
+    Inyecta automáticamente run_id en cada entrada de log si existe
+    un contexto de corrida activo.
+    """
 
     def __init__(self, name: str) -> None:
         self._logger = logging.getLogger(name)
 
+    def _enrich(self, context: dict[str, Any]) -> dict[str, Any]:
+        from src.core.application.run_context import get_run_id
+
+        run_id = get_run_id()
+        if run_id and "run_id" not in context:
+            context = {**context, "run_id": run_id}
+        return context
+
     def debug(self, msg: str, **context: Any) -> None:
-        self._logger.debug(msg, extra={"extra_context": context})
+        self._logger.debug(msg, extra={"extra_context": self._enrich(context)})
 
     def info(self, msg: str, **context: Any) -> None:
-        self._logger.info(msg, extra={"extra_context": context})
+        self._logger.info(msg, extra={"extra_context": self._enrich(context)})
 
     def warning(self, msg: str, **context: Any) -> None:
-        self._logger.warning(msg, extra={"extra_context": context})
+        self._logger.warning(msg, extra={"extra_context": self._enrich(context)})
 
     def error(self, msg: str, exc: Exception | None = None, **context: Any) -> None:
+        enriched = self._enrich(context)
         if exc:
-            self._logger.error(msg, exc_info=exc, extra={"extra_context": context})
+            self._logger.error(msg, exc_info=exc, extra={"extra_context": enriched})
         else:
-            self._logger.error(msg, extra={"extra_context": context})
+            self._logger.error(msg, extra={"extra_context": enriched})
 
 
 def get_logger(name: str) -> GrantPulseLogger:

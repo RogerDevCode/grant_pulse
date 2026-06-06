@@ -1,0 +1,32 @@
+nombre: "AgenciaSE"
+url_busqueda: "https://www.agenciase.org/convocatorias/"
+estrategia: "html_static"
+
+selectores:
+  contenedor_items: "li.clr"
+  identificador: "a"
+  titulo: "a"
+  link_detalle: "a"
+  # AgenciaSE no expone estado ni fechas de cierre en la lista HTML.
+  estado: null
+  fecha_cierre: null
+
+# Patrones para excluir elementos que NO son convocatorias de financiamiento.
+# AgenciaSE publica documentos de compliance (PDFs de CDN) y políticas
+# internas mezclados con las convocatorias reales.
+excluir_patrones_url:
+  - "digitaloceanspaces.com"   # PDFs en CDN externo — son documentos, no convocatorias
+  - "sfo3.digital"             # mismo CDN con otro prefijo
+  - ".pdf"
+  - "/wp-content/uploads/"     # adjuntos directos
+
+excluir_patrones_titulo:
+  - "Código de ética"
+  - "Política de"
+  - "Listado de delitos"
+  - "Reglamento interno"
+  - "Manual de"
+  - "Formulario"
+
+alertas:
+  campos_sensibles: ["titulo"]

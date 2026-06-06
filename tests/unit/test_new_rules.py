@@ -5,7 +5,7 @@ from pathlib import Path
 from src.infra.rules_loader import load_rules_from_yaml
 
 
-def test_load_subdere_rules():
+def test_load_subdere_rules() -> None:
     filepath = Path("rules/subdere.yaml")
     rules = load_rules_from_yaml(filepath)
     assert rules.nombre == "SUBDERE"
@@ -14,7 +14,7 @@ def test_load_subdere_rules():
     assert "sala-de-prensa" in rules.selectores.contenedor_items
 
 
-def test_load_fia_rules():
+def test_load_fia_rules() -> None:
     filepath = Path("rules/fia.yaml")
     rules = load_rules_from_yaml(filepath)
     assert rules.nombre == "FIA"
@@ -24,7 +24,7 @@ def test_load_fia_rules():
     assert rules.json_mapping.titulo == "title.rendered"
 
 
-def test_load_corfo_rules():
+def test_load_corfo_rules() -> None:
     filepath = Path("rules/corfo.yaml")
     rules = load_rules_from_yaml(filepath)
     assert rules.nombre == "CORFO"
@@ -35,7 +35,7 @@ def test_load_corfo_rules():
     assert rules.selectores.estado == "h6"
 
 
-def test_load_fosis_rules():
+def test_load_fosis_rules() -> None:
     filepath = Path("rules/fosis.yaml")
     rules = load_rules_from_yaml(filepath)
     assert rules.nombre == "FOSIS"
@@ -44,7 +44,7 @@ def test_load_fosis_rules():
     assert rules.selectores.contenedor_items == "div[style*='background-color']"
 
 
-def test_load_prochile_rules():
+def test_load_prochile_rules() -> None:
     filepath = Path("rules/prochile.yaml")
     rules = load_rules_from_yaml(filepath)
     assert rules.nombre == "PROCHILE"

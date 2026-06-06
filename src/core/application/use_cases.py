@@ -1,6 +1,9 @@
 """Casos de uso principales (Application Services)."""
 
+import time
+
 from src.core.application.normalizer import DataNormalizer
+from src.core.application.run_context import get_run_id
 from src.core.domain.entities import Convocatoria, EventoCambio, Fuente, NotificacionResult
 from src.core.domain.exceptions import GrantPulseError, NotificationError
 from src.core.domain.ports import (
@@ -10,6 +13,7 @@ from src.core.domain.ports import (
     ScraperPort,
     SnapshotRepository,
 )
+from src.core.domain.relevancia import filtrar_relevantes
 from src.core.domain.services import ChangeDetectorService
 from src.core.domain.vigencia import filtrar_vigentes
 from src.infra.logging import get_logger
@@ -40,13 +44,15 @@ class MonitoreoUseCase:
         1. Fetch (Scraper)
         2. Extract (Scraper)
         3. Normalize (DataNormalizer)
-        4. Vigencia filter (filtrar_vigentes)
-        5. Obtain previous state (ConvocatoriaRepository)
-        6. Detect Changes (ChangeDetectorService)
-        7. Persist (Repositories)
-        8. Notify (NotificationPort) + Persist Notification Results
+        4. Relevance filter (filtrar_relevantes)
+        5. Vigencia filter (filtrar_vigentes)
+        6. Obtain previous state (ConvocatoriaRepository)
+        7. Detect Changes (ChangeDetectorService)
+        8. Persist (Repositories)
+        9. Notify (NotificationPort) + Persist Notification Results
         """
-        logger.info("Iniciando caso de uso de monitoreo", fuente_id=str(fuente.id), fuente_nombre=fuente.nombre)
+        logger.info("Iniciando caso de uso de monitoreo", fuente_id=str(fuente.id), fuente_nombre=fuente.nombre, run_id=get_run_id())
+        start = time.monotonic()
         errores_persistencia = 0
         try:
             snapshot = await self.scraper.fetch(fuente)
@@ -65,6 +71,18 @@ class MonitoreoUseCase:
                     antes=len(raw_items),
                     despues=len(nuevas_convocatorias),
                     fuente=fuente.nombre,
+                )
+
+            pre_relevancia = len(nuevas_convocatorias)
+            nuevas_convocatorias = filtrar_relevantes(nuevas_convocatorias)
+            descartadas_relevancia = pre_relevancia - len(nuevas_convocatorias)
+            if descartadas_relevancia > 0:
+                logger.info(
+                    "Convocatorias descartadas por relevancia",
+                    fuente=fuente.nombre,
+                    antes=pre_relevancia,
+                    despues=len(nuevas_convocatorias),
+                    descartadas=descartadas_relevancia,
                 )
 
             pre_vigencia = len(nuevas_convocatorias)
@@ -97,13 +115,14 @@ class MonitoreoUseCase:
                 await self.convocatoria_repo.save_evento_cambio(evento, snapshot.id)
 
             if self.notifier:
+                notifier = self.notifier
                 for evento in eventos:
                     if evento.es_relevante:
                         conv_notif = nuevas_dict.get(evento.convocatoria_id)
                         if conv_notif:
                             notif_result: NotificacionResult | None = None
                             try:
-                                notif_result = await self.notifier.notify_event(evento, conv_notif, fuente)
+                                notif_result = await notifier.notify_event(evento, conv_notif, fuente)
                             except NotificationError as e:
                                 logger.error(
                                     "Notificación falló para evento",
@@ -119,7 +138,7 @@ class MonitoreoUseCase:
                                     error_log=str(e),
                                 )
 
-                            if notif_result is not None and self.notificacion_repo:
+                            if self.notificacion_repo:
                                 try:
                                     await self.notificacion_repo.save(notif_result)
                                 except Exception as e:
@@ -131,12 +150,16 @@ class MonitoreoUseCase:
                                     errores_persistencia += 1
 
             status = "exitosamente" if errores_persistencia == 0 else "con errores de persistencia de notificaciones"
+            elapsed = round(time.monotonic() - start, 3)
             logger.info(
                 f"Monitoreo finalizado {status}",
                 fuente_id=str(fuente.id),
                 nuevas_encontradas=len(nuevas_convocatorias),
                 eventos_generados=len(eventos),
+                eventos_relevantes=sum(1 for e in eventos if e.es_relevante),
                 errores_persistencia_notificaciones=errores_persistencia,
+                elapsed_seconds=elapsed,
+                run_id=get_run_id(),
             )
             return eventos
 

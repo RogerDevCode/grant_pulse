@@ -7,7 +7,11 @@ import pytest
 
 from src.core.domain.entities import Fuente, RulesConfig, SelectorConfig, Snapshot
 from src.core.domain.exceptions import ExtractionError
-from src.infra.scraping.wp_ajax import _AJAXURL_PATTERN, _NONCE_PATTERN, WpAjaxScraper
+from src.infra.scraping.wp_ajax import (  # pyright: ignore[reportPrivateUsage]
+    _AJAXURL_PATTERN,
+    _NONCE_PATTERN,
+    WpAjaxScraper,
+)
 
 
 @pytest.fixture
@@ -47,7 +51,7 @@ def ajax_page_html() -> str:
 
 
 @pytest.fixture
-def ajax_response_json() -> dict:
+def ajax_response_json() -> dict[str, object]:
     return {
         "found": 2,
         "html": '''
@@ -89,7 +93,7 @@ async def test_wp_ajax_extracts_nonce_from_page(
 
 @pytest.mark.asyncio
 async def test_wp_ajax_extract_parses_json_html_response(
-    fuente_corfo_ajax: Fuente, ajax_response_json: dict
+    fuente_corfo_ajax: Fuente, ajax_response_json: dict[str, object]
 ) -> None:
     scraper = WpAjaxScraper()
     combined_content = json.dumps({"metadata": {}, "html": ajax_response_json["html"]})
@@ -109,12 +113,12 @@ async def test_wp_ajax_extract_parses_json_html_response(
 
 @pytest.mark.asyncio
 async def test_wp_ajax_extract_handles_plain_html_fallback(
-    fuente_corfo_ajax: Fuente, ajax_response_json: dict
+    fuente_corfo_ajax: Fuente, ajax_response_json: dict[str, object]
 ) -> None:
     scraper = WpAjaxScraper()
     snapshot = Snapshot(
         fuente_id=fuente_corfo_ajax.id,
-        contenido_crudo=ajax_response_json["html"],
+        contenido_crudo=str(ajax_response_json["html"]),
         hash_contenido="testhash",
         estado_ejecucion="SUCCESS",
     )

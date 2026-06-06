@@ -1,24 +1,39 @@
 nombre: "SERCOTEC"
-url_busqueda: "https://www.sercotec.cl/wp-json/wp/v2/programas"
+# URL con parámetros completos para traer TODAS las convocatorias abiertas.
+# Sin parámetros, el backend devuelve solo 8 items (default de paginación).
+# Con cantidad=500 y pagina=1 trae la lista completa (76 items al 2026-06-06).
+# La paginación es nativa: si items_recibidos < cantidad, no hay más páginas.
+url_busqueda: "https://apisctwidgets.sercotec.cl/api/convocatorias?idRegion=0&idTipoInstrumento=0&idEtapa=0&pagina=1&cantidad=500"
 estrategia: "json_api"
+
+# ARQUITECTURA DE LA API (descubierta por ingeniería inversa del widget):
+# El sitio sercotec.cl muestra los datos vía iframe Next.js:
+#   https://sctwebwidgets.sercotec.cl/convocatorias
+# Ese widget llama internamente a:
+#   GET https://apisctwidgets.sercotec.cl/api/convocatorias?...
+# Endpoints adicionales disponibles:
+#   GET https://apisctwidgets.sercotec.cl/api/regiones
+#   GET https://apisctwidgets.sercotec.cl/api/categorias
+#   GET https://apisctwidgets.sercotec.cl/api/convocatoria?codBP={id}
+#
+# ESTRATEGIA DE GRANULARIDAD:
+# Cada codBp es una convocatoria-región independiente (una fila por región).
+# NO se agrupan por idInstrumento. Una persona en Tarapacá quiere ver la
+# convocatoria de su región, no un registro genérico "disponible en N regiones".
+# La deduplicación de alertas (si se desea) se hace en la capa de notificación.
+
 json_mapping:
-  root_path: ""
-  identificador: "slug"
-  titulo: "title.rendered"
-  descripcion: "content.rendered"
-  link_detalle: "link"
-  estado: "status"
-selectores:
-  contenedor_items: ".card.h-100"
-  identificador: "h3.card-title"
-  titulo: "h3.card-title"
-  descripcion: ".card-text"
-  link_detalle: "a.stretched-link"
-  estado: ".badge"
-  fecha_cierre: ".card-footer"
-normalizadores:
-  fecha_cierre:
-    regex_extraction: "(\\d{2}/\\d{2}/\\d{4})"
-    formato_salida: "%d/%m/%Y"
+  root_path: "datos"
+  identificador: "codBp"
+  titulo: "nombre"
+  descripcion: "nombreTipoInstrumento"   # Tipo de instrumento como descripción
+  link_detalle: "proyectoUrlFichaPostulacion"
+  estado: null                           # La API no expone estado explícito
+  fecha_apertura: "fechaInicio"          # Fecha de apertura (ISO 8601)
+  fecha_cierre: "fechaTermino"           # Fecha de cierre (ISO 8601)
+  monto: null
+  region: "region"
+  # agrupar_por eliminado: cada codBp = 1 convocatoria-región independiente
+
 alertas:
-  campos_sensibles: ["estado", "fecha_cierre"]
+  campos_sensibles: ["fecha_cierre", "region", "titulo"]

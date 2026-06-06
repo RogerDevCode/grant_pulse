@@ -1,0 +1,37 @@
+nombre: "Portal Fondos del Estado"
+url_busqueda: "https://fondos.gob.cl/"
+estrategia: "html_static"
+
+# NOTA: La homepage de fondos.gob.cl muestra solo ~6 fondos destacados.
+# El portal tiene muchos más fondos pero requieren búsqueda/filtros interactivos.
+# Por ahora monitorizamos los destacados — es el conjunto visible más estable.
+#
+# Estructura real de cada item (es un <a href="/ficha/...">):
+#   .badge           → estado (ABIERTO/CERRADO)
+#   h6               → título (solo el título del fondo, no incluye institución)
+#   texto completo   → "ABIERTONacionalInstitución\nTítulo\nBeneficiarios/as:...\nFechas:Inicio: DD-MM-YYYY|Fin: DD-MM-YYYY\nMontos:..."
+
+selectores:
+  contenedor_items: "a[href^='/ficha/']"
+  identificador: "h6"
+  titulo: "h6"
+  link_detalle: "attr:href"     # el href del propio <a> contenedor
+  estado: ".badge"
+  fecha_cierre: null            # En el texto del item: "Fin: DD-MM-YYYY"
+  fecha_apertura: null          # En el texto del item: "Inicio: DD-MM-YYYY"
+  monto: null                   # En el texto del item: "Hasta $X.XXX.XXX"
+
+normalizadores:
+  fecha_cierre:
+    regex_extraction: "Fin:\\s*(\\d{2}-\\d{2}-\\d{4})"
+    formato_salida: "%d-%m-%Y"
+  fecha_apertura:
+    regex_extraction: "Inicio:\\s*(\\d{2}-\\d{2}-\\d{4})"
+    formato_salida: "%d-%m-%Y"
+  monto:
+    regex_extraction: "Montos:[^\\n]*?([\\$\\d\\.]+(?:\\s+(?:a|hasta)\\s+[\\$\\d\\.]+)?)"
+
+alertas:
+  campos_sensibles:
+    - "estado"
+    - "titulo"

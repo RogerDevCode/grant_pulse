@@ -30,9 +30,14 @@ dependencies = [
   "types-pyyaml>=6.0.12.20240311",
 ]
 
+[project.scripts]
+grantpulse-api = "src.presentation.api.main:run"
+grantpulse-sync = "src.infra.cli:main"
+grantpulse-clean = "src.infra.maintenance:run_clean_db"
+
 [project.optional-dependencies]
 stealth = [
-  "camoufox>=0.4.11",
+    "camoufox>=0.4.11",
 ]
 
 [tool.ruff]
@@ -66,13 +71,14 @@ disallow_untyped_defs = true
 exclude = ["build", "alembic", "venv", ".venv"]
 
 [tool.pyright]
-include = ["src"]
-exclude = ["**/node_modules", "**/__pycache__", "venv", "build", "alembic"]
+include = ["src", "tests"]
+exclude = ["**/node_modules", "**/__pycache__", "venv", ".venv", "build", "alembic"]
 venvPath = "."
 venv = "venv"
 pythonVersion = "3.13"
 pythonPlatform = "Linux"
 typeCheckingMode = "strict"
+reportPrivateUsage = "warning"
 
 [tool.pytest.ini_options]
 minversion = "8.0"

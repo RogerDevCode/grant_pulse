@@ -29,9 +29,10 @@ def test_load_valid_sercotec_rules() -> None:
     rules = load_rules_from_yaml(filepath)
 
     assert rules.nombre == "SERCOTEC"
-    assert rules.selectores is not None
-    assert rules.selectores.identificador == "h3.card-title"
-    assert "estado" in rules.alertas.campos_sensibles
+    assert rules.json_mapping is not None
+    assert rules.json_mapping.identificador == "codBp"
+    assert rules.json_mapping.root_path == "datos"
+    assert "fecha_cierre" in rules.alertas.campos_sensibles
 
 
 def test_load_nonexistent_file() -> None:

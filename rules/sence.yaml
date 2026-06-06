@@ -1,0 +1,11 @@
+nombre: "SENCE Subsidios (Personas)"
+url_busqueda: "https://sence.gob.cl/personas/subsidios"
+estrategia: "llm"
+
+selectores:
+  contenedor_items: "body" # Ignorado por LLM, obligatorio en el modelo
+  identificador: "h2"
+  titulo: "h2"
+
+alertas:
+  campos_sensibles: []

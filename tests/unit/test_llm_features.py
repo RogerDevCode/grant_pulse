@@ -16,11 +16,11 @@ def llm_client() -> OpenRouterClient:
         async def wait(self) -> float:
             return 0.0
 
-    async def _noop_sleep(_: float) -> None:
+    async def _noop_sleep(_delay: float) -> None:
         return None
 
-    client._rate_limiter = _NoopRateLimiter()
-    client._sleep = _noop_sleep
+    client._rate_limiter = _NoopRateLimiter()  # type: ignore[assignment]
+    client._sleep = _noop_sleep  # type: ignore[assignment]
     return client
 
 

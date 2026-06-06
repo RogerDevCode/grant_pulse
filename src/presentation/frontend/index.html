@@ -3,113 +3,142 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GrantPulse</title>
+<title>GrantPulse — Radar de Financiamiento Chile</title>
+<meta name="description" content="Radar de convocatorias activas de financiamiento para consultores. CORFO, ANID, Sercotec, FIA y más.">
 <link rel="stylesheet" href="/static/style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
+
+<!-- ═══ SIDEBAR ═══ -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-brand">
-    <div class="brand-icon">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    <div class="brand-logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
     </div>
     <div class="brand-text">
       <span class="brand-name">Grant<span class="brand-accent">Pulse</span></span>
-      <span class="brand-sub">FONDOS &amp; CONVOCATORIAS</span>
+      <span class="brand-tagline">Radar de Financiamiento</span>
     </div>
   </div>
 
   <nav class="sidebar-nav">
-    <button class="nav-item active" data-page="dashboard">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      <span>Dashboard</span>
+    <button class="nav-item active" data-page="radar" id="nav-radar">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+      <span>Radar Activo</span>
+      <span class="nav-badge" id="navBadgeRadar"></span>
     </button>
-    <button class="nav-item" data-page="convocatorias">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      <span>Convocatorias</span>
+    <button class="nav-item" data-page="instituciones" id="nav-instituciones">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Instituciones</span>
     </button>
-    <button class="nav-item" data-page="fuentes">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-      <span>Fuentes</span>
+    <button class="nav-item" data-page="briefing" id="nav-briefing">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span>Briefing</span>
     </button>
-    <button class="nav-item" data-page="eventos">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      <span>Eventos</span>
-    </button>
-    <button class="nav-item" data-page="notificaciones">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      <span>Notificaciones</span>
-    </button>
-    <button class="nav-item" data-page="audit">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-      <span>Audit Log</span>
+    <button class="nav-item" data-page="admin" id="nav-admin">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      <span>Sistema</span>
     </button>
   </nav>
 
   <div class="sidebar-footer">
-    <button class="nav-item" id="sidebarToggle" title="Colapsar">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
-      <span>Colapsar</span>
+    <div class="sync-status" id="syncStatus">
+      <div class="sync-dot"></div>
+      <span id="syncStatusText">Conectado</span>
+    </div>
+    <button class="btn-collapse" id="sidebarToggle" title="Colapsar sidebar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
     </button>
   </div>
 </aside>
 
-<div class="main-wrapper">
+<!-- ═══ MAIN WRAPPER ═══ -->
+<div class="main-wrapper" id="mainWrapper">
+
+  <!-- TOPBAR -->
   <header class="topbar">
     <button class="mobile-menu-btn" id="mobileMenuBtn">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
-    <h1 class="page-title" id="pageTitle">Dashboard</h1>
-    <div class="topbar-actions">
-      <span class="last-sync" id="lastSync"></span>
-      <button class="btn-icon" id="refreshAllBtn" title="Refrescar datos">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+
+    <!-- SELECTOR DE INSTITUCIÓN PROMINENTE -->
+    <div class="inst-selector-wrap" id="instSelectorWrap">
+      <button class="inst-selector-btn" id="instSelectorBtn" aria-haspopup="listbox" aria-expanded="false">
+        <div class="inst-icon" id="instBtnIcon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </div>
+        <span id="instSelectorLabel">Todas las instituciones</span>
+        <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="inst-dropdown" id="instDropdown" role="listbox" aria-label="Seleccionar institución">
+        <div class="inst-search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="instSearchInput" placeholder="Buscar institución..." autocomplete="off">
+        </div>
+        <div class="inst-options" id="instOptions"></div>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="active-pill" id="activePill">
+        <span class="pulse-dot"></span>
+        <span id="activePillLabel">cargando...</span>
+      </div>
+      <button class="btn-icon" id="refreshBtn" title="Actualizar datos">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
       </button>
     </div>
   </header>
 
+  <!-- CONTENIDO PRINCIPAL -->
   <main class="content">
 
-    <!-- ═══ DASHBOARD ═══ -->
-    <section class="page active" id="page-dashboard">
-      <div class="stats-grid" id="statsGrid"></div>
-      <div class="dashboard-grid">
-        <div class="card">
-          <div class="card-header"><h3>Fuentes Activas</h3></div>
-          <div class="card-body" id="dashFuentes"></div>
+    <!-- ════════════════════════════════════════
+         RADAR ACTIVO
+    ════════════════════════════════════════ -->
+    <section class="page active" id="page-radar">
+
+      <!-- KPI STRIP -->
+      <div class="kpi-strip" id="kpiStrip">
+        <div class="kpi-item kpi-green">
+          <span class="kpi-num" id="kpiAbiertas">—</span>
+          <span class="kpi-lbl">Activas ahora</span>
         </div>
-        <div class="card">
-          <div class="card-header"><h3>Últimas Aperturas</h3></div>
-          <div class="card-body" id="dashAperturas"></div>
+        <div class="kpi-divider"></div>
+        <div class="kpi-item kpi-amber">
+          <span class="kpi-num" id="kpiVencen30">—</span>
+          <span class="kpi-lbl">Cierran en 30 días</span>
+        </div>
+        <div class="kpi-divider"></div>
+        <div class="kpi-item kpi-blue">
+          <span class="kpi-num" id="kpiInstituciones">—</span>
+          <span class="kpi-lbl">Instituciones</span>
+        </div>
+        <div class="kpi-divider"></div>
+        <div class="kpi-item kpi-purple">
+          <span class="kpi-num" id="kpiSinFecha">—</span>
+          <span class="kpi-lbl">Sin fecha cierre</span>
         </div>
       </div>
-    </section>
 
-    <!-- ═══ CONVOCATORIAS ═══ -->
-    <section class="page" id="page-convocatorias">
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <div class="search-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="searchInput" placeholder="Buscar convocatoria...">
-          </div>
-          <select id="filterEstado" aria-label="Filtrar por estado">
-            <option value="ABIERTO">Vigentes / Abiertas</option>
-            <option value="">Todas</option>
-            <option value="CERRADO">Cerradas</option>
-            <option value="PROXIMAMENTE">Próximamente</option>
-          </select>
+      <!-- TOOLBAR -->
+      <div class="radar-toolbar">
+        <div class="search-field">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Buscar por título..." autocomplete="off">
+        </div>
+        <div class="filter-row">
           <select id="filterOrden" aria-label="Ordenar por">
-            <option value="recientes_creacion">Más Recientes</option>
-            <option value="actualizacion">Última Actualización</option>
-            <option value="por_vencer">Por Vencer</option>
+            <option value="por_vencer">Por vencer primero</option>
+            <option value="recientes_creacion">Más recientes</option>
+            <option value="actualizacion">Última actualización</option>
           </select>
-          <select id="filterFuente" aria-label="Filtrar por fuente">
-            <option value="">Todas las fuentes</option>
-          </select>
-          <select id="filterRegion" aria-label="Filtrar por región">
-            <option value="">Todas las Regiones</option>
+          <select id="filterRegion" aria-label="Región">
+            <option value="">Todas las regiones</option>
             <option value="Nacional">Nacional</option>
             <option value="Arica y Parinacota">Arica y Parinacota</option>
             <option value="Tarapacá">Tarapacá</option>
@@ -128,184 +157,148 @@
             <option value="Aysén">Aysén</option>
             <option value="Magallanes">Magallanes</option>
           </select>
+          <label class="solo-activas-toggle" id="soloActivasLabel">
+            <input type="checkbox" id="soloActivasToggle" checked>
+            <span class="toggle-switch"></span>
+            <span class="toggle-text">Solo activas</span>
+          </label>
         </div>
-        <div class="toolbar-right">
-          <span class="result-count" id="resultCount"></span>
+        <div class="result-pill" id="resultPill">
+          <span id="resultNum">—</span>&nbsp;resultados
         </div>
       </div>
-      <div class="table-container">
-        <div class="table-wrapper">
-          <table class="data-table" id="convocatoriasTable">
-            <thead>
-              <tr>
-                <th>Estado</th>
-                <th>Título</th>
-                <th>Fuente</th>
-                <th>Región</th>
-                <th>Monto</th>
-                <th>Cierre</th>
-                <th style="width:80px">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="convocatoriasBody"></tbody>
-          </table>
-          <div class="empty-state" id="convocatoriasEmpty" style="display:none">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <p>No se encontraron convocatorias</p>
-          </div>
-          <div class="loader" id="convocatoriasLoader">Cargando...</div>
-        </div>
-        <div class="pagination" id="convPagination"></div>
+
+      <!-- CARDS GRID -->
+      <div id="radarLoader" class="page-loader">
+        <div class="spinner"></div>
+        <span>Buscando oportunidades activas...</span>
+      </div>
+      <div id="radarEmpty" class="empty-state" style="display:none">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+        <h3>Sin señal</h3>
+        <p>No hay convocatorias para los filtros seleccionados.</p>
+      </div>
+      <div class="conv-grid" id="convGrid"></div>
+      <div class="pagination" id="convPagination"></div>
+
+    </section>
+
+    <!-- ════════════════════════════════════════
+         INSTITUCIONES
+    ════════════════════════════════════════ -->
+    <section class="page" id="page-instituciones">
+      <div class="inst-grid" id="instGrid">
+        <div class="page-loader"><div class="spinner"></div><span>Cargando instituciones...</span></div>
       </div>
     </section>
 
-    <!-- ═══ FUENTES ═══ -->
-    <section class="page" id="page-fuentes">
-      <div class="table-container">
-        <div class="table-wrapper">
+    <!-- ════════════════════════════════════════
+         BRIEFING
+    ════════════════════════════════════════ -->
+    <section class="page" id="page-briefing">
+      <div class="briefing-top">
+        <div class="briefing-title-block">
+          <h2>Briefing de Oportunidades Activas</h2>
+          <p>Convocatorias vigentes — ordenadas por urgencia de cierre. Listo para presentar.</p>
+        </div>
+        <button class="btn btn-primary" id="printBriefingBtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Exportar / Imprimir
+        </button>
+      </div>
+      <div id="briefingLoader" class="page-loader"><div class="spinner"></div><span>Preparando briefing...</span></div>
+      <div id="briefingContent"></div>
+    </section>
+
+    <!-- ════════════════════════════════════════
+         SISTEMA / ADMIN
+    ════════════════════════════════════════ -->
+    <section class="page" id="page-admin">
+      <div class="admin-tabs-bar">
+        <button class="admin-tab active" data-tab="fuentes">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Fuentes
+        </button>
+        <button class="admin-tab" data-tab="notificaciones">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Notificaciones
+        </button>
+        <button class="admin-tab" data-tab="audit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Audit Log
+        </button>
+      </div>
+
+      <!-- PANE: FUENTES -->
+      <div class="admin-pane active" id="adminpane-fuentes">
+        <div class="table-container">
           <table class="data-table" id="fuentesTable">
             <thead>
               <tr>
-                <th style="width:60px">Estado</th>
-                <th>Fuente</th>
-                <th style="width:100px">Convocatorias</th>
-                <th style="width:80px">Abiertas</th>
-                <th style="width:120px">Última Ejecución</th>
-                <th style="width:80px">Acciones</th>
+                <th style="width:50px">Activa</th>
+                <th>Institución / URL</th>
+                <th style="width:90px">Activas</th>
+                <th style="width:90px">Total</th>
+                <th style="width:130px">Última sync</th>
+                <th style="width:60px"></th>
               </tr>
             </thead>
             <tbody id="fuentesBody"></tbody>
           </table>
-          <div class="loader" id="fuentesLoader">Cargando...</div>
+          <div class="table-loader" id="fuentesLoader"></div>
         </div>
       </div>
-    </section>
 
-    <!-- ═══ EVENTOS ═══ -->
-    <section class="page" id="page-eventos">
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <select id="filterEventoTipo" aria-label="Filtrar por tipo">
-            <option value="">Todos</option>
-            <option value="APERTURA">Aperturas</option>
-            <option value="MODIFICACION">Modificaciones</option>
-          </select>
-          <select id="filterEventoFuente" aria-label="Filtrar por fuente">
-            <option value="">Todas las fuentes</option>
-          </select>
-        </div>
-      </div>
-      <div class="table-container">
-        <div class="table-wrapper">
-          <table class="data-table" id="eventosTable">
-            <thead>
-              <tr>
-                <th>Tipo</th>
-                <th>Convocatoria</th>
-                <th>Fuente</th>
-                <th>Deltas</th>
-                <th>Relevante</th>
-                <th>Fecha</th>
-              </tr>
-            </thead>
-            <tbody id="eventosBody"></tbody>
-          </table>
-          <div class="empty-state" id="eventosEmpty" style="display:none">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            <p>No hay eventos registrados</p>
-          </div>
-          <div class="loader" id="eventosLoader">Cargando...</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ═══ NOTIFICACIONES ═══ -->
-    <section class="page" id="page-notificaciones">
-      <div class="split-layout">
-        <div class="split-main">
-          <div class="card">
-            <div class="card-header">
-              <h3>Canales de Notificación</h3>
+      <!-- PANE: NOTIFICACIONES -->
+      <div class="admin-pane" id="adminpane-notificaciones">
+        <div class="split-layout">
+          <div class="split-main">
+            <div class="card">
+              <div class="card-header"><h3>Canales Configurados</h3></div>
+              <div class="card-body" id="notifConfigList"><p class="muted-msg">Sin canales configurados</p></div>
             </div>
-            <div class="card-body" id="notifConfigList"></div>
-          </div>
-          <div class="card" style="margin-top:1.5rem">
-            <div class="card-header">
-              <h3>Historial de Envíos</h3>
+            <div class="card mt-lg">
+              <div class="card-header"><h3>Historial de Envíos</h3></div>
+              <div class="card-body" id="notifHistoryList"><p class="muted-msg">Sin envíos registrados</p></div>
             </div>
-            <div class="card-body" id="notifHistoryList"></div>
           </div>
-        </div>
-        <div class="split-side">
-          <div class="card">
-            <div class="card-header"><h3>Nuevo Canal</h3></div>
-            <div class="card-body">
-              <div class="tab-bar" id="notifTypeTabs">
-                <button class="tab active" data-type="TELEGRAM">Telegram</button>
-                <button class="tab" data-type="EMAIL">Email</button>
+          <div class="split-side">
+            <div class="card">
+              <div class="card-header"><h3>Nuevo Canal</h3></div>
+              <div class="card-body">
+                <div class="tab-bar" id="notifTypeTabs">
+                  <button class="tab active" data-type="TELEGRAM">Telegram</button>
+                  <button class="tab" data-type="EMAIL">Email</button>
+                </div>
+                <form id="telegramForm" class="notif-form active">
+                  <div class="field"><label>Nombre</label><input type="text" id="tgNombre" placeholder="Ej: Alertas Innovación" required></div>
+                  <div class="field"><label>Bot Token</label><input type="password" id="tgToken" placeholder="123456:ABC-DEF..." required></div>
+                  <div class="field"><label>Chat ID</label><input type="text" id="tgChatId" placeholder="-1001234567890" required></div>
+                  <button type="submit" class="btn btn-primary btn-block">Guardar Canal</button>
+                </form>
+                <form id="emailForm" class="notif-form">
+                  <div class="field"><label>Nombre</label><input type="text" id="emNombre" placeholder="Ej: Alertas Socios" required></div>
+                  <div class="field-row">
+                    <div class="field"><label>Servidor SMTP</label><input type="text" id="emHost" placeholder="smtp.gmail.com" required></div>
+                    <div class="field" style="max-width:90px"><label>Puerto</label><input type="number" id="emPort" value="587" required></div>
+                  </div>
+                  <div class="field-row">
+                    <div class="field"><label>Usuario</label><input type="text" id="emUser" required></div>
+                    <div class="field"><label>Password</label><input type="password" id="emPass" required></div>
+                  </div>
+                  <div class="field"><label>From Email</label><input type="email" id="emFrom" placeholder="no-reply@ejemplo.com" required></div>
+                  <div class="field"><label>Destinatarios (coma)</label><input type="text" id="emTargets" placeholder="a@b.com, c@d.com" required></div>
+                  <button type="submit" class="btn btn-primary btn-block">Guardar Canal</button>
+                </form>
               </div>
-
-              <form id="telegramForm" class="notif-form active">
-                <div class="field">
-                  <label>Nombre</label>
-                  <input type="text" id="tgNombre" placeholder="Ej: Alertas Innovación" required>
-                </div>
-                <div class="field">
-                  <label>Bot Token</label>
-                  <input type="password" id="tgToken" placeholder="123456:ABC-DEF..." required>
-                </div>
-                <div class="field">
-                  <label>Chat ID</label>
-                  <input type="text" id="tgChatId" placeholder="-1001234567890" required>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">Guardar Canal</button>
-              </form>
-
-              <form id="emailForm" class="notif-form">
-                <div class="field">
-                  <label>Nombre</label>
-                  <input type="text" id="emNombre" placeholder="Ej: Alertas Socios" required>
-                </div>
-                <div class="field-row">
-                  <div class="field">
-                    <label>Servidor SMTP</label>
-                    <input type="text" id="emHost" placeholder="smtp.gmail.com" required>
-                  </div>
-                  <div class="field" style="max-width:100px">
-                    <label>Puerto</label>
-                    <input type="number" id="emPort" value="587" required>
-                  </div>
-                </div>
-                <div class="field-row">
-                  <div class="field">
-                    <label>Usuario</label>
-                    <input type="text" id="emUser" required>
-                  </div>
-                  <div class="field">
-                    <label>Password</label>
-                    <input type="password" id="emPass" required>
-                  </div>
-                </div>
-                <div class="field">
-                  <label>From Email</label>
-                  <input type="email" id="emFrom" placeholder="no-reply@ejemplo.com" required>
-                </div>
-                <div class="field">
-                  <label>Destinatarios (separar con coma)</label>
-                  <input type="text" id="emTargets" placeholder="a@b.com, c@d.com" required>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">Guardar Canal</button>
-              </form>
             </div>
           </div>
         </div>
       </div>
-    </section>
 
-    <!-- ═══ AUDIT LOG ═══ -->
-    <section class="page" id="page-audit">
-      <div class="toolbar">
-        <div class="toolbar-left">
+      <!-- PANE: AUDIT -->
+      <div class="admin-pane" id="adminpane-audit">
+        <div class="toolbar">
           <select id="filterAuditNivel" aria-label="Filtrar por nivel">
             <option value="">Todos los niveles</option>
             <option value="ERROR">Error</option>
@@ -313,14 +306,12 @@
             <option value="INFO">Info</option>
           </select>
         </div>
-      </div>
-      <div class="table-container">
-        <div class="table-wrapper">
+        <div class="table-container">
           <table class="data-table" id="auditTable">
             <thead>
               <tr>
                 <th style="width:80px">Nivel</th>
-                <th style="width:100px">Módulo</th>
+                <th style="width:110px">Módulo</th>
                 <th>Mensaje</th>
                 <th style="width:120px">Fuente</th>
                 <th style="width:140px">Fecha</th>
@@ -328,35 +319,40 @@
             </thead>
             <tbody id="auditBody"></tbody>
           </table>
-          <div class="loader" id="auditLoader">Cargando...</div>
+          <div class="table-loader" id="auditLoader"></div>
         </div>
       </div>
+
     </section>
 
   </main>
 </div>
 
-<!-- MODAL DETALLE CONVOCATORIA -->
+<!-- ═══ MODAL DETALLE CONVOCATORIA ═══ -->
 <div class="modal-overlay" id="detailModal">
-  <div class="modal">
+  <div class="modal modal-lg">
     <header class="modal-header">
-      <h2 id="detailModalTitle">Detalle</h2>
-      <button class="modal-close" id="detailModalClose">&times;</button>
+      <div class="modal-inst-badge" id="detailInstBadge"></div>
+      <button class="modal-close" id="detailModalClose" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </header>
     <div class="modal-body" id="detailModalBody"></div>
   </div>
 </div>
 
-<!-- CONFIRM DIALOG -->
+<!-- ═══ MODAL CONFIRMAR ═══ -->
 <div class="modal-overlay" id="confirmModal">
   <div class="modal modal-sm">
     <header class="modal-header">
-      <h2 id="confirmModalTitle">Confirmar</h2>
-      <button class="modal-close" id="confirmModalClose">&times;</button>
+      <h3 id="confirmModalTitle">Confirmar</h3>
+      <button class="modal-close" id="confirmModalClose" aria-label="Cerrar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </header>
     <div class="modal-body">
       <p id="confirmModalMsg" style="margin-bottom:1.5rem;color:var(--text-1)"></p>
-      <div style="display:flex;gap:0.75rem;justify-content:flex-end">
+      <div style="display:flex;gap:.75rem;justify-content:flex-end">
         <button class="btn" id="confirmModalCancel">Cancelar</button>
         <button class="btn btn-danger" id="confirmModalOk">Eliminar</button>
       </div>
@@ -364,7 +360,7 @@
   </div>
 </div>
 
-<!-- TOAST -->
+<!-- ═══ TOASTS ═══ -->
 <div class="toast-container" id="toastContainer"></div>
 
 <script src="/static/app.js"></script>

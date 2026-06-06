@@ -84,6 +84,7 @@ class FosisMultiPageScraper(ScraperPort):
             timeout=self._timeout,
             headers=_REALISTIC_HEADERS,
             follow_redirects=True,
+            verify=False,  # FOSIS tiene problemas crónicos de certificados SSL
         ) as client:
             for name, url in urls:
                 try:

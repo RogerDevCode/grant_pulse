@@ -17,6 +17,7 @@ from src.infra.db.models import (
     NotificacionORM,
     SnapshotORM,
 )
+from src.infra.logging import get_logger
 from src.presentation.api.dependencies import DbSession
 from src.presentation.api.schemas import (
     AuditLogResponse,
@@ -32,6 +33,7 @@ from src.presentation.api.schemas import (
     NotificacionResponse,
 )
 
+logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["GrantPulse"])
 
 
@@ -63,35 +65,52 @@ async def get_dashboard_stats(session: DbSession) -> DashboardStats:
 
 @router.get("/fuentes", response_model=list[FuenteResponse])
 async def list_fuentes(session: DbSession) -> list[FuenteResponse]:
-    result = await session.execute(select(FuenteORM).order_by(FuenteORM.nombre))
-    fuentes = result.scalars().all()
-    resp: list[FuenteResponse] = []
-    for f in fuentes:
-        conv_count = (await session.execute(select(func.count(ConvocatoriaORM.id)).where(ConvocatoriaORM.fuente_id == f.id))).scalar() or 0
-        abi_count = (
-            await session.execute(select(func.count(ConvocatoriaORM.id)).where(ConvocatoriaORM.fuente_id == f.id, ConvocatoriaORM.estado == "ABIERTO"))
-        ).scalar() or 0
-        cer_count = (
-            await session.execute(select(func.count(ConvocatoriaORM.id)).where(ConvocatoriaORM.fuente_id == f.id, ConvocatoriaORM.estado == "CERRADO"))
-        ).scalar() or 0
-        last_snap = (
-            await session.execute(select(SnapshotORM.fecha_captura).where(SnapshotORM.fuente_id == f.id).order_by(SnapshotORM.fecha_captura.desc()).limit(1))
-        ).scalar_one_or_none()
-        resp.append(
-            FuenteResponse(
-                id=f.id,
-                nombre=f.nombre,
-                url_base=f.url_base,
-                activa=f.activa,
-                total_convocatorias=conv_count,
-                abiertas=abi_count,
-                cerradas=cer_count,
-                ultima_ejecucion=last_snap,
-                creado_en=f.creado_en,
-                actualizado_en=f.actualizado_en,
-            )
+    conv_subq = (
+        select(
+            ConvocatoriaORM.fuente_id,
+            func.count(ConvocatoriaORM.id).label("total"),
+            func.count(ConvocatoriaORM.id).filter(ConvocatoriaORM.estado == "ABIERTO").label("abiertas"),
+            func.count(ConvocatoriaORM.id).filter(ConvocatoriaORM.estado == "CERRADO").label("cerradas"),
         )
-    return resp
+        .group_by(ConvocatoriaORM.fuente_id)
+        .subquery()
+    )
+    snap_subq = (
+        select(
+            SnapshotORM.fuente_id,
+            func.max(SnapshotORM.fecha_captura).label("ultima_ejecucion"),
+        )
+        .group_by(SnapshotORM.fuente_id)
+        .subquery()
+    )
+    stmt = (
+        select(
+            FuenteORM,
+            func.coalesce(conv_subq.c.total, 0).label("total_convocatorias"),
+            func.coalesce(conv_subq.c.abiertas, 0).label("abiertas"),
+            func.coalesce(conv_subq.c.cerradas, 0).label("cerradas"),
+            snap_subq.c.ultima_ejecucion,
+        )
+        .outerjoin(conv_subq, FuenteORM.id == conv_subq.c.fuente_id)
+        .outerjoin(snap_subq, FuenteORM.id == snap_subq.c.fuente_id)
+        .order_by(FuenteORM.nombre)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        FuenteResponse(
+            id=f.id,
+            nombre=f.nombre,
+            url_base=f.url_base,
+            activa=f.activa,
+            total_convocatorias=int(total),
+            abiertas=int(abi),
+            cerradas=int(cer),
+            ultima_ejecucion=last_snap,
+            creado_en=f.creado_en,
+            actualizado_en=f.actualizado_en,
+        )
+        for f, total, abi, cer, last_snap in rows
+    ]
 
 
 @router.patch("/fuentes/{fuente_id}/toggle", response_model=FuenteToggleResponse)
@@ -101,12 +120,9 @@ async def toggle_fuente(fuente_id: UUID, session: DbSession) -> FuenteToggleResp
     if not orm:
         raise HTTPException(status_code=404, detail="Fuente no encontrada")
     orm.activa = not orm.activa
-    fecha_cierre: datetime | None
-    monto: float | None
-    region: str | None = None
-    estado: str
-    actualizado_en: datetime.now(UTC)
+    orm.actualizado_en = datetime.now(UTC)
     await session.flush()
+    logger.info("Fuente toggled", fuente_id=str(orm.id), nombre=orm.nombre, activa=orm.activa)
     return FuenteToggleResponse(id=orm.id, nombre=orm.nombre, activa=orm.activa)
 
 
@@ -114,13 +130,23 @@ async def toggle_fuente(fuente_id: UUID, session: DbSession) -> FuenteToggleResp
 async def list_convocatorias(
     session: DbSession,
     estado: str | None = Query(None, description="Filtrar por estado"),
-    fuente_id: UUID | None = Query(None, description="Filtrar por ID de fuente"),  # noqa: B008
+    fuente_id: UUID | None = Query(None, description="Filtrar por ID de fuente"), # noqa: B008
+    fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
     search: str | None = Query(None, description="Buscar en título"),
     orden: str | None = Query("actualizacion", description="Orden"),
     region: str | None = Query(None, description="Filtrar por región (Nacional, Metropolitana, etc.)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[ConvocatoriaResponse]:
+    fuente_ids_por_nombre: dict[str, UUID] = {}
+    if fuente_nombre:
+        fuente_rows = (await session.execute(
+            select(FuenteORM.id, FuenteORM.nombre).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%"))
+        )).all()
+        if not fuente_rows:
+            return []
+        fuente_ids_por_nombre = {str(r.id): r.id for r in fuente_rows}
+
     query = select(ConvocatoriaORM)
     if estado:
         query = query.where(ConvocatoriaORM.estado == estado)
@@ -128,9 +154,11 @@ async def list_convocatorias(
         query = query.where(ConvocatoriaORM.region == region)
     if fuente_id:
         query = query.where(ConvocatoriaORM.fuente_id == fuente_id)
+    elif fuente_ids_por_nombre:
+        query = query.where(ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre.values()))
     if search:
         query = query.where(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
-        
+
     if orden == "por_vencer":
         query = query.where(ConvocatoriaORM.fecha_cierre.isnot(None), ConvocatoriaORM.fecha_cierre >= datetime.now(UTC))
         query = query.order_by(ConvocatoriaORM.fecha_cierre.asc())
@@ -156,7 +184,7 @@ async def list_convocatorias(
                 identificador_externo=orm.identificador_externo,
                 titulo=orm.titulo,
                 descripcion=orm.descripcion,
-                url_detalle=str(orm.url_detail) if orm.url_detail else "",  # type: ignore[arg-type]
+                url_detalle=str(orm.url_detail) if orm.url_detail else "", # type: ignore[arg-type]
                 fecha_apertura=orm.fecha_apertura,
                 fecha_cierre=orm.fecha_cierre,
                 monto=float(orm.monto) if orm.monto is not None else None,
@@ -169,10 +197,31 @@ async def list_convocatorias(
 
 
 @router.get("/convocatorias/count")
-async def count_convocatorias(session: DbSession, estado: str | None = Query(None)) -> dict[str, int]:
+async def count_convocatorias(
+    session: DbSession,
+    estado: str | None = Query(None),
+    fuente_id: UUID | None = Query(None), # noqa: B008
+    fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
+    region: str | None = Query(None),
+) -> dict[str, int]:
+    fuente_ids_por_nombre: list[UUID] = []
+    if fuente_nombre:
+        fuente_rows = (await session.execute(
+            select(FuenteORM.id).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%"))
+        )).all()
+        if not fuente_rows:
+            return {"total": 0}
+        fuente_ids_por_nombre = [r.id for r in fuente_rows]
+
     query = select(func.count(ConvocatoriaORM.id))
     if estado:
         query = query.where(ConvocatoriaORM.estado == estado)
+    if fuente_id:
+        query = query.where(ConvocatoriaORM.fuente_id == fuente_id)
+    elif fuente_ids_por_nombre:
+        query = query.where(ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre))
+    if region:
+        query = query.where(ConvocatoriaORM.region == region)
     total = (await session.execute(query)).scalar() or 0
     return {"total": total}
 
@@ -230,6 +279,7 @@ async def delete_convocatoria(convocatoria_id: UUID, session: DbSession) -> None
         raise HTTPException(status_code=404, detail="Convocatoria no encontrada")
     await session.delete(orm)
     await session.flush()
+    logger.info("Convocatoria eliminada", convocatoria_id=str(convocatoria_id))
 
 
 @router.delete("/fuentes/{fuente_id}", status_code=204)
@@ -240,6 +290,7 @@ async def delete_fuente(fuente_id: UUID, session: DbSession) -> None:
         raise HTTPException(status_code=404, detail="Fuente no encontrada")
     await session.delete(orm)
     await session.flush()
+    logger.info("Fuente eliminada", fuente_id=str(fuente_id))
 
 
 @router.get("/audit-logs", response_model=list[AuditLogResponse])
@@ -322,6 +373,7 @@ async def create_notification_config(data: NotificacionConfigCreate, session: Db
     )
     session.add(orm)
     await session.flush()
+    logger.info("Config de notificación creada", config_id=str(orm.id), nombre=orm.nombre, tipo=orm.tipo)
     return NotificacionConfigResponse(
         id=orm.id,
         nombre=orm.nombre,
@@ -340,6 +392,7 @@ async def toggle_notification_config(config_id: UUID, session: DbSession) -> Not
         raise HTTPException(status_code=404, detail="Configuración no encontrada")
     orm.activa = not orm.activa
     await session.flush()
+    logger.info("Config de notificación toggled", config_id=str(orm.id), nombre=orm.nombre, activa=orm.activa)
     return NotificacionConfigResponse(
         id=orm.id,
         nombre=orm.nombre,
@@ -358,3 +411,4 @@ async def delete_notification_config(config_id: UUID, session: DbSession) -> Non
         raise HTTPException(status_code=404, detail="Configuración no encontrada")
     await session.delete(orm)
     await session.flush()
+    logger.info("Config de notificación eliminada", config_id=str(config_id))
