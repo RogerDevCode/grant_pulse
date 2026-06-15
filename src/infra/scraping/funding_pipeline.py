@@ -250,6 +250,29 @@ class CompositeFundingScraper(ScraperPort):
                     )
                     return resultados
 
+                # --- AUTO-HEALING ---
+                if step.extractor == "html_static" and not resultados:
+                    logger.info("Intentando auto-healing de selectores con LLM", fuente=fuente.nombre)
+                    from src.infra.llm.client import build_llm_client
+
+                    llm_client = build_llm_client()
+                    healed = await llm_client.heal_selectors(
+                        current_snapshot.contenido_crudo,
+                        fuente.nombre,
+                        str(fuente.url_base),
+                    )
+                    if healed:
+                        logger.info("Selectores sanados, reintentando extracción", fuente=fuente.nombre)
+                        # Creamos una fuente temporal con los nuevos selectores
+                        healed_selectors = fuente.configuracion_reglas.selectores.model_copy(update=healed)
+                        healed_rules = fuente.configuracion_reglas.model_copy(update={"selectores": healed_selectors})
+                        healed_fuente = fuente.model_copy(update={"configuracion_reglas": healed_rules})
+
+                        resultados = await self._html_static.extract(current_snapshot, healed_fuente, **kwargs)
+                        if resultados:
+                            logger.info("Auto-healing exitoso", fuente=fuente.nombre, items=len(resultados))
+                            return resultados
+
                 if self._explicit_empty(current_snapshot.contenido_crudo):
                     self._metrics.total_items = 0
                     self._metrics.final_status = "SUCCESS_EMPTY"

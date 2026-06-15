@@ -123,6 +123,7 @@ class LlmScraper(ScraperPort):
                 institution_name=fuente.nombre,
                 selectors=fuente.configuracion_reglas.selectores,
                 max_content_chars=max_content_chars,
+                screenshot_b64=snapshot.screenshot_b64,
             )
         except Exception as e:
             msg = f"Error en extracción LLM para fuente {fuente.nombre}: {e}"

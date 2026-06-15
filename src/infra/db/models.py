@@ -54,6 +54,7 @@ class SnapshotORM(Base):
     )
     fecha_captura: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC))
     contenido_crudo: Mapped[str] = mapped_column(Text, nullable=False)
+    screenshot_b64: Mapped[str | None] = mapped_column(Text, nullable=True)
     hash_contenido: Mapped[str] = mapped_column(String(64), nullable=False)
     estado_ejecucion: Mapped[str] = mapped_column(String(50), nullable=False)
     metadatos: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)

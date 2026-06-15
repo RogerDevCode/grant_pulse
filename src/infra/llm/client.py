@@ -80,9 +80,17 @@ class StructuredLLMClient(Protocol):
         institution_name: str = "",
         selectors: SelectorConfig | None = None,
         max_content_chars: int | None = None,
+        screenshot_b64: str | None = None,
     ) -> list[dict[str, Any]]: ...
 
     async def discover_funding_url(self, html_content: str, base_url: str) -> str | None: ...
+
+    async def heal_selectors(
+        self,
+        html_content: str,
+        institution_name: str,
+        base_url: str,
+    ) -> dict[str, str] | None: ...
 
 
 class _AsyncRateLimiter:
@@ -341,7 +349,7 @@ class OpenRouterClient:
 
     async def chat_completion(
         self,
-        prompt: str,
+        prompt: str | list[dict[str, Any]],
         system_prompt: str = "Eres un asistente experto en extracción de datos estructurados.",
         timeout: int | None = None,
     ) -> str:
@@ -357,6 +365,9 @@ class OpenRouterClient:
         effective_timeout = timeout or self.request_timeout_seconds
         last_error: str = "Sin errores registrados"
 
+        # Si el prompt es string, lo envolvemos. Si es multimodal (list), se usa directo.
+        content = prompt if isinstance(prompt, list) else prompt
+
         for model_index, model_id in enumerate(self.models):
             if model_index > 0:
                 await self._respect_rate_limit()
@@ -365,7 +376,7 @@ class OpenRouterClient:
                 "model": model_id,
                 "messages": [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": content},
                 ],
                 "temperature": 0.0,
                 "top_p": 1.0,
@@ -376,7 +387,7 @@ class OpenRouterClient:
                 "Intentando chat completion con LLM",
                 provider=self.provider_name,
                 model=model_id,
-                prompt_chars=len(prompt),
+                is_multimodal=isinstance(prompt, list),
             )
 
             try:
@@ -477,12 +488,10 @@ class OpenRouterClient:
         institution_name: str = "",
         selectors: SelectorConfig | None = None,
         max_content_chars: int | None = None,
+        screenshot_b64: str | None = None,
     ) -> list[dict[str, Any]]:
         """
-        Extrae convocatorias desde HTML crudo.
-
-        El contexto se recorta antes de enviar al modelo y se priorizan los
-        nodos de la lista, si existen.
+        Extrae convocatorias desde HTML crudo y/o captura de pantalla.
         """
 
         effective_schema = fields_schema or _DEFAULT_FIELDS_SCHEMA
@@ -494,17 +503,8 @@ class OpenRouterClient:
             max_chars=budget,
         )
 
-        if not markdown_content.strip():
-            raise ExtractionError("No se pudo construir un contexto markdown utilizable para el LLM")
-
-        original_chars = len(markdown_content)
-        if original_chars > budget:
-            logger.warning(
-                "Contexto LLM truncado por presupuesto de caracteres",
-                original_chars=original_chars,
-                budget_chars=budget,
-                base_url=base_url,
-            )
+        if not markdown_content.strip() and not screenshot_b64:
+            raise ExtractionError("No se pudo construir un contexto (markdown ni imagen) utilizable para el LLM")
 
         schema_str = _default_extraction_prompt(effective_schema)
         institution_suffix = f" del portal de {institution_name}" if institution_name else ""
@@ -513,47 +513,39 @@ class OpenRouterClient:
 
         hoy = datetime.now(UTC).strftime("%Y-%m-%d")
         fecha_minima_iso = (datetime.now(UTC) - __import__("datetime").timedelta(days=90)).strftime("%Y-%m-%d")
+
         system_prompt = (
             "Eres un agente de extracción de datos estructurados especializado en convocatorias "
             "y fondos de financiamiento para proyectos del ecosistema chileno. "
             "Devuelves únicamente JSON válido, sin comentarios ni texto adicional."
         )
-        prompt = (
-            f"Analiza el siguiente documento Markdown extraído{institution_suffix} ({base_url}).\n\n"
+
+        prompt_text = (
+            f"Analiza el siguiente documento Markdown y la captura de pantalla adjunta{institution_suffix} ({base_url}).\n\n"
             "OBJETIVO:\n"
-            "Extrae SOLO convocatorias, fondos o programas que entreguen financiamiento directo a proyectos, "
-            "emprendimientos o empresas. Esto incluye subsidios, fondos concursables, programas de cofinanciamiento, "
-            "semillas, capital semilla, fondos de innovación, becas de investigación, y similares.\n\n"
-            f"FECHA DE REFERENCIA: {hoy}. Fecha mínima de relevancia: {fecha_minima_iso} (hace 3 meses).\n\n"
-            "ESQUEMA OBLIGATORIO POR ITEM:\n"
+            "Extrae SOLO convocatorias, fondos o programas que entreguen financiamiento directo a terceros.\n\n"
+            f"FECHA DE REFERENCIA: {hoy}. Fecha mínima de relevancia: {fecha_minima_iso}.\n\n"
+            "ESQUEMA OBLIGATORIO:\n"
             f"{schema_str}\n\n"
-            "REGLAS OBLIGATORIAS:\n"
-            "1. Devuelve solo JSON válido.\n"
-            "2. La raíz debe ser un objeto con la clave 'items'.\n"
-            '3. Si no hay fondos o convocatorias, devuelve {"items": []}.\n'
-            "4. No inventes fechas ni montos. Si no están escritos, usa null.\n"
-            "5. No extraigas noticias, editoriales ni contenido decorativo.\n"
-            "6. Prioriza convocatorias abiertas o activas. Si el estado no es claro, conserva el texto literal observado.\n"
-            "7. URL relativa => URL absoluta usando la base del portal.\n"
-            "8. No agregues texto fuera del JSON.\n\n"
-            "CRITERIOS DE EXCLUSIÓN OBLIGATORIOS (no extraigas estos items):\n"
-            "- Licitaciones de obras, servicios o compras públicas (no son financiamiento a proyectos).\n"
-            "- Solicitudes de cotización, compras de maquinaria o equipos institucionales.\n"
-            "- Contrataciones de consultoría, asesoría o auditoría interna de la institución.\n"
-            "- Documentos administrativos: resoluciones de adjudicación, actas, declaraciones juradas, formatos.\n"
-            "- Normativas, ordenanzas, códigos de ética, políticas institucionales.\n"
-            "- Informes, estudios, diagnósticos, planes estratégicos sin componente de financiamiento.\n"
-            "- Convocatorias cuyo año de cierre sea anterior a " + fecha_minima_iso + ".\n"
-            "- Eventos, giras, campañas de difusión o capacitaciones sin fondo concursable.\n"
-            "- Certificaciones, sellos o acreditaciones sin componente financiero.\n\n"
-            "SOLO extrae items que representen una oportunidad de financiamiento para un tercero (persona, "
-            "empresa, ONG, universidad) que postula a recibir recursos para ejecutar un proyecto.\n\n"
             f"DOCUMENTO:\n{markdown_content}"
         )
 
+        # Preparamos el mensaje multimodal si hay imagen
+        content_payload: list[dict[str, Any]] = [{"type": "text", "text": prompt_text}]
+        if screenshot_b64:
+            content_payload.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{screenshot_b64}"},
+                }
+            )
+
         response_text = await self.chat_completion(
-            prompt, system_prompt=system_prompt, timeout=self.request_timeout_seconds
+            content_payload if screenshot_b64 else prompt_text,
+            system_prompt=system_prompt,
+            timeout=self.request_timeout_seconds,
         )
+
         parsed = _extract_json_from_text(response_text)
         if parsed is None:
             logger.error(
@@ -576,7 +568,7 @@ class OpenRouterClient:
             "LLM extrajo items",
             base_url=base_url,
             items=len(items),
-            chars=original_chars,
+            chars=len(markdown_content),
         )
         return items
 
@@ -639,6 +631,49 @@ class OpenRouterClient:
 
         logger.info("URL de financiamiento descubierta por LLM", url=discovered, base=base_url)
         return discovered
+
+    async def heal_selectors(
+        self,
+        html_content: str,
+        institution_name: str,
+        base_url: str,
+    ) -> dict[str, str] | None:
+        """
+        Analiza el HTML para sugerir nuevos selectores CSS cuando los actuales fallan.
+        """
+
+        markdown_content = _build_markdown_context(
+            html_content=html_content,
+            base_url=base_url,
+            selectors=None,
+            max_chars=self.max_content_chars,
+        )
+
+        system_prompt = (
+            "Eres un experto en Web Scraping y selectores CSS. "
+            "Tu objetivo es identificar la estructura de una lista de convocatorias."
+        )
+        prompt = (
+            f"Portal: {institution_name} ({base_url})\n\n"
+            "Analiza el Markdown y entrega selectores CSS para extraer:\n"
+            "1. contenedor_items: el selector que agrupa cada fila/caja de convocatoria.\n"
+            "2. titulo: selector relativo al contenedor para el nombre del fondo.\n"
+            "3. link_detalle: selector relativo para el link.\n\n"
+            "Responde SOLO JSON:\n"
+            '{"contenedor_items": "...", "titulo": "...", "link_detalle": "..."}\n\n'
+            f"CONTENIDO:\n{markdown_content}"
+        )
+
+        try:
+            response_text = await self.chat_completion(prompt, system_prompt=system_prompt)
+            parsed = _extract_json_from_text(response_text)
+            if isinstance(parsed, dict) and "contenedor_items" in parsed:
+                logger.info("Selectores sanados por LLM", source=institution_name, selectors=parsed)
+                return {k: str(v) for k, v in parsed.items()}
+        except Exception as exc:
+            logger.warning("Fallo al sanar selectores con LLM", source=institution_name, exc=exc)
+
+        return None
 
 
 class GroqClient(OpenRouterClient):

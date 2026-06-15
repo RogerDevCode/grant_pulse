@@ -141,6 +141,7 @@ class Snapshot(BaseModel):
     fuente_id: UUID
     fecha_captura: datetime = Field(default_factory=lambda: datetime.now(UTC))
     contenido_crudo: str
+    screenshot_b64: str | None = Field(default=None, description="Captura de pantalla en Base64 para extracción multimodal")
     hash_contenido: str
     estado_ejecucion: str
 

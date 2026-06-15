@@ -45,15 +45,23 @@ class PlaywrightScraper(ScraperPort):
             browser = await p.chromium.launch(
                 headless=True,
                 proxy=cast(Any, proxy_config),
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                ],
             )  # pyright: ignore[reportUnknownMemberType]
 
             # Configuramos un contexto con User-Agent realista
             context = await browser.new_context(  # pyright: ignore[reportUnknownMemberType]
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 viewport={"width": 1280, "height": 720},
             )
 
+            from playwright_stealth import stealth_async  # pyright: ignore[reportMissingImports]
+
             page = await context.new_page()  # pyright: ignore[reportUnknownMemberType]
+            await stealth_async(page)
 
             try:
                 # Navegar a la URL
@@ -69,6 +77,12 @@ class PlaywrightScraper(ScraperPort):
                 # Obtener el contenido HTML final (renderizado)
                 html_content: str = await page.content()  # pyright: ignore[reportUnknownMemberType]
 
+                # Captura de pantalla para extracción multimodal
+                import base64
+
+                screenshot_bytes = await page.screenshot(type="png", full_page=True)
+                screenshot_b64 = base64.b64encode(screenshot_bytes).decode("utf-8")
+
             except Exception as e:
                 msg = f"Error de automatización al acceder a {url}: {e}"
                 logger.error(msg, exc=e)
@@ -81,6 +95,7 @@ class PlaywrightScraper(ScraperPort):
             fuente_id=fuente.id,
             fecha_captura=datetime.now(UTC),
             contenido_crudo=html_content,
+            screenshot_b64=screenshot_b64,
             hash_contenido=content_hash,
             estado_ejecucion="SUCCESS",
         )

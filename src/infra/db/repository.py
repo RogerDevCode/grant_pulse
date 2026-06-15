@@ -111,6 +111,7 @@ class SQLSnapshotRepository(SnapshotRepository):
             fuente_id=orm.fuente_id,
             fecha_captura=orm.fecha_captura,
             contenido_crudo=orm.contenido_crudo,
+            screenshot_b64=orm.screenshot_b64,
             hash_contenido=orm.hash_contenido,
             estado_ejecucion=orm.estado_ejecucion,
         )
@@ -122,6 +123,7 @@ class SQLSnapshotRepository(SnapshotRepository):
                 fuente_id=snapshot.fuente_id,
                 fecha_captura=snapshot.fecha_captura,
                 contenido_crudo=snapshot.contenido_crudo,
+                screenshot_b64=snapshot.screenshot_b64,
                 hash_contenido=snapshot.hash_contenido,
                 estado_ejecucion=snapshot.estado_ejecucion,
             )
