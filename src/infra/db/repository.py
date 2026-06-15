@@ -166,6 +166,7 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
             fecha_apertura=orm.fecha_apertura,
             fecha_cierre=orm.fecha_cierre,
             monto=orm.monto,
+            region=orm.region,
             estado=orm.estado,
             metadatos=orm.metadatos,
             creado_en=orm.creado_en,
@@ -218,6 +219,7 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
                     fecha_apertura=convocatoria.fecha_apertura,
                     fecha_cierre=convocatoria.fecha_cierre,
                     monto=convocatoria.monto,
+                    region=convocatoria.region,
                     estado=convocatoria.estado,
                     metadatos=convocatoria.metadatos,
                     creado_en=convocatoria.creado_en,
@@ -231,6 +233,7 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
                 orm.fecha_apertura = convocatoria.fecha_apertura
                 orm.fecha_cierre = convocatoria.fecha_cierre
                 orm.monto = convocatoria.monto
+                orm.region = convocatoria.region
                 orm.estado = convocatoria.estado
                 orm.metadatos = convocatoria.metadatos
                 orm.actualizado_en = convocatoria.actualizado_en

@@ -4,6 +4,7 @@ Maneja la carga y validación estricta de variables de entorno mediante Pydantic
 """
 
 from typing import Any
+from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,13 +29,34 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def enforce_asyncpg(cls, v: Any) -> Any:
-        if isinstance(v, str):
-            # Normalizar postgres:// a postgresql://
-            if v.startswith("postgres://"):
-                v = v.replace("postgres://", "postgresql://", 1)
-            # Forzar el uso del driver asíncrono asyncpg
-            if v.startswith("postgresql://"):
-                v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if not isinstance(v, str):
+            return v
+
+        # Normalizar postgres:// a postgresql://
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql://", 1)
+
+        # Convertir parámetros libpq (sslmode=...) a opciones compatibles con asyncpg (ssl=...)
+        parsed = urlsplit(v)
+        query_params = parse_qs(parsed.query, keep_blank_values=True)
+        sslmode = query_params.get("sslmode", [None])[0]
+        if sslmode:
+            if sslmode == "require":
+                ssl_value = "require"
+            elif sslmode in {"verify-ca", "verify-full"}:
+                ssl_value = sslmode
+            elif sslmode == "prefer":
+                ssl_value = True
+            else:
+                ssl_value = sslmode != "disable"
+            query_params.pop("sslmode", None)
+            query_params["ssl"] = [ssl_value]
+            v = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query_params, doseq=True), parsed.fragment))
+
+        # Forzar el uso del driver asíncrono asyncpg
+        if v.startswith("postgresql://"):
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+
         return v
 
     # Alertas Telegram (Opcional en desarrollo)

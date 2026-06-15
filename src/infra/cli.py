@@ -299,6 +299,9 @@ def main() -> None:
     # Comando para limpiar la BD
     subparsers.add_parser("clean-db", help="Elimina convocatorias antiguas e inactivas (>6 meses)")
 
+    # Comando para completar regiones faltantes en registros existentes
+    subparsers.add_parser("backfill-regions", help="Completa la región en convocatorias existentes usando inferencia LLM")
+
     args = parser.parse_args()
 
     try:
@@ -311,6 +314,9 @@ def main() -> None:
         elif args.command == "clean-db":
             from src.infra.maintenance import run_clean_db
             asyncio.run(run_clean_db())
+        elif args.command == "backfill-regions":
+            from src.infra.maintenance import run_backfill_regions
+            asyncio.run(run_backfill_regions())
     except GrantPulseError as e:
         logger.error("Error de dominio finalizando el worker", exc=e)
         sys.exit(1)

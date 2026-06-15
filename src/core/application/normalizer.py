@@ -2,16 +2,114 @@
 Módulo encargado de normalizar datos crudos extraídos y mapearlos a entidades de dominio.
 """
 
+import asyncio
+import json
 import re
+import threading
 from datetime import UTC, datetime
 
 from src.core.domain.entities import Convocatoria, Fuente
 from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import NormalizationError
 from src.core.domain.fecha_utils import parse_fecha_chilena
+from src.infra.config import settings
+from src.infra.llm.client import build_llm_client
 from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def _run_async_in_thread(coro):
+    """Ejecuta una coroutine en un hilo separado para soportar inferencia LLM desde código síncrono."""
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    result = None
+    error = None
+
+    def runner() -> None:
+        nonlocal result, error
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(coro)
+        except Exception as exc:  # noqa: BLE001
+            error = exc
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+
+    thread = threading.Thread(target=runner)
+    thread.start()
+    thread.join()
+
+    if error is not None:
+        raise error
+    return result
+
+
+def _extract_region_from_response(response_text: str) -> str | None:
+    """Extrae una región desde una respuesta LLM robusta a ruido en JSON."""
+
+    cleaned = response_text.strip()
+
+    for candidate in (cleaned, cleaned.removeprefix("```json").removesuffix("```")):
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+
+        if isinstance(parsed, dict):
+            region = parsed.get("region") or parsed.get("nombre_region") or parsed.get("región")
+            if isinstance(region, str) and region.strip():
+                return region.strip()
+
+    match = re.search(r'"region"\s*:\s*"([^"]+)"', cleaned)
+    if match:
+        return match.group(1).strip()
+
+    return None
+
+
+def _infer_region_with_llm(titulo: str | None, descripcion: str | None, url_detalle: str | None, fuente: Fuente) -> str | None:
+    """Intenta inferir la región de una convocatoria usando LLM si no viene explícita en los datos crudos."""
+
+    if not titulo and not descripcion and not url_detalle:
+        return None
+
+    if not (settings.OPENROUTER_API_KEY or settings.LLM_API_KEY or settings.GROQ_API_KEY or settings.NVIDIA_API_KEY):
+        logger.info("No hay API key LLM configurada; se omite inferencia de región", fuente=fuente.nombre)
+        return None
+
+    prompt = (
+        "Eres un clasificador geográfico para convocatorias chilenas. "
+        "Responde SOLO con JSON válido con la clave 'region'. "
+        "Usa una sola región de Chile (por ejemplo: Metropolitana, Valparaíso, Biobío, Ñuble, etc.). "
+        "Si no puedes inferir una región clara, devuelve 'Nacional'.\n\n"
+        f"Fuente: {fuente.nombre}\n"
+        f"Título: {titulo or 'Sin título'}\n"
+        f"Descripción: {descripcion or 'Sin descripción'}\n"
+        f"URL: {url_detalle or 'Sin URL'}"
+    )
+
+    try:
+        client = build_llm_client()
+
+        async def _ask() -> str:
+            return await client.chat_completion(prompt, system_prompt="Eres un asistente experto en geografía chilena.", timeout=45)
+
+        response_text = _run_async_in_thread(_ask())
+        inferred = _extract_region_from_response(response_text)
+        if inferred:
+            logger.info("Región inferida por LLM", fuente=fuente.nombre, region=inferred)
+            return inferred
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Fallo al inferir región con LLM", fuente=fuente.nombre, exc=exc)
+
+    return None
 
 
 def _apply_regex(text: str, regex_pattern: str, field_name: str) -> str:
@@ -182,6 +280,8 @@ class DataNormalizer:
             region = item.get("region")
             if not region and fuente.configuracion_reglas.region_defecto:
                 region = fuente.configuracion_reglas.region_defecto
+            if not region:
+                region = _infer_region_with_llm(titulo, item.get("descripcion"), url_final, fuente)
 
             convocatoria = Convocatoria(
                 fuente_id=fuente.id,

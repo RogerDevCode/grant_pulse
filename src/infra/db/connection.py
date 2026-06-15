@@ -23,7 +23,10 @@ try:
         settings.DATABASE_URL,
         echo=False,
         pool_pre_ping=True,
-        pool_recycle=3600,
+        pool_recycle=180,
+        pool_size=5,
+        max_overflow=10,
+        pool_timeout=30,
     )
 
     AsyncSessionLocal = async_sessionmaker(
