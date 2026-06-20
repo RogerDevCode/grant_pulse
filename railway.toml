@@ -1,0 +1,12 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "/app/.venv/bin/grantpulse-api"
+
+[[deploy.healthcheck]]
+path = "/health"
+interval = 30
+timeout = 5
+retries = 3

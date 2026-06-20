@@ -73,6 +73,6 @@ COPY rules ./rules
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 
-EXPOSE 8000
+EXPOSE 8080
 
 CMD ["/app/.venv/bin/grantpulse-api"]
