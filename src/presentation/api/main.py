@@ -24,23 +24,25 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
     logger.info("Iniciando aplicación API GrantPulse")
 
-    import asyncio
-
-    # Ejecutar migraciones de BD automáticamente (crea tablas si no existen)
+    # Crear tablas si no existen — usa el mismo engine de la app, evita thread-safety issues con aiosqlite
     try:
-        from alembic import command
-        from alembic.config import Config
+        from src.infra.db.connection import engine
+        from src.infra.db.models import Base
 
-        loop = asyncio.get_running_loop()
-        alembic_cfg = Config("alembic.ini")
-        await loop.run_in_executor(None, command.upgrade, alembic_cfg, "head")
-        logger.info("Migraciones de base de datos aplicadas exitosamente")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Tablas de base de datos verificadas/creadas exitosamente")
     except Exception as e:
-        logger.warning("No se pudieron aplicar migraciones (BD puede estar actualizada)", exc=e)
+        logger.warning("No se pudieron verificar tablas", exc=e)
 
-    from src.infra.cli import sync_all_rules
+    # Sincronizar reglas YAML → BD de forma síncrona antes de aceptar requests
+    try:
+        from src.infra.cli import sync_all_rules
 
-    asyncio.create_task(sync_all_rules())
+        await sync_all_rules()
+        logger.info("Reglas sincronizadas exitosamente")
+    except Exception as e:
+        logger.warning("Error en sync inicial de reglas (no crítico)", exc=e)
 
     yield
     logger.info("Cerrando aplicación API GrantPulse")
