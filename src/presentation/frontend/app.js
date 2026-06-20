@@ -903,72 +903,298 @@ function renderAudit(logs) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SUSCRIPCIONES
+   SUSCRIPCIONES — CRUD unificado
 ═══════════════════════════════════════════════════════════════ */
 
-let subRegionesCargadas = false;
+/** Estado local de la suscripción activa. */
+let subState = {
+  id: null,
+  chat_id: '',
+  nombre: '',
+  regiones: [],
+  activa: true,
+  confirmado: true,
+  existe: false,     // true si ya tiene suscripción en BD
+  dirty: false,      // true si hay cambios sin guardar
+  guardando: false,
+};
 
 async function loadSuscripciones() {
-  if (!subRegionesCargadas) {
-    await cargarRegionesCheckboxes();
-    subRegionesCargadas = true;
-  }
-  await cargarMisSuscripciones();
-}
-
-async function cargarRegionesCheckboxes() {
-  try {
-    const data = await apiFetch('/suscripciones/regiones');
-    const grid = $('#subRegiones');
-    grid.innerHTML = data.regiones.map(r =>
-      `<label><input type="checkbox" value="${escHtml(r)}"> ${escHtml(r)}</label>`
-    ).join('');
-  } catch (e) {
-    console.error('Error cargando regiones:', e);
-  }
-}
-
-async function cargarMisSuscripciones() {
-  try {
-    const el = $('#subList');
-    const chatId = $('#subChatId').value.trim();
-    if (!chatId) {
-      el.innerHTML = '<p class="muted-msg">Completá tu Chat ID y presioná "Suscribirme" para empezar.</p>';
-      return;
-    }
-    const data = await apiFetch(`/suscripciones/${encodeURIComponent(chatId)}`);
-    el.innerHTML = buildSubItem(data);
-  } catch (e) {
-    $('#subList').innerHTML = '<p class="muted-msg">No tenés suscripciones activas.</p>';
-  }
-}
-
-function buildSubItem(s) {
-  const regiones = (s.regiones || []).map(r => `<span class="sub-item-region">${escHtml(r)}</span>`).join('');
-  return `
-    <div class="sub-item">
-      <div class="sub-item-info">
-        <strong>${escHtml(s.nombre || 'Sin nombre')}</strong>
-        <small style="color:var(--text-3)">Chat ID: ${escHtml(s.chat_id)}</small>
-        <div class="sub-item-regiones">${regiones || '<span style="color:var(--text-3);font-size:0.8rem">Sin regiones</span>'}</div>
-      </div>
-      <button class="btn-icon-sm danger" onclick="eliminarSub('${s.id}')" title="Eliminar suscripción">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-      </button>
-    </div>`;
-}
-
-window.eliminarSub = async function(id) {
-  showConfirm('Eliminar Suscripción', '¿Eliminar esta suscripción? Dejarás de recibir alertas.', async () => {
+  subState = {
+    id: null, chat_id: '', nombre: '', regiones: [],
+    activa: true, confirmado: true, existe: false, dirty: false, guardando: false,
+  };
+  // Cargar grid de regiones (una sola vez)
+  if (!window._regionesCargadas) {
     try {
-      await apiFetch(`/suscripciones/${id}`, { method: 'DELETE' });
-      toast('Suscripción eliminada', 'success');
-      $('#subList').innerHTML = '<p class="muted-msg">No tenés suscripciones activas.</p>';
+      const data = await apiFetch('/suscripciones/regiones');
+      const grid = $('#subRegiones');
+      grid.innerHTML = data.regiones.map(r =>
+        `<label><input type="checkbox" value="${escHtml(r)}" onchange="onRegionToggle()"> ${escHtml(r)}</label>`
+      ).join('');
+      window._regionesCargadas = true;
     } catch (e) {
-      toast('Error al eliminar suscripción', 'error');
+      console.error('Error cargando regiones:', e);
     }
-  });
+  }
+  // Resetear UI
+  $('#subChatId').value = '';
+  $('#subNombre').value = '';
+  descheckearTodas();
+  $('#suscContent').style.display = 'none';
+  $('#suscEmpty').style.display = 'block';
+  $('.susc-id-bar').classList.remove('susc-id-bar--loaded');
+  actualizarCount();
+  ocultarFeedback();
+}
+
+window.buscarSuscripcion = async function () {
+  const chatId = $('#subChatId').value.trim();
+  if (!chatId) { mostrarFeedback('Ingresá un Chat ID', 'error'); return; }
+
+  mostrarFeedback('Buscando...', 'info');
+  try {
+    const data = await apiFetch(`/suscripciones/${encodeURIComponent(chatId)}`);
+    // Suscripción existente
+    subState.id = data.id;
+    subState.chat_id = data.chat_id;
+    subState.nombre = data.nombre || '';
+    subState.regiones = data.regiones || [];
+    subState.activa = data.activa;
+    subState.confirmado = data.confirmado;
+    subState.existe = true;
+    subState.dirty = false;
+
+    renderSubExistente(data);
+    ocultarFeedback();
+    $('.susc-id-bar').classList.add('susc-id-bar--loaded');
+  } catch (e) {
+    // No existe — modo creación
+    subState.chat_id = chatId;
+    subState.existe = false;
+    subState.regiones = [];
+    subState.activa = true;
+    subState.dirty = false;
+
+    renderSubNueva();
+    ocultarFeedback();
+    $('.susc-id-bar').classList.add('susc-id-bar--loaded');
+  }
 };
+
+function renderSubExistente(data) {
+  $('#suscContent').style.display = 'block';
+  $('#suscEmpty').style.display = 'none';
+
+  // Status bar
+  $('#suscNombreDisplay').textContent = data.nombre || 'Sin nombre';
+  $('#suscMeta').textContent = `Chat ID: ${data.chat_id}`;
+  $('#subNombre').value = data.nombre || '';
+
+  // Badges
+  if (data.activa) {
+    $('#suscBadgeActiva').style.display = 'inline-flex';
+    $('#suscBadgePausada').style.display = 'none';
+  } else {
+    $('#suscBadgeActiva').style.display = 'none';
+    $('#suscBadgePausada').style.display = 'inline-flex';
+  }
+  $('#suscBadgeCreada').style.display = 'none';
+  $('#suscAvatar').textContent = data.nombre ? getInitial(data.nombre) : '👤';
+
+  // Checkear regiones
+  checkearRegiones(subState.regiones);
+  actualizarCount();
+
+  // Acciones
+  $('#subGuardarBtn').disabled = true;
+  $('#subGuardarLabel').textContent = 'Guardar cambios';
+  $('#subPausarBtn').style.display = 'inline-flex';
+  $('#subPausarLabel').textContent = data.activa ? 'Pausar' : 'Reanudar';
+  $('#subEliminarBtn').style.display = 'inline-flex';
+}
+
+function renderSubNueva() {
+  $('#suscContent').style.display = 'block';
+  $('#suscEmpty').style.display = 'none';
+
+  // Status bar — nueva
+  $('#suscNombreDisplay').textContent = 'Nueva suscripción';
+  $('#suscMeta').textContent = `Chat ID: ${subState.chat_id}`;
+  $('#subNombre').value = '';
+  $('#suscBadgeActiva').style.display = 'none';
+  $('#suscBadgePausada').style.display = 'none';
+  $('#suscBadgeCreada').style.display = 'inline-flex';
+  $('#suscAvatar').textContent = '🆕';
+
+  // Sin regiones checkeadas
+  descheckearTodas();
+  actualizarCount();
+
+  // Acciones
+  $('#subGuardarBtn').disabled = false;
+  $('#subGuardarLabel').textContent = 'Crear suscripción';
+  $('#subPausarBtn').style.display = 'none';
+  $('#subEliminarBtn').style.display = 'none';
+}
+
+/** Se ejecuta cada vez que se clickea un checkbox de región. */
+window.onRegionToggle = function () {
+  const seleccionadas = obtenerRegionesSeleccionadas();
+  actualizarCount();
+  // Marcar dirty si cambió respecto al estado guardado
+  const sorted1 = [...seleccionadas].sort();
+  const sorted2 = [...subState.regiones].sort();
+  const iguales = sorted1.length === sorted2.length && sorted1.every((v, i) => v === sorted2[i]);
+  subState.dirty = !iguales || ($('#subNombre').value.trim() || '') !== (subState.nombre || '');
+  $('#subGuardarBtn').disabled = !subState.dirty;
+  if (subState.dirty) {
+    $('#subGuardarLabel').textContent = subState.existe ? 'Guardar cambios' : 'Crear suscripción';
+  } else {
+    $('#subGuardarLabel').textContent = subState.existe ? 'Guardar cambios' : 'Crear suscripción';
+  }
+};
+
+window.guardarSuscripcion = async function () {
+  if (subState.guardando) return;
+  subState.guardando = true;
+
+  const nombre = $('#subNombre').value.trim() || null;
+  const regiones = obtenerRegionesSeleccionadas();
+
+  if (!regiones.length) {
+    mostrarFeedback('Seleccioná al menos una región', 'error');
+    subState.guardando = false;
+    return;
+  }
+
+  const btn = $('#subGuardarBtn');
+  btn.disabled = true;
+  const label = $('#subGuardarLabel');
+  const originalText = label.textContent;
+  label.textContent = 'Guardando...';
+
+  try {
+    if (subState.existe) {
+      // PATCH
+      const data = await apiFetch(`/suscripciones/${subState.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regiones, activa: subState.activa, nombre }),
+      });
+      mostrarFeedback('Suscripción actualizada', 'success');
+      subState.nombre = nombre || '';
+      subState.regiones = data.regiones || [];
+    } else {
+      // POST
+      const data = await apiFetch('/suscripciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: subState.chat_id, nombre, regiones }),
+      });
+      mostrarFeedback('Suscripción creada exitosamente', 'success');
+      subState.id = data.id;
+      subState.nombre = nombre || '';
+      subState.regiones = data.regiones || [];
+      subState.activa = data.activa;
+      subState.existe = true;
+      // Re-render como existente
+      renderSubExistente(data);
+    }
+    subState.dirty = false;
+    $('#subGuardarBtn').disabled = true;
+    $('#subGuardarLabel').textContent = 'Guardar cambios';
+  } catch (e) {
+    mostrarFeedback('Error al guardar suscripción', 'error');
+  } finally {
+    subState.guardando = false;
+    label.textContent = originalText;
+  }
+};
+
+window.toggleActiva = async function () {
+  if (!subState.existe || !subState.id) return;
+  const nuevaActiva = !subState.activa;
+  try {
+    await apiFetch(`/suscripciones/${subState.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activa: nuevaActiva }),
+    });
+    subState.activa = nuevaActiva;
+    if (nuevaActiva) {
+      $('#suscBadgeActiva').style.display = 'inline-flex';
+      $('#suscBadgePausada').style.display = 'none';
+      $('#subPausarLabel').textContent = 'Pausar';
+      mostrarFeedback('Suscripción reactivada', 'success');
+    } else {
+      $('#suscBadgeActiva').style.display = 'none';
+      $('#suscBadgePausada').style.display = 'inline-flex';
+      $('#subPausarLabel').textContent = 'Reanudar';
+      mostrarFeedback('Suscripción pausada', 'success');
+    }
+  } catch (e) {
+    mostrarFeedback('Error al cambiar estado', 'error');
+  }
+};
+
+window.eliminarSuscripcion = function () {
+  if (!subState.existe || !subState.id) return;
+  showConfirm('Eliminar suscripción',
+    '¿Eliminar esta suscripción? Vas a dejar de recibir alertas de Telegram.',
+    async () => {
+      try {
+        await apiFetch(`/suscripciones/${subState.id}`, { method: 'DELETE' });
+        toast('Suscripción eliminada', 'success');
+        // Resetear todo
+        await loadSuscripciones();
+      } catch (e) {
+        mostrarFeedback('Error al eliminar suscripción', 'error');
+      }
+    }
+  );
+};
+
+// ─── HELPERS ────────────────────────────────────────────────────────────
+
+function obtenerRegionesSeleccionadas() {
+  return Array.from($$('#subRegiones input[type="checkbox"]:checked')).map(cb => cb.value);
+}
+
+function checkearRegiones(regiones) {
+  const set = new Set(regiones);
+  $$('#subRegiones input[type="checkbox"]').forEach(cb => {
+    cb.checked = set.has(cb.value);
+  });
+}
+
+function descheckearTodas() {
+  $$('#subRegiones input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+}
+
+function actualizarCount() {
+  const n = $$('#subRegiones input[type="checkbox"]:checked').length;
+  $('#subSelectedCount').textContent = n === 0 ? 'Ninguna seleccionada' : `${n} seleccionada${n !== 1 ? 's' : ''}`;
+}
+
+function mostrarFeedback(msg, tipo) {
+  const el = $('#subFeedback');
+  el.textContent = msg;
+  el.className = `susc-feedback susc-feedback--${tipo}`;
+  el.style.display = 'block';
+}
+
+function ocultarFeedback() {
+  $('#subFeedback').style.display = 'none';
+}
+
+function getInitial(name) {
+  return name ? name.trim().charAt(0).toUpperCase() : '👤';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN LOADER
+═══════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════
    ADMIN LOADER
@@ -1170,34 +1396,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // ── SUSCRIPCION FORM ──
-  $('#suscripcionForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const chatId = $('#subChatId').value.trim();
-    const nombre = $('#subNombre').value.trim() || null;
-    const checkboxes = $$('#subRegiones input[type="checkbox"]:checked');
-    const regiones = Array.from(checkboxes).map(cb => cb.value);
-
-    if (!chatId) { toast('Ingresá tu Chat ID de Telegram', 'error'); return; }
-    if (!regiones.length) { toast('Seleccioná al menos una región', 'error'); return; }
-
-    const btn = $('#subBtn');
-    btn.disabled = true;
-    btn.textContent = 'Guardando...';
-
-    try {
-      await apiFetch('/suscripciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, nombre, regiones }),
-      });
-      toast('Suscripción creada exitosamente', 'success');
-      await cargarMisSuscripciones();
-    } catch (e) {
-      toast('Error al crear suscripción', 'error');
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg> Suscribirme`;
+  // ── SUSCRIPCIONES: Enter en Chat ID busca automáticamente ──
+  $('#subChatId').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      buscarSuscripcion();
+    }
+  });
+  // Enter en nombre también guarda
+  $('#subNombre').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && subState.existe && !$('#subGuardarBtn').disabled) {
+      e.preventDefault();
+      guardarSuscripcion();
     }
   });
 

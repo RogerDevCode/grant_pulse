@@ -1,50 +1,19 @@
 services:
-  db:
-    image: postgres:18-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: grantpulse
-      POSTGRES_PASSWORD: grantpulse
-      POSTGRES_DB: grantpulse
-    ports:
-      - "${DB_PORT:-5434}:5432"
-    volumes:
-      - grantpulse_db_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U grantpulse -d grantpulse"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-        tag: "grantpulse.db"
-
   api:
     build:
       context: .
-      target: runtime
+      dockerfile: Dockerfile
     restart: unless-stopped
-    init: true
-    command: ["/app/.venv/bin/uvicorn", "src.presentation.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://grantpulse:grantpulse@db:5432/grantpulse
       - TZ=America/Santiago
-    volumes:
-      - .:/app:cached
-      - /app/.venv
     ports:
       - "${APP_PORT:-8002}:8000"
-    depends_on:
-      db:
-        condition: service_healthy
+    volumes:
+      - grantpulse_data:/app/data
     healthcheck:
-      test: ["CMD-SHELL", "/app/.venv/bin/python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      test: ["CMD-SHELL", "/app/.venv/bin/python -c \"from urllib.request import urlopen; urlopen('http://localhost:8000/health')\" || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -55,53 +24,6 @@ services:
         max-size: "10m"
         max-file: "3"
         tag: "grantpulse.api"
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-          cpus: "1.0"
-        reservations:
-          memory: 256m
-          cpus: "0.5"
-
-  worker:
-    build:
-      context: .
-      target: runtime
-    restart: unless-stopped
-    init: true
-    profiles:
-      - worker
-    command: ["/app/.venv/bin/python", "-m", "src.infra.cli", "run-all"]
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://grantpulse:grantpulse@db:5432/grantpulse
-      - TZ=America/Santiago
-    volumes:
-      - .:/app:cached
-      - /app/.venv
-    depends_on:
-      db:
-        condition: service_healthy
-      api:
-        condition: service_healthy
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-        tag: "grantpulse.worker"
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-          cpus: "2.0"
-        reservations:
-          memory: 512m
-          cpus: "1.0"
-    tmpfs:
-      - /tmp:size=64m
 
 volumes:
-  grantpulse_db_data:
+  grantpulse_data:

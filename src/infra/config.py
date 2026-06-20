@@ -22,21 +22,22 @@ class Settings(BaseSettings):
 
     # Base de Datos
     DATABASE_URL: str = Field(
-        default="postgresql+asyncpg://booking:booking@localhost:5432/booking",
-        description="URL de conexión asíncrona a la base de datos PostgreSQL",
+        default="sqlite+aiosqlite:///data/grantpulse.db",
+        description="URL de conexión asíncrona a la base de datos (SQLite o PostgreSQL)",
     )
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
-    def enforce_asyncpg(cls, v: Any) -> Any:
+    def normalize_db_url(cls, v: Any) -> Any:
         if not isinstance(v, str):
             return v
-
-        # Normalizar postgres:// a postgresql://
+        # SQLite — pasar directo
+        if v.startswith("sqlite"):
+            return v
+        # PostgreSQL — normalizar a +asyncpg
         if v.startswith("postgres://"):
             v = v.replace("postgres://", "postgresql://", 1)
-
-        # Convertir parámetros libpq (sslmode=...) a opciones compatibles con asyncpg (ssl=...)
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
         parsed = urlsplit(v)
         query_params = parse_qs(parsed.query, keep_blank_values=True)
         sslmode = query_params.get("sslmode", [None])[0]
@@ -52,11 +53,8 @@ class Settings(BaseSettings):
             query_params.pop("sslmode", None)
             query_params["ssl"] = [ssl_value]
             v = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query_params, doseq=True), parsed.fragment))
-
-        # Forzar el uso del driver asíncrono asyncpg
         if v.startswith("postgresql://"):
             v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
-
         return v
 
     # Alertas Telegram (Opcional en desarrollo)

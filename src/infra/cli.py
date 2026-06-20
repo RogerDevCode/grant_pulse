@@ -235,6 +235,15 @@ async def run_single_source(filepath: Path) -> None:
             logger.error("Error en monitoreo de fuente, session rollback ejecutado", exc=e)
             raise
 
+    # Purga automática de convocatorias vencidas después de cada ciclo
+    try:
+        from src.infra.maintenance import clean_expired_convocatorias  # noqa: PLC0415
+        purgadas = await clean_expired_convocatorias(dias_vencida=7)
+        if purgadas > 0:
+            logger.info("Limpieza automática de vencidas completada", eliminadas=purgadas)
+    except Exception as e:
+        logger.warning("Limpieza automática de vencidas falló (no crítica)", exc=e)
+
 
 async def run_all_active_sources() -> None:
     """Ejecuta el ciclo de monitoreo para todas las fuentes activas en la BD."""
@@ -381,7 +390,9 @@ def main() -> None:
     # Comando para limpiar la BD
     subparsers.add_parser("clean-db", help="Elimina convocatorias antiguas e inactivas (>6 meses)")
 
-    # Comando para completar regiones faltantes en registros existentes
+    # Comando para purgar convocatorias vencidas
+    purge_parser = subparsers.add_parser("purge-expired", help="Elimina convocatorias con fecha de cierre vencida > N días")
+    purge_parser.add_argument("--dias", type=int, default=7, help="Días desde el cierre para considerar vencida (default: 7)")
     subparsers.add_parser("backfill-regions", help="Completa la región en convocatorias existentes usando inferencia LLM")
 
     args = parser.parse_args()
@@ -399,6 +410,10 @@ def main() -> None:
         elif args.command == "backfill-regions":
             from src.infra.maintenance import run_backfill_regions
             asyncio.run(run_backfill_regions())
+        elif args.command == "purge-expired":
+            from src.infra.maintenance import clean_expired_convocatorias
+            eliminadas = asyncio.run(clean_expired_convocatorias(args.dias))
+            print(f"Purga completada: {eliminadas} convocatorias eliminadas.")
     except GrantPulseError as e:
         logger.error("Error de dominio finalizando el worker", exc=e)
         sys.exit(1)

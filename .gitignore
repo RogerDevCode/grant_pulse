@@ -1,50 +1,41 @@
-# Python
-__pycache__/
-*.py[cod]
+
 *$py.class
-*.so
-*.egg
-*.egg-info/
-dist/
-build/
-venv/
-.venv/
-env/
-.env
-.env.*
-!.env.example
-
-# Base de datos local
-*.db
-*.sqlite
-*.sqlite3
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.mypy_cache/
-.ruff_cache/
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Sistema
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-logs/
-
-# Migraciones locales (se versionan las fuentes, no el archivo generado)
 alembic/versions/*.py.*
 alembic/versions/*.pyc
-
-# Datos locales
+# Base de datos local
+build/
+.coverage
 data/
-tmp/
+# Datos locales
+*.db
+dist/
+.DS_Store
+*.egg
+*.egg-info/
+env/
+!.env.example
+htmlcov/
+.idea/
+# IDEs
+*.log
+logs/
+# Logs
+# Migraciones locales (se versionan las fuentes, no el archivo generado)
+.mypy_cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# Python
+.ruff_cache/
+# Sistema
+*.so
+*.sqlite
+*.sqlite3
+*.swo
+*.swp
 temp/
+# Testing
+Thumbs.db
+tmp/
+venv/
+.vscode/

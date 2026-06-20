@@ -237,54 +237,127 @@ test.describe('Responsive y sidebar', () => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════
-//  SUSCRIPCIONES (datos reales)
+//  SUSCRIPCIONES (datos reales — tests autocontenidos)
 // ══════════════════════════════════════════════════════════════════════════
 
 test.describe('Suscripciones', () => {
-  test('navega a la página de suscripciones', async ({ page }) => {
+
+  /** Crea una suscripción vía API directa y retorna su chat_id. */
+  async function crearSubPorApi(request) {
+    const chatId = 'pw_' + Date.now();
+    const resp = await request.post('/api/v1/suscripciones', {
+      data: { chat_id: chatId, nombre: 'PW Test', regiones: ['Metropolitana', 'Valparaíso'] },
+    });
+    expect(resp.ok()).toBeTruthy();
+    return chatId;
+  }
+
+  test('navega a la página y muestra layout completo', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await page.locator('.nav-item[data-page="suscripciones"]').click();
     await page.waitForTimeout(500);
-    const form = page.locator('#suscripcionForm');
-    await expect(form).toBeVisible();
-    const regionCheckboxes = page.locator('#subRegiones input[type="checkbox"]');
-    const count = await regionCheckboxes.count();
-    expect(count).toBe(17); // 17 regiones chilenas desde la API real
+    await expect(page.locator('.susc-hero')).toBeVisible();
+    await expect(page.locator('#subChatId')).toBeVisible();
+    // Grid contiene 17 checkboxes en el DOM (aunque ocultos inicialmente)
+    const checkboxes = page.locator('#subRegiones input[type="checkbox"]');
+    const count = await checkboxes.count();
+    expect(count).toBe(17);
+    await expect(page.locator('#suscEmpty')).toBeVisible();
   });
 
-  test('muestra error si no se selecciona ninguna región', async ({ page }) => {
+  test('buscar Chat ID existente carga suscripción', async ({ page, request }) => {
+    const chatId = await crearSubPorApi(request);
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await page.locator('.nav-item[data-page="suscripciones"]').click();
     await page.waitForTimeout(300);
-    await page.locator('#subChatId').fill('123456789');
-    await page.locator('#subNombre').fill('Test E2E');
-    await page.locator('#suscripcionForm button[type="submit"]').click();
-    await page.waitForTimeout(300);
-    // Debe mostrar toast de error por no seleccionar región
-    const toast = page.locator('.toast.error');
-    await expect(toast).toBeVisible();
+    await page.locator('#subChatId').fill(chatId);
+    await page.locator('#subBuscarBtn').click();
+    await page.waitForTimeout(500);
+    // Status bar y botones de acción visibles
+    await expect(page.locator('#suscStatusBar')).toBeVisible();
+    // Los botones están dentro de #suscContent que se vuelve visible
+    await expect(page.locator('#subPausarBtn')).toBeVisible();
+    await expect(page.locator('#subEliminarBtn')).toBeVisible();
   });
 
-  test('crea y muestra suscripción exitosamente', async ({ page }) => {
+  test('crea suscripción nueva', async ({ page }) => {
+    const testChatId = 'pw_' + Date.now();
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await page.locator('.nav-item[data-page="suscripciones"]').click();
     await page.waitForTimeout(300);
-    // Completar formulario
-    await page.locator('#subChatId').fill('987654321');
-    await page.locator('#subNombre').fill('Test E2E Playwright');
-    // Seleccionar 2 regiones
+    await page.locator('#subChatId').fill(testChatId);
+    await page.locator('#subBuscarBtn').click();
+    await page.waitForTimeout(400);
+    // Debe mostrar "Nueva" badge porque el chat_id no existe
+    await expect(page.locator('#suscBadgeCreada')).toBeVisible();
+    await page.locator('#subNombre').fill('Test Playwright');
     const checkboxes = page.locator('#subRegiones input[type="checkbox"]');
     await checkboxes.nth(0).check();
     await checkboxes.nth(1).check();
-    // Enviar
-    await page.locator('#suscripcionForm button[type="submit"]').click();
+    await page.locator('#subGuardarBtn').click();
     await page.waitForTimeout(500);
-    // Debe mostrar toast de éxito
-    const toast = page.locator('.toast.success');
-    await expect(toast).toBeVisible();
+    // Feedback de éxito
+    await expect(page.locator('.susc-feedback--success')).toBeVisible();
+    // Badge de activa aparece
+    await expect(page.locator('#suscBadgeActiva')).toBeVisible();
+  });
+
+  test('error si se guarda sin regiones', async ({ page }) => {
+    const testChatId = 'pw_' + Date.now();
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('.nav-item[data-page="suscripciones"]').click();
+    await page.waitForTimeout(300);
+    await page.locator('#subChatId').fill(testChatId);
+    await page.locator('#subBuscarBtn').click();
+    await page.waitForTimeout(400);
+    // No seleccionar regiones, solo guardar
+    await page.locator('#subGuardarBtn').click();
+    await page.waitForTimeout(300);
+    await expect(page.locator('.susc-feedback--error')).toBeVisible();
+  });
+
+  test('toggle pausar/reactivar', async ({ page, request }) => {
+    const chatId = await crearSubPorApi(request);
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('.nav-item[data-page="suscripciones"]').click();
+    await page.waitForTimeout(300);
+    await page.locator('#subChatId').fill(chatId);
+    await page.locator('#subBuscarBtn').click();
+    await page.waitForTimeout(400);
+    // Click en Pausar
+    await page.locator('#subPausarBtn').click();
+    await page.waitForTimeout(400);
+    await expect(page.locator('#suscBadgePausada')).toBeVisible();
+    await expect(page.locator('#subPausarLabel')).toHaveText('Reanudar');
+    // Reactivar
+    await page.locator('#subPausarBtn').click();
+    await page.waitForTimeout(400);
+    await expect(page.locator('#suscBadgeActiva')).toBeVisible();
+  });
+
+  test('eliminar suscripción con confirmación', async ({ page, request }) => {
+    const chatId = await crearSubPorApi(request);
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.locator('.nav-item[data-page="suscripciones"]').click();
+    await page.waitForTimeout(300);
+    await page.locator('#subChatId').fill(chatId);
+    await page.locator('#subBuscarBtn').click();
+    await page.waitForTimeout(400);
+    // Click Eliminar
+    await page.locator('#subEliminarBtn').click();
+    // Modal de confirmación
+    await expect(page.locator('#confirmModal')).toHaveClass(/active/);
+    // Confirmar
+    await page.locator('#confirmModalOk').click();
+    await page.waitForTimeout(500);
+    // Vuelve al empty state
+    await expect(page.locator('#suscEmpty')).toBeVisible();
   });
 });
 

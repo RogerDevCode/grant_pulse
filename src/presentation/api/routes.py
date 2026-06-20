@@ -118,7 +118,7 @@ async def list_fuentes(session: DbSession) -> list[FuenteResponse]:
 
 
 @router.patch("/fuentes/{fuente_id}/toggle", response_model=FuenteToggleResponse)
-async def toggle_fuente(fuente_id: UUID, session: DbSession) -> FuenteToggleResponse:
+async def toggle_fuente(fuente_id: str, session: DbSession) -> FuenteToggleResponse:
     result = await session.execute(select(FuenteORM).where(FuenteORM.id == fuente_id))
     orm = result.scalar_one_or_none()
     if not orm:
@@ -293,7 +293,7 @@ async def get_convocatorias_kpi(
 
 
 @router.get("/convocatorias/{convocatoria_id}", response_model=ConvocatoriaDetailResponse)
-async def get_convocatoria_detail(convocatoria_id: UUID, session: DbSession) -> ConvocatoriaDetailResponse:
+async def get_convocatoria_detail(convocatoria_id: str, session: DbSession) -> ConvocatoriaDetailResponse:
     result = await session.execute(select(ConvocatoriaORM).where(ConvocatoriaORM.id == convocatoria_id))
     orm = result.scalar_one_or_none()
     if not orm:
@@ -338,7 +338,7 @@ async def get_convocatoria_detail(convocatoria_id: UUID, session: DbSession) -> 
 
 
 @router.delete("/convocatorias/{convocatoria_id}", status_code=204)
-async def delete_convocatoria(convocatoria_id: UUID, session: DbSession) -> None:
+async def delete_convocatoria(convocatoria_id: str, session: DbSession) -> None:
     result = await session.execute(select(ConvocatoriaORM).where(ConvocatoriaORM.id == convocatoria_id))
     orm = result.scalar_one_or_none()
     if not orm:
@@ -561,13 +561,15 @@ async def obtener_suscripcion(chat_id: str, session: DbSession) -> SuscripcionRe
 
 
 @router.patch("/suscripciones/{suscripcion_id}", response_model=SuscripcionResponse)
-async def actualizar_suscripcion(suscripcion_id: UUID, data: SuscripcionUpdate, session: DbSession) -> SuscripcionResponse:
+async def actualizar_suscripcion(suscripcion_id: str, data: SuscripcionUpdate, session: DbSession) -> SuscripcionResponse:
     result = await session.execute(select(SuscripcionORM).where(SuscripcionORM.id == suscripcion_id))
     orm = result.scalar_one_or_none()
     if not orm:
         raise HTTPException(status_code=404, detail="Suscripción no encontrada")
     if data.regiones is not None:
         orm.regiones = data.regiones
+    if data.nombre is not None:
+        orm.nombre = data.nombre
     if data.activa is not None:
         orm.activa = data.activa
     orm.actualizado_en = datetime.now(UTC)
@@ -585,7 +587,7 @@ async def actualizar_suscripcion(suscripcion_id: UUID, data: SuscripcionUpdate, 
 
 
 @router.delete("/suscripciones/{suscripcion_id}", status_code=204)
-async def eliminar_suscripcion(suscripcion_id: UUID, session: DbSession) -> None:
+async def eliminar_suscripcion(suscripcion_id: str, session: DbSession) -> None:
     result = await session.execute(select(SuscripcionORM).where(SuscripcionORM.id == suscripcion_id))
     orm = result.scalar_one_or_none()
     if not orm:

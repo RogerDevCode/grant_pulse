@@ -1,5 +1,5 @@
 """
-Gestión de conexión asíncrona a PostgreSQL 17 mediante SQLAlchemy 2.0.
+Gestión de conexión asíncrona a la base de datos (SQLite / PostgreSQL).
 """
 
 from collections.abc import AsyncGenerator
@@ -19,15 +19,14 @@ from src.infra.logging import get_logger
 logger = get_logger(__name__)
 
 try:
-    engine = create_async_engine(
-        settings.DATABASE_URL,
-        echo=False,
-        pool_pre_ping=True,
-        pool_recycle=180,
-        pool_size=5,
-        max_overflow=10,
-        pool_timeout=30,
-    )
+    is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+    kwargs = {"echo": False, "future": True}
+    if is_sqlite:
+        kwargs["connect_args"] = {"check_same_thread": False}
+    else:
+        kwargs.update(pool_pre_ping=True, pool_recycle=180, pool_size=5, max_overflow=10, pool_timeout=30)
+
+    engine = create_async_engine(settings.DATABASE_URL, **kwargs)
 
     AsyncSessionLocal = async_sessionmaker(
         bind=engine,
@@ -35,7 +34,7 @@ try:
         expire_on_commit=False,
     )
 except Exception as e:
-    msg = f"Error al inicializar el motor de base de datos asíncrono: {e}"
+    msg = f"Error al inicializar el motor de base de datos: {e}"
     logger.error(msg, database_url=settings.DATABASE_URL, exc=e)
     raise PersistenceError(msg) from e
 

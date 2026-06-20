@@ -15,6 +15,55 @@ from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
 
+_ESTADOS_NO_VIGENTES = frozenset({"CERRADO", "ADJUDICADO", "SUSPENDIDO", "FINALIZADO"})
+
+
+async def clean_expired_convocatorias(dias_vencida: int = 7) -> int:
+    """
+    Elimina convocatorias cuya fecha de cierre haya pasado hace `dias_vencida` o más
+    y cuyo estado sea no vigente (CERRADO, ADJUDICADO, SUSPENDIDO, FINALIZADO).
+
+    Regla de negocio: una convocatoria vencida > N días sin posibilidad de reactivación
+    se purga para mantener la BD liviana y los datos relevantes.
+    """
+    run_id = new_run_id()
+    limite = datetime.now(UTC) - timedelta(days=dias_vencida)
+    logger.info("Iniciando purga de convocatorias vencidas", run_id=run_id, dias_vencida=dias_vencida, limite=str(limite.date()))
+
+    async with AsyncSessionLocal() as session:
+        try:
+            # Obtener IDs de convocatorias a eliminar
+            query = select(ConvocatoriaORM.id).where(
+                ConvocatoriaORM.fecha_cierre.is_not(None),
+                ConvocatoriaORM.fecha_cierre < limite,
+                ConvocatoriaORM.estado.in_(_ESTADOS_NO_VIGENTES),
+            )
+            result = await session.execute(query)
+            ids_to_delete = list(result.scalars().all())
+
+            if not ids_to_delete:
+                logger.info("No hay convocatorias vencidas para purgar", run_id=run_id)
+                return 0
+
+            # Eliminar historial primero (FK)
+            await session.execute(
+                delete(HistorialCambiosORM).where(HistorialCambiosORM.convocatoria_id.in_(ids_to_delete))
+            )
+            # Eliminar convocatorias
+            await session.execute(
+                delete(ConvocatoriaORM).where(ConvocatoriaORM.id.in_(ids_to_delete))
+            )
+
+            await session.commit()
+            logger.info("Purga completada", eliminadas=len(ids_to_delete), run_id=run_id)
+            return len(ids_to_delete)
+        except Exception as e:
+            await session.rollback()
+            logger.error("Error en purga de convocatorias vencidas", exc=e, run_id=run_id)
+            raise
+        finally:
+            clear_run_id()
+
 
 async def run_backfill_regions(limit: int | None = None) -> int:
     """Completa regiones faltantes en convocatorias existentes usando inferencia LLM cuando sea posible."""

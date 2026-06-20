@@ -2,6 +2,7 @@
 Instancia principal de la aplicación FastAPI.
 """
 
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -106,3 +107,15 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+
+def run() -> None:
+    """Entry point usado por Railway y `grantpulse-api` CLI."""
+    import uvicorn
+
+    port = int(os.environ.get("PORT", "8000"))
+    uvicorn.run("src.presentation.api.main:app", host="0.0.0.0", port=port, log_level="info")
+
+
+if __name__ == "__main__":
+    run()

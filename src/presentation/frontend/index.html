@@ -330,45 +330,104 @@
     </section>
 
     <!-- ════════════════════════════════════════
-         SUSCRIPCIONES
+         SUSCRIPCIONES — CRUD unificado
     ════════════════════════════════════════ -->
     <section class="page" id="page-suscripciones">
-      <div class="suscripciones-layout">
-        <div class="card">
-          <div class="card-header">
-            <h3>Suscríbete a Alertas por Región</h3>
-            <p style="color:var(--text-2);font-size:0.85rem;margin-top:4px">Recibe notificaciones de Telegram cuando se publiquen nuevas convocatorias en las regiones que te interesan.</p>
-          </div>
-          <div class="card-body">
-            <form id="suscripcionForm">
-              <div class="field">
-                <label for="subChatId">Tu Chat ID de Telegram</label>
-                <input type="text" id="subChatId" placeholder="123456789" required>
-                <small style="color:var(--text-3);display:block;margin-top:4px">Obtené tu Chat ID escribiendo <code style="background:var(--bg-2);padding:2px 6px;border-radius:4px;font-size:0.8em">/start</code> a <strong>@userinfobot</strong> en Telegram.</small>
-              </div>
-              <div class="field">
-                <label for="subNombre">Tu nombre (opcional)</label>
-                <input type="text" id="subNombre" placeholder="Ej: Juan Pérez">
-              </div>
-              <div class="field">
-                <label>Regiones de interés</label>
-                <div class="region-grid" id="subRegiones"></div>
-              </div>
-              <button type="submit" class="btn btn-primary btn-block" id="subBtn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-                Suscribirme
+      <div class="susc-layout">
+
+        <!-- Header -->
+        <div class="susc-hero">
+          <h2>Alertas de convocatorias por región</h2>
+          <p>Ingresá tu Chat ID de Telegram y elegí las regiones que te interesan. Vas a recibir un mensaje cada vez que se abra una nueva convocatoria.</p>
+        </div>
+
+        <!-- Chat ID input — la "llave" -->
+        <div class="susc-id-bar">
+          <div class="susc-id-field">
+            <label for="subChatId">Tu Chat ID de Telegram</label>
+            <div class="susc-id-row">
+              <input type="text" id="subChatId" placeholder="123456789" spellcheck="false" autocomplete="off">
+              <button class="btn btn-secondary" id="subBuscarBtn" onclick="buscarSuscripcion()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                Buscar
               </button>
-            </form>
-            <div id="subFeedback" style="display:none;margin-top:16px;padding:12px;border-radius:var(--r);font-size:0.9rem"></div>
+            </div>
+            <small>Escribí <code>/start</code> a <strong>@userinfobot</strong> en Telegram para obtener tu Chat ID.</small>
           </div>
         </div>
 
-        <div class="card mt-lg">
-          <div class="card-header"><h3>Mis Suscripciones</h3></div>
-          <div class="card-body" id="subList">
-            <p class="muted-msg">No tenés suscripciones activas. Completá el formulario para recibir alertas.</p>
+        <!-- Contenido dinámico: estado de suscripción + regiones + acciones -->
+        <div id="suscContent" style="display:none">
+
+          <!-- Barra de identidad y estado -->
+          <div class="susc-status-bar" id="suscStatusBar">
+            <div class="susc-identity">
+              <span class="susc-avatar" id="suscAvatar">👤</span>
+              <div>
+                <strong id="suscNombreDisplay">—</strong>
+                <span class="susc-meta" id="suscMeta">Chat ID: —</span>
+              </div>
+            </div>
+            <div class="susc-badges">
+              <span class="susc-badge" id="suscBadgeActiva" style="display:none">
+                <span class="dot dot-green"></span> Activa
+              </span>
+              <span class="susc-badge" id="suscBadgePausada" style="display:none">
+                <span class="dot dot-amber"></span> Pausada
+              </span>
+              <span class="susc-badge" id="suscBadgeCreada" style="display:none">
+                🆕 Nueva
+              </span>
+            </div>
           </div>
+
+          <!-- Nombre editable inline -->
+          <div class="susc-name-row">
+            <label for="subNombre">Tu nombre</label>
+            <input type="text" id="subNombre" placeholder="Ej: Juan Pérez" maxlength="100">
+          </div>
+
+          <!-- Grid de regiones -->
+          <div class="susc-regions-section">
+            <div class="susc-regions-header">
+              <label>Regiones que querés monitorear</label>
+              <span class="susc-selected-count" id="subSelectedCount">0 seleccionadas</span>
+            </div>
+            <div class="region-grid" id="subRegiones"></div>
+          </div>
+
+          <!-- Barra de acciones -->
+          <div class="susc-actions" id="suscActions">
+            <button class="btn btn-primary" id="subGuardarBtn" onclick="guardarSuscripcion()" disabled>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+              <span id="subGuardarLabel">Guardar cambios</span>
+            </button>
+            <div class="susc-actions-right">
+              <button class="btn btn-ghost" id="subPausarBtn" onclick="toggleActiva()" style="display:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                <span id="subPausarLabel">Pausar</span>
+              </button>
+              <button class="btn btn-ghost danger" id="subEliminarBtn" onclick="eliminarSuscripcion()" style="display:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Eliminar
+              </button>
+            </div>
+          </div>
+
+          <!-- Feedback -->
+          <div id="subFeedback" style="display:none;margin-top:12px;padding:10px 14px;border-radius:var(--r);font-size:0.85rem"></div>
+
+        </div><!-- /suscContent -->
+
+        <!-- Estado vacío (sin suscripción) -->
+        <div class="susc-empty" id="suscEmpty">
+          <div class="susc-empty-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </div>
+          <h3>Aún no tenés suscripciones</h3>
+          <p>Ingresá tu Chat ID de Telegram, seleccioná las regiones y guardá. Vas a recibir alertas automáticas cuando se publiquen nuevas convocatorias.</p>
         </div>
+
       </div>
     </section>
 

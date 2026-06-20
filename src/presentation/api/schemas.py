@@ -117,6 +117,7 @@ class SuscripcionUpdate(BaseModel):
     """Datos para actualizar una suscripción."""
 
     regiones: list[str] | None = None
+    nombre: str | None = None
     activa: bool | None = None
 
 
