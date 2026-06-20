@@ -20,12 +20,10 @@ from src.core.domain.entities import Fuente, Snapshot
 from src.core.domain.exceptions import ExtractionError, NetworkError, ScrapingError
 from src.core.domain.ports import ScraperPort
 from src.infra.logging import get_logger
-from src.infra.scraping.browser import PlaywrightScraper
 from src.infra.scraping.curl_cffi import CurlCffiScraper
 from src.infra.scraping.fosis_multipage import FosisMultiPageScraper
 from src.infra.scraping.html_static import HtmlStaticScraper
 from src.infra.scraping.json_api import JsonApiScraper
-from src.infra.scraping.llm_scraper import LlmScraper
 from src.infra.scraping.rss_feed import RssFeedScraper
 from src.infra.scraping.subdere_homepage import SubdereHomepageScraper
 from src.infra.scraping.wp_ajax import WpAjaxScraper
@@ -71,8 +69,14 @@ class CompositeFundingScraper(ScraperPort):
         self._profile = profile
         self._html_static = html_static or HtmlStaticScraper()
         self._json_api = json_api or JsonApiScraper()
-        self._browser = browser or PlaywrightScraper()
-        self._llm = llm or LlmScraper()
+        self._browser = browser
+        if self._browser is None:
+            from src.infra.scraping.browser import PlaywrightScraper
+            self._browser = PlaywrightScraper()
+        self._llm = llm
+        if self._llm is None:
+            from src.infra.scraping.llm_scraper import LlmScraper
+            self._llm = LlmScraper()
         self._wp_ajax = wp_ajax or WpAjaxScraper()
         self._rss_feed = rss_feed or RssFeedScraper()
         self._curl_cffi = curl_cffi or CurlCffiScraper()
@@ -330,8 +334,10 @@ def build_scraper_for_source(fuente: Fuente, fallback_strategy: str | None = Non
     if estrategia == "json_api":
         return JsonApiScraper()
     if estrategia == "browser":
+        from src.infra.scraping.browser import PlaywrightScraper
         return PlaywrightScraper()
     if estrategia == "llm":
+        from src.infra.scraping.llm_scraper import LlmScraper
         return LlmScraper()
     if estrategia == "wp_ajax":
         return WpAjaxScraper()
