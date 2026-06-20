@@ -26,6 +26,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
 
     import asyncio
 
+    # Ejecutar migraciones de BD automáticamente (crea tablas si no existen)
+    try:
+        from alembic import command
+        from alembic.config import Config
+
+        loop = asyncio.get_running_loop()
+        alembic_cfg = Config("alembic.ini")
+        await loop.run_in_executor(None, command.upgrade, alembic_cfg, "head")
+        logger.info("Migraciones de base de datos aplicadas exitosamente")
+    except Exception as e:
+        logger.warning("No se pudieron aplicar migraciones (BD puede estar actualizada)", exc=e)
+
     from src.infra.cli import sync_all_rules
 
     asyncio.create_task(sync_all_rules())

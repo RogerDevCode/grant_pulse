@@ -4,8 +4,10 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, JSON, String, Text, TypeDecorator
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from src.infra.db.types import GUID
 
 
 class Base(DeclarativeBase):
@@ -23,7 +25,7 @@ def _uid() -> str:
 class FuenteORM(Base):
     __tablename__ = "fuentes"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=_uid)
     nombre: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     url_base: Mapped[str] = mapped_column(String(500), nullable=False)
     configuracion_yaml: Mapped[str] = mapped_column(Text, nullable=False)
@@ -42,9 +44,9 @@ class FuenteORM(Base):
 class SnapshotORM(Base):
     __tablename__ = "snapshots"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=_uid)
     fuente_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("fuentes.id", ondelete="CASCADE"), nullable=False
+        GUID(), ForeignKey("fuentes.id", ondelete="CASCADE"), nullable=False
     )
     fecha_captura: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     contenido_crudo: Mapped[str] = mapped_column(Text, nullable=False)
@@ -62,9 +64,9 @@ class SnapshotORM(Base):
 class AuditLogORM(Base):
     __tablename__ = "audit_logs"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=_uid)
     fuente_id: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("fuentes.id", ondelete="SET NULL"), nullable=True
+        GUID(), ForeignKey("fuentes.id", ondelete="SET NULL"), nullable=True
     )
     nivel: Mapped[str] = mapped_column(String(20), nullable=False)
     modulo: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -76,9 +78,9 @@ class AuditLogORM(Base):
 class ConvocatoriaORM(Base):
     __tablename__ = "convocatorias"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=_uid)
     fuente_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("fuentes.id", ondelete="CASCADE"), nullable=False
+        GUID(), ForeignKey("fuentes.id", ondelete="CASCADE"), nullable=False
     )
     identificador_externo: Mapped[str] = mapped_column(String(255), nullable=False)
     titulo: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -102,12 +104,12 @@ class ConvocatoriaORM(Base):
 class HistorialCambiosORM(Base):
     __tablename__ = "historial_cambios"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=_uid)
     convocatoria_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("convocatorias.id", ondelete="CASCADE"), nullable=False
+        GUID(), ForeignKey("convocatorias.id", ondelete="CASCADE"), nullable=False
     )
     snapshot_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("snapshots.id", ondelete="RESTRICT"), nullable=False
+        GUID(), ForeignKey("snapshots.id", ondelete="RESTRICT"), nullable=False
     )
     fecha_deteccion: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     es_apertura: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -124,9 +126,9 @@ class HistorialCambiosORM(Base):
 class NotificacionORM(Base):
     __tablename__ = "notificaciones"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=_uid)
     historial_cambios_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("historial_cambios.id", ondelete="CASCADE"), nullable=False
+        GUID(), ForeignKey("historial_cambios.id", ondelete="CASCADE"), nullable=False
     )
     canal: Mapped[str] = mapped_column(String(50), nullable=False)
     destinatario: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -140,7 +142,7 @@ class NotificacionORM(Base):
 class NotificacionConfigORM(Base):
     __tablename__ = "config_notificaciones"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=_uid)
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     tipo: Mapped[str] = mapped_column(String(20), nullable=False)
     configuracion: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
@@ -151,7 +153,7 @@ class NotificacionConfigORM(Base):
 class SuscripcionORM(Base):
     __tablename__ = "suscripciones"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uid)
+    id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=_uid)
     chat_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     nombre: Mapped[str | None] = mapped_column(String(200), nullable=True)
     regiones: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)

@@ -70,6 +70,8 @@ COPY --from=builder /ms-playwright /ms-playwright
 COPY pyproject.toml ./
 COPY src ./src
 COPY rules ./rules
+COPY alembic.ini ./alembic.ini
+COPY alembic ./alembic
 
 EXPOSE 8000
 
