@@ -16,6 +16,8 @@ normalizadores:
     regex_extraction: "(\\d{2}/\\d{2}/\\d{4})"
     formato_salida: "%d/%m/%Y"
 
+region_defecto: "Nacional"
+
 alertas:
   campos_sensibles:
     - "estado"

@@ -1,4 +1,4 @@
-PYTHON ?= ./venv/bin/python
+PYTHON ?= uv run python
 
 .PHONY: up down restart logs migrate db-shell test lint format typecheck validate clean
 

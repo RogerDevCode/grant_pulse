@@ -7,6 +7,7 @@ selectores:
   titulo: "h2"
   descripcion: "p"
   link_detalle: "a.btn"
+region_defecto: "Nacional"
 normalizadores: {}
 alertas:
   campos_sensibles: ["titulo"]

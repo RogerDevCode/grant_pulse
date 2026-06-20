@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 import httpx
 
 from src.core.domain.entities import Fuente, Snapshot
+from src.core.application.normalizer import _coerce_region
 from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import ExtractionError, NetworkError
 from src.core.domain.ports import ScraperPort
@@ -333,7 +334,7 @@ class JsonApiScraper(ScraperPort):
                     if mapping.fecha_cierre
                     else None,
                     "monto": _coerce_text(get_by_path(raw_item, mapping.monto)) if mapping.monto else None,
-                    "region": _coerce_text(get_by_path(raw_item, mapping.region)) if mapping.region else None,
+                    "region": _coerce_region(_coerce_text(get_by_path(raw_item, mapping.region))) if mapping.region else None,
                 }
 
                 # Agrupación opcional

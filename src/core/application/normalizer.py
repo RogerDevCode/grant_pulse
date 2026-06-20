@@ -18,6 +18,89 @@ from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
 
+REGIONES_CHILE: tuple[str, ...] = (
+    "Arica y Parinacota",
+    "Tarapacá",
+    "Antofagasta",
+    "Atacama",
+    "Coquimbo",
+    "Valparaíso",
+    "Metropolitana",
+    "O'Higgins",
+    "Maule",
+    "Ñuble",
+    "Biobío",
+    "La Araucanía",
+    "Los Ríos",
+    "Los Lagos",
+    "Aysén del General Carlos Ibáñez del Campo",
+    "Magallanes y de la Antártica Chilena",
+    "Nacional",
+)
+
+
+_REGION_ALIASES: dict[str, str] = {
+    "araucania": "La Araucanía",
+    "araucanía": "La Araucanía",
+    "bio bio": "Biobío",
+    "biobío": "Biobío",
+    "metropolitana": "Metropolitana",
+    "santiago": "Metropolitana",
+    "valparaiso": "Valparaíso",
+    "valparaíso": "Valparaíso",
+    "ohiggins": "O'Higgins",
+    "o higgins": "O'Higgins",
+    "maule": "Maule",
+    "uble": "Ñuble",
+    "los rios": "Los Ríos",
+    "los ríos": "Los Ríos",
+    "rios": "Los Ríos",
+    "los lagos": "Los Lagos",
+    "lagos": "Los Lagos",
+    "aysen": "Aysén del General Carlos Ibáñez del Campo",
+    "aysén": "Aysén del General Carlos Ibáñez del Campo",
+    "magallanes": "Magallanes y de la Antártica Chilena",
+    "antartica": "Magallanes y de la Antártica Chilena",
+    "antártica": "Magallanes y de la Antártica Chilena",
+    "tarapaca": "Tarapacá",
+    "tarapacá": "Tarapacá",
+    "antofagasta": "Antofagasta",
+    "atacama": "Atacama",
+    "coquimbo": "Coquimbo",
+    "arica": "Arica y Parinacota",
+    "parinacota": "Arica y Parinacota",
+}
+
+
+def _coerce_region(text: str | None) -> str | None:
+    if not text or not isinstance(text, str):
+        return None
+    value = text.strip()
+    if not value:
+        return None
+    lowered = value.lower()
+    for r in REGIONES_CHILE:
+        if lowered == r.lower():
+            return r
+    normalized = (
+        lowered.replace("-", " ")
+        .replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+    )
+    normalized = " ".join(normalized.split())
+    for alias, canonical in _REGION_ALIASES.items():
+        alias_norm = alias.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+        if alias_norm == normalized or alias_norm in normalized:
+            return canonical
+    for r in REGIONES_CHILE:
+        r_norm = r.lower().replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+        if r_norm == normalized or r_norm in normalized:
+            return r
+    return None
+
 
 def _run_async_in_thread(coro):
     """Ejecuta una coroutine en un hilo separado para soportar inferencia LLM desde código síncrono."""
@@ -65,11 +148,11 @@ def _extract_region_from_response(response_text: str) -> str | None:
         if isinstance(parsed, dict):
             region = parsed.get("region") or parsed.get("nombre_region") or parsed.get("región")
             if isinstance(region, str) and region.strip():
-                return region.strip()
+                return _coerce_region(region.strip())
 
     match = re.search(r'"region"\s*:\s*"([^"]+)"', cleaned)
     if match:
-        return match.group(1).strip()
+        return _coerce_region(match.group(1).strip())
 
     return None
 
@@ -84,11 +167,12 @@ def _infer_region_with_llm(titulo: str | None, descripcion: str | None, url_deta
         logger.info("No hay API key LLM configurada; se omite inferencia de región", fuente=fuente.nombre)
         return None
 
+    opciones = ", ".join(REGIONES_CHILE)
     prompt = (
         "Eres un clasificador geográfico para convocatorias chilenas. "
         "Responde SOLO con JSON válido con la clave 'region'. "
-        "Usa una sola región de Chile (por ejemplo: Metropolitana, Valparaíso, Biobío, Ñuble, etc.). "
-        "Si no puedes inferir una región clara, devuelve 'Nacional'.\n\n"
+        "Elige UNA región desde esta lista exacta: "
+        f"{opciones}.\n\n"
         f"Fuente: {fuente.nombre}\n"
         f"Título: {titulo or 'Sin título'}\n"
         f"Descripción: {descripcion or 'Sin descripción'}\n"
@@ -202,29 +286,36 @@ class DataNormalizer:
                 logger.warning("Item carece de titulo, saltando", identificador=identificador, fuente=fuente.nombre)
                 skipped += 1
                 continue
-            if not url_detalle:
-                logger.warning(
-                    "Item carece de url_detalle, saltando",
-                    identificador=identificador,
-                    titulo=titulo,
-                    fuente=fuente.nombre,
-                )
-                skipped += 1
-                continue
-
             estado = normalize_estado(estado)
 
-            url_final = (
-                str(fuente.url_base).rstrip("/") + "/" + url_detalle.lstrip("/")
-                if url_detalle.startswith("/")
-                else url_detalle
-            )
+            url_final: str | None = None
+            if url_detalle:
+                url_final = (
+                    str(fuente.url_base).rstrip("/") + "/" + url_detalle.lstrip("/")
+                    if url_detalle.startswith("/")
+                    else url_detalle
+                )
 
+            fecha_apertura_val: datetime | None = None
             fecha_cierre_val: datetime | None = None
             monto_val: float | None = None
             skip_item = False
 
             try:
+                raw_fecha_apertura = item.get("fecha_apertura")
+                if raw_fecha_apertura and norm_config.fecha_apertura:
+                    texto_fecha = raw_fecha_apertura
+                    if norm_config.fecha_apertura.regex_extraction:
+                        texto_fecha = _apply_regex(
+                            texto_fecha, norm_config.fecha_apertura.regex_extraction, "fecha_apertura"
+                        )
+                    if norm_config.fecha_apertura.formato_salida:
+                        fecha_apertura_val = _parse_date(
+                            texto_fecha, norm_config.fecha_apertura.formato_salida, "fecha_apertura"
+                        )
+                elif raw_fecha_apertura:
+                    fecha_apertura_val = parse_fecha_chilena(raw_fecha_apertura)
+
                 raw_fecha_cierre = item.get("fecha_cierre")
                 if raw_fecha_cierre and norm_config.fecha_cierre:
                     texto_fecha = raw_fecha_cierre
@@ -288,7 +379,8 @@ class DataNormalizer:
                 identificador_externo=identificador,
                 titulo=titulo,
                 descripcion=item.get("descripcion"),
-                url_detalle=url_final,  # type: ignore
+                url_detalle=url_final,
+                fecha_apertura=fecha_apertura_val,
                 fecha_cierre=fecha_cierre_val,
                 monto=monto_val,
                 region=region,

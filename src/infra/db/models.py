@@ -168,3 +168,19 @@ class NotificacionConfigORM(Base):
     configuracion: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     activa: Mapped[bool] = mapped_column(BOOLEAN, default=True)
     creado_en: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC))
+
+
+class SuscripcionORM(Base):
+    """Suscripciones de usuarios a notificaciones por región."""
+
+    __tablename__ = "suscripciones"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    chat_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    nombre: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    regiones: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    activa: Mapped[bool] = mapped_column(BOOLEAN, default=True)
+    token_confirmacion: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    confirmado: Mapped[bool] = mapped_column(BOOLEAN, default=False)
+    creado_en: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC))
+    actualizado_en: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))

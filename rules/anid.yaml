@@ -20,3 +20,4 @@ alertas:
     - "fecha_cierre"
   ignorar_cambios_en:
     - "descripcion"
+region_defecto: "Nacional"

@@ -20,7 +20,7 @@ selectores:
   fecha_cierre: null            # En el texto del item: "Fin: DD-MM-YYYY"
   fecha_apertura: null          # En el texto del item: "Inicio: DD-MM-YYYY"
   monto: null                   # En el texto del item: "Hasta $X.XXX.XXX"
-
+region_defecto: "Nacional"
 normalizadores:
   fecha_cierre:
     regex_extraction: "Fin:\\s*(\\d{2}-\\d{2}-\\d{4})"

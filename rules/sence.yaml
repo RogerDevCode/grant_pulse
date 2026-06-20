@@ -6,6 +6,6 @@ selectores:
   contenedor_items: "body" # Ignorado por LLM, obligatorio en el modelo
   identificador: "h2"
   titulo: "h2"
-
+region_defecto: "Nacional"
 alertas:
   campos_sensibles: []

@@ -92,16 +92,6 @@ class Settings(BaseSettings):
     NVIDIA_MODEL: str = Field(default="z-ai/glm-5.1", description="Modelo a usar en NVIDIA")
     NVIDIA_BASE_URL: str = Field(default="https://integrate.api.nvidia.com/v1/chat/completions", description="URL completa del endpoint de chat de NVIDIA")
 
-    # Lista de modelos para failover (de mayor a menor prioridad)
-    LLM_MODELS_FALLBACK: list[str] = Field(
-        default_factory=lambda: [
-            "qwen/qwen3-235b-a22b-2507:free",  # 262K context, buen ajuste para extracción estructurada
-            "meta-llama/llama-3.3-70b-instruct:free",  # 131K context, fuerte en español y extracción
-            "deepseek/deepseek-r1:free",  # 164K context, fallback de razonamiento
-        ],
-        description="Lista priorizada de modelos para failover en OpenRouter",
-    )
-
     # Máximo de caracteres de contenido a enviar al LLM (protección de contexto)
     LLM_MAX_CONTENT_CHARS: int = Field(
         default=100_000,
@@ -155,6 +145,23 @@ class Settings(BaseSettings):
     GROQ_REQUEST_TIMEOUT_SECONDS: int = Field(
         default=90,
         description="Timeout por request al proveedor Groq",
+    )
+
+    # Soporte LLM — CommandCode (primario)
+    CMD_API_KEY: str | None = Field(default=None, description="API Key para CommandCode")
+    CMD_LLM_MODEL: str = Field(
+        default="deepseek/deepseek-v4-flash",
+        description="Modelo primario en CommandCode (deepseek-v4-flash, deepseek-v4-pro, etc.)",
+    )
+
+    # Modelos OpenRouter para fallback (cuando CommandCode no está disponible)
+    LLM_MODELS_FALLBACK: list[str] = Field(
+        default_factory=lambda: [
+            "qwen/qwen3-235b-a22b-2507:free",
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "deepseek/deepseek-r1:free",
+        ],
+        description="Lista priorizada de modelos para failover en OpenRouter",
     )
 
     # Configuración de Proxy (Opcional, para evadir bloqueos)

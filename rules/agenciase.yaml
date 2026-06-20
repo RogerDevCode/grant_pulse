@@ -30,3 +30,5 @@ excluir_patrones_titulo:
 
 alertas:
   campos_sensibles: ["titulo"]
+
+region_defecto: "Nacional"

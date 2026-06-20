@@ -14,3 +14,4 @@ normalizadores:
     formato_salida: "%d de %B, %Y"
 alertas:
   campos_sensibles: ["estado", "fecha_cierre"]
+region_defecto: "Nacional"

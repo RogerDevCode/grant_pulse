@@ -118,3 +118,41 @@ class NotificacionRepository(ABC):
     async def save(self, resultado: NotificacionResult) -> NotificacionResult:
         """Persiste el resultado de un intento de notificación."""
         pass
+
+
+class LLMPort(ABC):
+    """Puerto abstracto para servicios de lenguaje grande (LLM).
+    Permite intercambiar proveedores (CommandCode, OpenRouter, NVIDIA, Groq)
+    sin acoplar la capa de dominio a implementaciones concretas."""
+
+    @abstractmethod
+    async def chat_completion(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        timeout: int = 60,
+    ) -> str:
+        """Envía un prompt y recibe una respuesta textual del LLM."""
+        pass
+
+    @abstractmethod
+    async def extract_from_html(
+        self,
+        html_content: str,
+        fields_schema: dict[str, str],
+        base_url: str,
+        timeout: int = 90,
+    ) -> list[dict[str, str]]:
+        """Extrae campos estructurados desde HTML usando el LLM."""
+        pass
+
+    @abstractmethod
+    async def heal_selectors(
+        self,
+        html_content: str,
+        institution_name: str,
+        base_url: str,
+        timeout: int = 90,
+    ) -> dict | None:
+        """Re-intenta descubrir selectores CSS cuando los configurados fallan."""
+        pass

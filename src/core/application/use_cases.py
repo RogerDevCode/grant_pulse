@@ -38,7 +38,7 @@ class MonitoreoUseCase:
         self.notifier = notifier
         self.notificacion_repo = notificacion_repo
 
-    async def ejecutar_monitoreo(self, fuente: Fuente) -> list[EventoCambio]:
+    async def ejecutar_monitoreo(self, fuente: Fuente) -> tuple[list[EventoCambio], list[Convocatoria]]:
         """
         Flujo central:
         1. Fetch (Scraper)
@@ -50,6 +50,8 @@ class MonitoreoUseCase:
         7. Detect Changes (ChangeDetectorService)
         8. Persist (Repositories)
         9. Notify (NotificationPort) + Persist Notification Results
+
+        Returns: (eventos, nuevas_convocatorias)
         """
         logger.info("Iniciando caso de uso de monitoreo", fuente_id=str(fuente.id), fuente_nombre=fuente.nombre, run_id=get_run_id())
         start = time.monotonic()
@@ -161,7 +163,7 @@ class MonitoreoUseCase:
                 elapsed_seconds=elapsed,
                 run_id=get_run_id(),
             )
-            return eventos
+            return eventos, nuevas_convocatorias
 
         except GrantPulseError as e:
             logger.error("Fallo controlado en monitoreo de fuente", fuente_id=str(fuente.id), exc=e)

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, cast
 from uuid import uuid4
 
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.application.run_context import clear_run_id, new_run_id
@@ -97,6 +98,82 @@ async def _get_notifier(session: AsyncSession) -> NotificationPort:
     return CompositeNotificationAdapter(adapters)
 
 
+async def _notify_subscribers(
+    session: AsyncSession,
+    eventos: list[Any],
+    nuevas_dict: dict[Any, Any],
+    fuente: Fuente,
+) -> None:
+    """Notifica a suscriptores por región sobre nuevas aperturas."""
+    from sqlalchemy import select
+
+    from src.infra.db.models import SuscripcionORM
+
+    if not eventos:
+        return
+
+    try:
+        result = await session.execute(
+            select(SuscripcionORM).where(SuscripcionORM.activa.is_(True), SuscripcionORM.confirmado.is_(True))
+        )
+        suscripciones = result.scalars().all()
+    except Exception as e:
+        logger.warning("Error cargando suscripciones para notificación", exc=e)
+        return
+
+    if not suscripciones:
+        return
+
+    bot_token = settings.TELEGRAM_BOT_TOKEN
+    if not bot_token:
+        logger.warning("TELEGRAM_BOT_TOKEN no configurado; no se enviarán notificaciones a suscriptores")
+        return
+
+    for evento in eventos:
+        if not evento.es_relevante:
+            continue
+        conv = nuevas_dict.get(evento.convocatoria_id)
+        if not conv:
+            continue
+
+        region_conv = (conv.region or "").strip().lower()
+        for sub in suscripciones:
+            regiones_sub = [r.strip().lower() for r in (sub.regiones or [])]
+            if not regiones_sub or "todas" in regiones_sub or "nacional" in regiones_sub:
+                # Envía si la región es Nacional o si tiene 'todas'
+                if region_conv == "nacional":
+                    pass  # enviar
+                else:
+                    continue
+            elif region_conv not in regiones_sub:
+                continue
+
+            # Enviar mensaje
+            mensaje = (
+                f"<b>🆕 Nueva Convocatoria</b>\n"
+                f"🏛 <i>{fuente.nombre}</i>\n\n"
+                f"<b>{conv.titulo}</b>\n"
+                f"📍 <b>Región:</b> {conv.region or 'Nacional'}\n"
+            )
+            if conv.monto:
+                mensaje += f"💰 <b>Monto:</b> ${conv.monto:,.0f}\n"
+            if conv.fecha_cierre:
+                mensaje += f"📅 <b>Cierre:</b> {conv.fecha_cierre.strftime('%d/%m/%Y')}\n"
+            if conv.url_detalle:
+                mensaje += f"\n🔗 <a href='{conv.url_detalle}'>Ver detalle</a>"
+
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    resp = await client.post(
+                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                        json={"chat_id": sub.chat_id, "text": mensaje, "parse_mode": "HTML", "disable_web_page_preview": False},
+                    )
+                    resp.raise_for_status()
+                logger.info("Notificación enviada a suscriptor", chat_id=sub.chat_id, convocatoria=conv.titulo[:60])
+            except Exception as e:
+                logger.warning("Error enviando notificación a suscriptor", chat_id=sub.chat_id, error=str(e))
+
+
 async def run_single_source(filepath: Path) -> None:
     """Ejecuta el ciclo de monitoreo para una fuente específica desde un YAML."""
     run_id = new_run_id()
@@ -145,8 +222,13 @@ async def run_single_source(filepath: Path) -> None:
                 notificacion_repo=notificacion_repo,
             )
 
-            eventos = await use_case.ejecutar_monitoreo(fuente_db)
+            eventos, nuevas_convocatorias = await use_case.ejecutar_monitoreo(fuente_db)
             await session.commit()
+
+            # Notificar a suscriptores por región
+            nuevas_dict = {c.id: c for c in nuevas_convocatorias}
+            await _notify_subscribers(session, eventos, nuevas_dict, fuente_db)
+
             logger.info(f"Proceso finalizado. Eventos generados: {len(eventos)}")
         except Exception as e:
             await session.rollback()

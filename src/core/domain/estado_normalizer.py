@@ -16,13 +16,13 @@ _CANONICAL_NO_VIGENTES = frozenset({"CERRADO", "ADJUDICADO", "SUSPENDIDO", "FINA
 _CANONICAL_ALL = _CANONICAL_VIGENTES | _CANONICAL_NO_VIGENTES | {"DESCONOCIDO"}
 
 _STATUS_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\bABIERT[OA]\b", re.IGNORECASE), "ABIERTO"),
-    (re.compile(r"\bCERRAD[OA]\b", re.IGNORECASE), "CERRADO"),
+    (re.compile(r"\bABIERT[AO]S?\b", re.IGNORECASE), "ABIERTO"),
+    (re.compile(r"\bCERRAD[AO]S?\b", re.IGNORECASE), "CERRADO"),
     (re.compile(r"\bPRÓ?XIMAMENTE\b", re.IGNORECASE), "PROXIMAMENTE"),
-    (re.compile(r"\bPOSTUL[AO]\b", re.IGNORECASE), "ABIERTO"),
-    (re.compile(r"\bADJUDICAD[OA]\b", re.IGNORECASE), "ADJUDICADO"),
-    (re.compile(r"\bSUSPENDID[OA]\b", re.IGNORECASE), "SUSPENDIDO"),
-    (re.compile(r"\bFINALIZAD[OA]\b", re.IGNORECASE), "FINALIZADO"),
+    (re.compile(r"\bPOSTUL[AO]S?\b", re.IGNORECASE), "ABIERTO"),
+    (re.compile(r"\bADJUDICAD[AO]S?\b", re.IGNORECASE), "ADJUDICADO"),
+    (re.compile(r"\bSUSPENDID[AO]S?\b", re.IGNORECASE), "SUSPENDIDO"),
+    (re.compile(r"\bFINALIZAD[AO]S?\b", re.IGNORECASE), "FINALIZADO"),
     (re.compile(r"\bVIGENTE\b", re.IGNORECASE), "ABIERTO"),
 ]
 

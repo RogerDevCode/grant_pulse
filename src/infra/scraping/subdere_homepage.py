@@ -24,7 +24,6 @@ import httpx
 from selectolax.lexbor import LexborHTMLParser
 
 from src.core.domain.entities import Fuente, Snapshot
-from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import ExtractionError, NetworkError
 from src.core.domain.ports import ScraperPort
 from src.infra.logging import get_logger
@@ -57,10 +56,6 @@ _REALISTIC_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "es-CL,es;q=0.9",
 }
-
-
-def _detect_status(text: str) -> str:
-    return normalize_estado(text)
 
 
 def _extract_date(text: str) -> str | None:
@@ -201,7 +196,6 @@ class SubdereHomepageScraper(ScraperPort):
             if not identificador:
                 identificador = "subdere-news-" + hashlib.md5(title.encode("utf-8")).hexdigest()[:10]
 
-            estado = _detect_status(f"{title} {body}")
             fecha_cierre = _extract_date(f"{title} {body}")
 
             item: dict[str, str | None] = {
@@ -209,9 +203,11 @@ class SubdereHomepageScraper(ScraperPort):
                 "titulo": title,
                 "descripcion": body[:500] if body else None,
                 "url_detalle": full_url,
-                "estado": estado,
+                "estado": "ABIERTO",
                 "fecha_cierre": fecha_cierre,
                 "monto": None,
+                "region": None,
+                "fecha_apertura": None,
             }
             resultados.append(item)
 
@@ -247,8 +243,10 @@ class SubdereHomepageScraper(ScraperPort):
                 "titulo": title,
                 "descripcion": f"Programa destacado en homepage SUBDERE: {title}",
                 "url_detalle": full_url,
-                "estado": "DESCONOCIDO",
+                "estado": "ABIERTO",
                 "fecha_cierre": None,
                 "monto": None,
+                "region": None,
+                "fecha_apertura": None,
             }
             resultados.append(item)

@@ -35,5 +35,7 @@ json_mapping:
   region: "region"
   # agrupar_por eliminado: cada codBp = 1 convocatoria-región independiente
 
+region_defecto: "Nacional"
+
 alertas:
   campos_sensibles: ["fecha_cierre", "region", "titulo"]

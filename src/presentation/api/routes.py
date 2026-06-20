@@ -2,7 +2,7 @@
 Rutas HTTP de la API REST usando FastAPI.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
@@ -16,6 +16,7 @@ from src.infra.db.models import (
     NotificacionConfigORM,
     NotificacionORM,
     SnapshotORM,
+    SuscripcionORM,
 )
 from src.infra.logging import get_logger
 from src.presentation.api.dependencies import DbSession
@@ -31,6 +32,9 @@ from src.presentation.api.schemas import (
     NotificacionConfigCreate,
     NotificacionConfigResponse,
     NotificacionResponse,
+    SuscripcionCreate,
+    SuscripcionResponse,
+    SuscripcionUpdate,
 )
 
 logger = get_logger(__name__)
@@ -147,7 +151,7 @@ async def list_convocatorias(
             return []
         fuente_ids_por_nombre = {str(r.id): r.id for r in fuente_rows}
 
-    query = select(ConvocatoriaORM)
+    query = select(ConvocatoriaORM, FuenteORM.nombre).join(FuenteORM, ConvocatoriaORM.fuente_id == FuenteORM.id)
     if estado:
         query = query.where(ConvocatoriaORM.estado == estado)
     if region:
@@ -169,31 +173,25 @@ async def list_convocatorias(
 
     query = query.limit(limit).offset(offset)
     result = await session.execute(query)
-    orms = result.scalars().all()
-    fuentes_cache: dict[UUID, str] = {}
-    response_list: list[ConvocatoriaResponse] = []
-    for orm in orms:
-        if orm.fuente_id not in fuentes_cache:
-            fuente_result = await session.execute(select(FuenteORM.nombre).where(FuenteORM.id == orm.fuente_id))
-            fuentes_cache[orm.fuente_id] = fuente_result.scalar_one_or_none() or "Desconocido"
-        response_list.append(
-            ConvocatoriaResponse(
-                id=orm.id,
-                fuente_id=orm.fuente_id,
-                fuente_nombre=fuentes_cache[orm.fuente_id],
-                identificador_externo=orm.identificador_externo,
-                titulo=orm.titulo,
-                descripcion=orm.descripcion,
-                url_detalle=str(orm.url_detail) if orm.url_detail else "", # type: ignore[arg-type]
-                fecha_apertura=orm.fecha_apertura,
-                fecha_cierre=orm.fecha_cierre,
-                monto=float(orm.monto) if orm.monto is not None else None,
-                region=orm.region,
-                estado=orm.estado,
-                actualizado_en=orm.actualizado_en,
-            )
+    rows = result.all()
+    return [
+        ConvocatoriaResponse(
+            id=orm.id,
+            fuente_id=orm.fuente_id,
+            fuente_nombre=fuente_nombre,
+            identificador_externo=orm.identificador_externo,
+            titulo=orm.titulo,
+            descripcion=orm.descripcion,
+            url_detalle=orm.url_detail,
+            fecha_apertura=orm.fecha_apertura,
+            fecha_cierre=orm.fecha_cierre,
+            monto=float(orm.monto) if orm.monto is not None else None,
+            region=orm.region,
+            estado=orm.estado,
+            actualizado_en=orm.actualizado_en,
         )
-    return response_list
+        for orm, fuente_nombre in rows
+    ]
 
 
 @router.get("/convocatorias/count")
@@ -203,6 +201,7 @@ async def count_convocatorias(
     fuente_id: UUID | None = Query(None), # noqa: B008
     fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
     region: str | None = Query(None),
+    search: str | None = Query(None, description="Buscar por término en título"),
 ) -> dict[str, int]:
     fuente_ids_por_nombre: list[UUID] = []
     if fuente_nombre:
@@ -222,8 +221,75 @@ async def count_convocatorias(
         query = query.where(ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre))
     if region:
         query = query.where(ConvocatoriaORM.region == region)
+    if search:
+        query = query.where(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
     total = (await session.execute(query)).scalar() or 0
     return {"total": total}
+
+
+@router.get("/convocatorias/kpi")
+async def get_convocatorias_kpi(
+    session: DbSession,
+    estado: str | None = Query(None),
+    fuente_id: UUID | None = Query(None), # noqa: B008
+    fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
+    region: str | None = Query(None),
+    search: str | None = Query(None, description="Buscar por término en título"),
+) -> dict[str, int]:
+    fuente_ids_por_nombre: list[UUID] = []
+    if fuente_nombre:
+        fuente_rows = (await session.execute(
+            select(FuenteORM.id).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%"))
+        )).all()
+        if not fuente_rows:
+            return {"abiertas": 0, "vencen_30": 0, "instituciones": 0, "sin_fecha": 0}
+        fuente_ids_por_nombre = [r.id for r in fuente_rows]
+
+    now = datetime.now(UTC)
+    base_filter = True
+    if estado:
+        base_filter = ConvocatoriaORM.estado == estado
+    if fuente_id:
+        base_filter = base_filter & (ConvocatoriaORM.fuente_id == fuente_id) if base_filter is not True else ConvocatoriaORM.fuente_id == fuente_id
+    elif fuente_ids_por_nombre:
+        base_filter = base_filter & (ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre)) if base_filter is not True else ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre)
+    if region:
+        base_filter = base_filter & (ConvocatoriaORM.region == region) if base_filter is not True else ConvocatoriaORM.region == region
+    if search:
+        base_filter = base_filter & (ConvocatoriaORM.titulo.ilike(f"%{search}%")) if base_filter is not True else ConvocatoriaORM.titulo.ilike(f"%{search}%")
+
+    abiertas_q = select(func.count(ConvocatoriaORM.id)).where(ConvocatoriaORM.estado == "ABIERTO")
+    if base_filter is not True:
+        abiertas_q = abiertas_q.where(base_filter)
+    abiertas = (await session.execute(abiertas_q)).scalar() or 0
+
+    vencen_30_q = select(func.count(ConvocatoriaORM.id)).where(
+        ConvocatoriaORM.estado == "ABIERTO",
+        ConvocatoriaORM.fecha_cierre.isnot(None),
+        ConvocatoriaORM.fecha_cierre >= now,
+        ConvocatoriaORM.fecha_cierre <= now + timedelta(days=30),
+    )
+    vencen_30_count = (await session.execute(vencen_30_q)).scalar() or 0
+
+    inst_q = select(func.count(func.distinct(ConvocatoriaORM.fuente_id))).where(ConvocatoriaORM.estado == "ABIERTO")
+    if base_filter is not True:
+        inst_q = inst_q.where(base_filter)
+    instituciones = (await session.execute(inst_q)).scalar() or 0
+
+    sin_fecha_q = select(func.count(ConvocatoriaORM.id)).where(
+        ConvocatoriaORM.estado == "ABIERTO",
+        ConvocatoriaORM.fecha_cierre.is_(None),
+    )
+    if base_filter is not True:
+        sin_fecha_q = sin_fecha_q.where(base_filter)
+    sin_fecha = (await session.execute(sin_fecha_q)).scalar() or 0
+
+    return {
+        "abiertas": abiertas,
+        "vencen_30": vencen_30_count,
+        "instituciones": instituciones,
+        "sin_fecha": sin_fecha,
+    }
 
 
 @router.get("/convocatorias/{convocatoria_id}", response_model=ConvocatoriaDetailResponse)
@@ -260,7 +326,7 @@ async def get_convocatoria_detail(convocatoria_id: UUID, session: DbSession) -> 
         identificador_externo=orm.identificador_externo,
         titulo=orm.titulo,
         descripcion=orm.descripcion,
-        url_detalle=str(orm.url_detail) if orm.url_detail else "",  # type: ignore[arg-type]
+        url_detalle=orm.url_detail,
         fecha_apertura=orm.fecha_apertura,
         fecha_cierre=orm.fecha_cierre,
         monto=float(orm.monto) if orm.monto is not None else None,
@@ -412,3 +478,118 @@ async def delete_notification_config(config_id: UUID, session: DbSession) -> Non
     await session.delete(orm)
     await session.flush()
     logger.info("Config de notificación eliminada", config_id=str(config_id))
+
+
+# ─── SUSCRIPCIONES ──────────────────────────────────────────────────────────
+
+
+@router.get("/suscripciones/regiones")
+async def list_regiones_suscripcion() -> dict[str, list[str]]:
+    """Retorna la lista de regiones disponibles para suscripción."""
+    from src.core.domain.entities import REGIONES_CHILE  # noqa: PLC0415
+    return {"regiones": list(REGIONES_CHILE)}
+
+
+@router.post("/suscripciones", response_model=SuscripcionResponse, status_code=201)
+async def crear_suscripcion(data: SuscripcionCreate, session: DbSession) -> SuscripcionResponse:
+    # Validar que al menos una región esté seleccionada
+    if not data.regiones:
+        raise HTTPException(status_code=422, detail="Debe seleccionar al menos una región")
+
+    # Validar que el chat_id no esté vacío
+    if not data.chat_id or not data.chat_id.strip():
+        raise HTTPException(status_code=422, detail="chat_id es requerido")
+
+    # Buscar suscripción existente por chat_id
+    result = await session.execute(
+        select(SuscripcionORM).where(SuscripcionORM.chat_id == data.chat_id.strip())
+    )
+    existente = result.scalar_one_or_none()
+
+    if existente:
+        # Actualizar: agregar nuevas regiones a las existentes
+        regiones_actuales = set(existente.regiones or [])
+        regiones_actuales.update(data.regiones)
+        existente.regiones = list(regiones_actuales)
+        existente.activa = True
+        existente.actualizado_en = datetime.now(UTC)
+        await session.flush()
+        logger.info("Suscripción actualizada", chat_id=data.chat_id, regiones=existente.regiones)
+        orm = existente
+    else:
+        orm = SuscripcionORM(
+            chat_id=data.chat_id.strip(),
+            nombre=data.nombre,
+            regiones=data.regiones,
+            activa=True,
+            confirmado=True,
+        )
+        session.add(orm)
+        await session.flush()
+        logger.info("Suscripción creada", chat_id=data.chat_id, regiones=data.regiones)
+
+    return SuscripcionResponse(
+        id=orm.id,
+        chat_id=orm.chat_id,
+        nombre=orm.nombre,
+        regiones=orm.regiones,
+        activa=orm.activa,
+        confirmado=orm.confirmado,
+        creado_en=orm.creado_en,
+        actualizado_en=orm.actualizado_en,
+    )
+
+
+@router.get("/suscripciones/{chat_id}", response_model=SuscripcionResponse)
+async def obtener_suscripcion(chat_id: str, session: DbSession) -> SuscripcionResponse:
+    result = await session.execute(
+        select(SuscripcionORM).where(SuscripcionORM.chat_id == chat_id)
+    )
+    orm = result.scalar_one_or_none()
+    if not orm:
+        raise HTTPException(status_code=404, detail="Suscripción no encontrada")
+    return SuscripcionResponse(
+        id=orm.id,
+        chat_id=orm.chat_id,
+        nombre=orm.nombre,
+        regiones=orm.regiones,
+        activa=orm.activa,
+        confirmado=orm.confirmado,
+        creado_en=orm.creado_en,
+        actualizado_en=orm.actualizado_en,
+    )
+
+
+@router.patch("/suscripciones/{suscripcion_id}", response_model=SuscripcionResponse)
+async def actualizar_suscripcion(suscripcion_id: UUID, data: SuscripcionUpdate, session: DbSession) -> SuscripcionResponse:
+    result = await session.execute(select(SuscripcionORM).where(SuscripcionORM.id == suscripcion_id))
+    orm = result.scalar_one_or_none()
+    if not orm:
+        raise HTTPException(status_code=404, detail="Suscripción no encontrada")
+    if data.regiones is not None:
+        orm.regiones = data.regiones
+    if data.activa is not None:
+        orm.activa = data.activa
+    orm.actualizado_en = datetime.now(UTC)
+    await session.flush()
+    return SuscripcionResponse(
+        id=orm.id,
+        chat_id=orm.chat_id,
+        nombre=orm.nombre,
+        regiones=orm.regiones,
+        activa=orm.activa,
+        confirmado=orm.confirmado,
+        creado_en=orm.creado_en,
+        actualizado_en=orm.actualizado_en,
+    )
+
+
+@router.delete("/suscripciones/{suscripcion_id}", status_code=204)
+async def eliminar_suscripcion(suscripcion_id: UUID, session: DbSession) -> None:
+    result = await session.execute(select(SuscripcionORM).where(SuscripcionORM.id == suscripcion_id))
+    orm = result.scalar_one_or_none()
+    if not orm:
+        raise HTTPException(status_code=404, detail="Suscripción no encontrada")
+    await session.delete(orm)
+    await session.flush()
+    logger.info("Suscripción eliminada", suscripcion_id=str(suscripcion_id))

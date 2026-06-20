@@ -15,6 +15,7 @@ from src.core.domain.entities import Fuente, Snapshot
 from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import ExtractionError, NetworkError
 from src.core.domain.ports import ScraperPort
+from src.core.application.normalizer import _coerce_region
 from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
@@ -212,7 +213,7 @@ class HtmlStaticScraper(ScraperPort):
                 if selectores.region:
                     region_nodo = _resolve_node(nodo, selectores.region)
                     raw_region = _extract_text_or_attr(region_nodo, selectores.region)
-                    item_data["region"] = _apply_normalizer(raw_region, "region", fuente)
+                    item_data["region"] = _coerce_region(_apply_normalizer(raw_region, "region", fuente))
                 else:
                     item_data["region"] = None
 

@@ -62,6 +62,7 @@ class NormalizerConfig(BaseModel):
     """Mapeo de normalizadores para campos específicos."""
 
     titulo: NormalizerItem | None = None
+    fecha_apertura: NormalizerItem | None = None
     fecha_cierre: NormalizerItem | None = None
     monto: NormalizerItem | None = None
     region: NormalizerItem | None = None
@@ -105,6 +106,27 @@ class Fuente(BaseModel):
     activa: bool = True
     creado_en: datetime = Field(default_factory=lambda: datetime.now(UTC))
     actualizado_en: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+REGIONES_CHILE: tuple[str, ...] = (
+    "Arica y Parinacota",
+    "Tarapacá",
+    "Antofagasta",
+    "Atacama",
+    "Coquimbo",
+    "Valparaíso",
+    "Metropolitana",
+    "O'Higgins",
+    "Maule",
+    "Ñuble",
+    "Biobío",
+    "La Araucanía",
+    "Los Ríos",
+    "Los Lagos",
+    "Aysén del General Carlos Ibáñez del Campo",
+    "Magallanes y de la Antártica Chilena",
+    "Nacional",
+)
 
 
 class Delta(BaseModel):
@@ -165,3 +187,16 @@ class NotificacionResult(BaseModel):
     destinatario: str
     estado: str  # "ENVIADO", "FALLIDO", "SKIPPED"
     error_log: str | None = None
+
+
+class Suscripcion(BaseModel):
+    """Suscripción de un usuario a notificaciones por región."""
+
+    id: UUID = Field(default_factory=uuid4)
+    chat_id: str
+    nombre: str | None = None
+    regiones: list[str] = Field(default_factory=list)
+    activa: bool = True
+    confirmado: bool = False
+    creado_en: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    actualizado_en: datetime = Field(default_factory=lambda: datetime.now(UTC))

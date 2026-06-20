@@ -12,6 +12,7 @@ selectores:
   # Se monitorizan cambios de título y descripción únicamente.
   estado: null
   fecha_cierre: null
+region_defecto: "Nacional"
 normalizadores: {}
 alertas:
   campos_sensibles: ["titulo"]

@@ -244,6 +244,8 @@ class WpAjaxScraper(ScraperPort):
             return []
 
         resultados: list[dict[str, str | None]] = []
+        excluir_titulo = fuente.configuracion_reglas.excluir_patrones_titulo or []
+        excluir_url = fuente.configuracion_reglas.excluir_patrones_url or []
 
         for index, nodo in enumerate(items_nodos):
             try:
@@ -253,13 +255,25 @@ class WpAjaxScraper(ScraperPort):
                 titulo_text = _extract_text_or_attr(titulo_nodo, selectores.titulo)
                 item_data["titulo"] = titulo_text
 
+                if not item_data["titulo"]:
+                    continue
+
+                if excluir_titulo and any(
+                    re.search(p, item_data["titulo"], re.IGNORECASE) for p in excluir_titulo
+                ):
+                    logger.debug(
+                        "Item AJAX excluido por patrón de título",
+                        titulo=item_data["titulo"][:60],
+                    )
+                    continue
+
                 identificador_nodo = _resolve_node(nodo, selectores.identificador)
                 identificador_raw = _extract_text_or_attr(identificador_nodo, selectores.identificador)
                 if not identificador_raw and titulo_text:
                     identificador_raw = "hash-" + hashlib.md5(titulo_text.encode("utf-8")).hexdigest()[:10]
                 item_data["identificador"] = identificador_raw
 
-                if not item_data["identificador"] or not item_data["titulo"]:
+                if not item_data["identificador"]:
                     continue
 
                 if selectores.descripcion:
@@ -275,7 +289,16 @@ class WpAjaxScraper(ScraperPort):
                     link_nodo = nodo
                 href_val = link_nodo.attributes.get("href") if link_nodo else None
                 if isinstance(href_val, str) and href_val.strip():
-                    item_data["url_detalle"] = urljoin(str(fuente.url_base), href_val.strip())
+                    full_url = urljoin(str(fuente.url_base), href_val.strip())
+                    if excluir_url and any(
+                        re.search(p, full_url, re.IGNORECASE) for p in excluir_url
+                    ):
+                        logger.debug(
+                            "Item AJAX excluido por patrón de URL",
+                            url=full_url[:80],
+                        )
+                        continue
+                    item_data["url_detalle"] = full_url
                 else:
                     item_data["url_detalle"] = None
 
@@ -293,11 +316,23 @@ class WpAjaxScraper(ScraperPort):
                 else:
                     item_data["fecha_cierre"] = None
 
+                if selectores.fecha_apertura:
+                    fa_nodo = _resolve_node(nodo, selectores.fecha_apertura)
+                    item_data["fecha_apertura"] = _extract_text_or_attr(fa_nodo, selectores.fecha_apertura)
+                else:
+                    item_data["fecha_apertura"] = None
+
                 if selectores.monto:
                     monto_nodo = _resolve_node(nodo, selectores.monto)
                     item_data["monto"] = _extract_text_or_attr(monto_nodo, selectores.monto)
                 else:
                     item_data["monto"] = None
+
+                if selectores.region:
+                    region_nodo = _resolve_node(nodo, selectores.region)
+                    item_data["region"] = _extract_text_or_attr(region_nodo, selectores.region)
+                else:
+                    item_data["region"] = None
 
                 resultados.append(item_data)
             except Exception as e:

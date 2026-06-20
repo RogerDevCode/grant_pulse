@@ -31,7 +31,7 @@ class ConvocatoriaResponse(BaseModel):
     identificador_externo: str
     titulo: str
     descripcion: str | None
-    url_detalle: HttpUrl
+    url_detalle: HttpUrl | None = None
     fecha_apertura: datetime | None
     fecha_cierre: datetime | None
     monto: float | None
@@ -103,3 +103,29 @@ class NotificacionResponse(BaseModel):
     estado: str
     enviado_en: datetime
     error_log: str | None
+
+
+class SuscripcionCreate(BaseModel):
+    """Datos para crear una suscripción a notificaciones por región."""
+
+    chat_id: str
+    nombre: str | None = None
+    regiones: list[str]
+
+
+class SuscripcionUpdate(BaseModel):
+    """Datos para actualizar una suscripción."""
+
+    regiones: list[str] | None = None
+    activa: bool | None = None
+
+
+class SuscripcionResponse(BaseModel):
+    id: UUID
+    chat_id: str
+    nombre: str | None = None
+    regiones: list[str]
+    activa: bool
+    confirmado: bool
+    creado_en: datetime
+    actualizado_en: datetime

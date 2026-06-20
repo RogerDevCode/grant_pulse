@@ -39,6 +39,8 @@ normalizadores:
     regex_extraction: "(?:Cierre|Fecha\\s+de\\s+cierre|Plazo)[:\\s]+([\\d]{1,2}[/\\-\\.][\\d]{1,2}[/\\-\\.][\\d]{2,4})"
     formato_salida: "%d/%m/%Y"
 
+region_defecto: "Nacional"
+
 alertas:
   campos_sensibles: ["titulo", "fecha_apertura"]
   ignorar_cambios_en: ["descripcion"]

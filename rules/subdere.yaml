@@ -6,6 +6,7 @@ selectores:
   identificador: "self"
   titulo: "self"
   link_detalle: "attr:href"
+region_defecto: "Nacional"
 alertas:
   campos_sensibles:
     - "titulo"

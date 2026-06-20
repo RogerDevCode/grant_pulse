@@ -155,6 +155,7 @@ function loadPage(page) {
     case 'instituciones': loadInstituciones(); break;
     case 'briefing':      loadBriefing();      break;
     case 'admin':         loadAdmin();         break;
+    case 'suscripciones': loadSuscripciones(); break;
   }
 }
 
@@ -171,38 +172,46 @@ async function loadRadar() {
   showRadarLoading(true);
 
   try {
-    const params = new URLSearchParams();
-    params.set('limit',  PAGE_SIZE);
-    params.set('offset', state.convOffset);
+    // Parámetros para todas las llamadas
+    const listParams = new URLSearchParams();
+    listParams.set('limit',  PAGE_SIZE);
+    listParams.set('offset', state.convOffset);
+    if (soloActivas) listParams.set('estado', 'ABIERTO');
+    if (state.selectedFuenteId) listParams.set('fuente_id', state.selectedFuenteId);
+    if (search)  listParams.set('search', search);
+    if (orden)   listParams.set('orden',  orden);
+    if (region)  listParams.set('region', region);
 
-    if (soloActivas) params.set('estado', 'ABIERTO');
-    if (state.selectedFuenteId) params.set('fuente_id', state.selectedFuenteId);
-    if (search)  params.set('search', search);
-    if (orden)   params.set('orden',  orden);
-    if (region)  params.set('region', region);
+    const filterParams = new URLSearchParams();
+    if (soloActivas) filterParams.set('estado', 'ABIERTO');
+    if (state.selectedFuenteId) filterParams.set('fuente_id', state.selectedFuenteId);
+    if (region) filterParams.set('region', region);
+    if (search) filterParams.set('search', search);
 
-    const data = await apiFetch(`/convocatorias?${params}`);
+    // Llamadas en paralelo: datos, conteo, KPIs, y badge global
+    const [data, countData, kpiData] = await Promise.all([
+      apiFetch(`/convocatorias?${listParams}`),
+      apiFetch(`/convocatorias/count?${filterParams}`),
+      apiFetch(`/convocatorias/kpi?${filterParams}`),
+    ]);
+
     state.convocatorias = data;
+    state.convTotal = countData.total;
+
     renderConvGrid(data);
-
-    // Count separado para paginación y KPIs
-    const countParams = new URLSearchParams();
-    if (soloActivas) countParams.set('estado', 'ABIERTO');
-    if (state.selectedFuenteId) countParams.set('fuente_id', state.selectedFuenteId);
-    const count = await apiFetch(`/convocatorias/count?${countParams}`);
-    state.convTotal = count.total;
-
-    updateResultPill(count.total);
+    updateResultPill(countData.total);
     renderConvPagination();
-    updateActivePill(count.total);
+    updateActivePill(countData.total);
 
-    // Actualizar nav badge con total activas globales
-    if (!soloActivas || !state.selectedFuenteId) {
-      const globalCount = await apiFetch('/convocatorias/count?estado=ABIERTO');
-      $('#navBadgeRadar').textContent = globalCount.total || '';
-    }
+    // KPIs desde el endpoint dedicado
+    $('#kpiAbiertas').textContent = kpiData.abiertas;
+    $('#kpiVencen30').textContent = kpiData.vencen_30;
+    $('#kpiInstituciones').textContent = kpiData.instituciones;
+    $('#kpiSinFecha').textContent = kpiData.sin_fecha;
 
-    await updateKpiStrip(soloActivas, region);
+    // Badge global de navegación (total activas global, sin filtros)
+    const globalCount = await apiFetch('/convocatorias/count?estado=ABIERTO');
+    $('#navBadgeRadar').textContent = globalCount.total || '';
 
   } catch (e) {
     console.error('Radar error:', e);
@@ -211,37 +220,6 @@ async function loadRadar() {
   } finally {
     showRadarLoading(false);
   }
-}
-
-async function updateKpiStrip(soloActivas, region) {
-  try {
-    // Abiertas
-    const abParams = new URLSearchParams({ estado: 'ABIERTO' });
-    if (state.selectedFuenteId) abParams.set('fuente_id', state.selectedFuenteId);
-    if (region) abParams.set('region', region);
-    const abiertas = await apiFetch(`/convocatorias/count?${abParams}`);
-    $('#kpiAbiertas').textContent = abiertas.total;
-
-    // Por vencer en 30 días (usamos el filtro por_vencer del endpoint)
-    const pvParams = new URLSearchParams({ estado: 'ABIERTO', orden: 'por_vencer', limit: 200 });
-    if (state.selectedFuenteId) pvParams.set('fuente_id', state.selectedFuenteId);
-    const pvData = await apiFetch(`/convocatorias?${pvParams}`);
-    const vencen30 = pvData.filter(c => {
-      const d = diasHastaCierre(c.fecha_cierre);
-      return d !== null && d >= 0 && d <= 30;
-    }).length;
-    $('#kpiVencen30').textContent = vencen30;
-
-    // Instituciones con activas
-    const allAbiertas = pvData; // reusamos
-    const uniqueInst = new Set(allAbiertas.map(c => c.fuente_id));
-    $('#kpiInstituciones').textContent = uniqueInst.size;
-
-    // Sin fecha
-    const sinFecha = allAbiertas.filter(c => !c.fecha_cierre).length;
-    $('#kpiSinFecha').textContent = sinFecha;
-
-  } catch (e) { /* KPIs no críticos, silenciar */ }
 }
 
 function showRadarLoading(show) {
@@ -925,6 +903,74 @@ function renderAudit(logs) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   SUSCRIPCIONES
+═══════════════════════════════════════════════════════════════ */
+
+let subRegionesCargadas = false;
+
+async function loadSuscripciones() {
+  if (!subRegionesCargadas) {
+    await cargarRegionesCheckboxes();
+    subRegionesCargadas = true;
+  }
+  await cargarMisSuscripciones();
+}
+
+async function cargarRegionesCheckboxes() {
+  try {
+    const data = await apiFetch('/suscripciones/regiones');
+    const grid = $('#subRegiones');
+    grid.innerHTML = data.regiones.map(r =>
+      `<label><input type="checkbox" value="${escHtml(r)}"> ${escHtml(r)}</label>`
+    ).join('');
+  } catch (e) {
+    console.error('Error cargando regiones:', e);
+  }
+}
+
+async function cargarMisSuscripciones() {
+  try {
+    const el = $('#subList');
+    const chatId = $('#subChatId').value.trim();
+    if (!chatId) {
+      el.innerHTML = '<p class="muted-msg">Completá tu Chat ID y presioná "Suscribirme" para empezar.</p>';
+      return;
+    }
+    const data = await apiFetch(`/suscripciones/${encodeURIComponent(chatId)}`);
+    el.innerHTML = buildSubItem(data);
+  } catch (e) {
+    $('#subList').innerHTML = '<p class="muted-msg">No tenés suscripciones activas.</p>';
+  }
+}
+
+function buildSubItem(s) {
+  const regiones = (s.regiones || []).map(r => `<span class="sub-item-region">${escHtml(r)}</span>`).join('');
+  return `
+    <div class="sub-item">
+      <div class="sub-item-info">
+        <strong>${escHtml(s.nombre || 'Sin nombre')}</strong>
+        <small style="color:var(--text-3)">Chat ID: ${escHtml(s.chat_id)}</small>
+        <div class="sub-item-regiones">${regiones || '<span style="color:var(--text-3);font-size:0.8rem">Sin regiones</span>'}</div>
+      </div>
+      <button class="btn-icon-sm danger" onclick="eliminarSub('${s.id}')" title="Eliminar suscripción">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      </button>
+    </div>`;
+}
+
+window.eliminarSub = async function(id) {
+  showConfirm('Eliminar Suscripción', '¿Eliminar esta suscripción? Dejarás de recibir alertas.', async () => {
+    try {
+      await apiFetch(`/suscripciones/${id}`, { method: 'DELETE' });
+      toast('Suscripción eliminada', 'success');
+      $('#subList').innerHTML = '<p class="muted-msg">No tenés suscripciones activas.</p>';
+    } catch (e) {
+      toast('Error al eliminar suscripción', 'error');
+    }
+  });
+};
+
+/* ═══════════════════════════════════════════════════════════════
    ADMIN LOADER
 ═══════════════════════════════════════════════════════════════ */
 
@@ -1121,6 +1167,37 @@ document.addEventListener('DOMContentLoaded', async () => {
       $('#sidebar').classList.remove('mobile-open');
       closeInstDropdown();
       state.confirmCb = null;
+    }
+  });
+
+  // ── SUSCRIPCION FORM ──
+  $('#suscripcionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const chatId = $('#subChatId').value.trim();
+    const nombre = $('#subNombre').value.trim() || null;
+    const checkboxes = $$('#subRegiones input[type="checkbox"]:checked');
+    const regiones = Array.from(checkboxes).map(cb => cb.value);
+
+    if (!chatId) { toast('Ingresá tu Chat ID de Telegram', 'error'); return; }
+    if (!regiones.length) { toast('Seleccioná al menos una región', 'error'); return; }
+
+    const btn = $('#subBtn');
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    try {
+      await apiFetch('/suscripciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, nombre, regiones }),
+      });
+      toast('Suscripción creada exitosamente', 'success');
+      await cargarMisSuscripciones();
+    } catch (e) {
+      toast('Error al crear suscripción', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg> Suscribirme`;
     }
   });
 

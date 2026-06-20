@@ -723,11 +723,139 @@ class NvidiaClient(OpenRouterClient):
         }
 
 
+def _extract_json_list(text: str) -> list[dict[str, str]]:
+    """Parsea una respuesta LLM como lista de diccionarios."""
+    parsed = _extract_json_from_text(text)
+    if isinstance(parsed, list):
+        return parsed
+    if isinstance(parsed, dict):
+        return [parsed]
+    raise ScrapingError(f"No se pudo extraer lista JSON de la respuesta: {text[:200]}")
+
+
+def _extract_json_dict(text: str) -> dict | None:
+    """Parsea una respuesta LLM como diccionario."""
+    parsed = _extract_json_from_text(text)
+    if isinstance(parsed, dict):
+        return parsed
+    return None
+
+
+class CommandCodeClient(StructuredLLMClient):
+    """Cliente LLM que usa el CLI `cmd` de CommandCode como backend.
+
+    Ejecuta el binario `cmd -p <prompt> -m <modelo>` vía subprocess.
+    Es el proveedor primario cuando CMD_API_KEY está configurada.
+    """
+
+    provider_name = "commandcode"
+    max_content_chars = 100_000
+    max_output_tokens = 4_096
+    request_timeout_seconds = 120
+
+    def __init__(self) -> None:
+        self.api_key = settings.CMD_API_KEY
+        self.model = settings.CMD_LLM_MODEL
+
+    def _call_cmd(self, prompt: str, timeout: int = 60) -> str:
+        """Ejecuta `cmd -p <prompt> -m <modelo>` y retorna stdout."""
+        import os  # noqa: PLC0415
+        import shutil  # noqa: PLC0415
+        import subprocess  # noqa: PLC0415
+
+        cmd_path = shutil.which("cmd")
+        if not cmd_path:
+            # Fallback: buscar en nvm
+            nvm_dir = os.path.expanduser("~/.nvm/versions/node")
+            if os.path.isdir(nvm_dir):
+                for v in sorted(os.listdir(nvm_dir), reverse=True):
+                    candidate = os.path.join(nvm_dir, v, "bin", "cmd")
+                    if os.path.isfile(candidate):
+                        cmd_path = candidate
+                        break
+
+        if not cmd_path:
+            raise ScrapingError("Comando `cmd` no encontrado en PATH ni en ~/.nvm/versions/node/*/bin/")
+
+        env = os.environ.copy()
+        if self.api_key:
+            env["CMD_API_KEY"] = self.api_key
+
+        try:
+            result = subprocess.run(
+                [cmd_path, "-p", prompt, "-m", self.model],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env,
+            )
+            if result.returncode != 0:
+                raise ScrapingError(
+                    f"CommandCode CLI error (exit {result.returncode}): {result.stderr[:500]}"
+                )
+            return result.stdout.strip()
+        except subprocess.TimeoutExpired:
+            raise ScrapingError(f"CommandCode CLI timed out after {timeout}s")  # noqa: B904
+        except FileNotFoundError:
+            raise ScrapingError(f"Binario `cmd` no encontrado en {cmd_path}")  # noqa: B904
+
+    async def chat_completion(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        timeout: int = 60,
+    ) -> str:
+        full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+        return await asyncio.to_thread(self._call_cmd, full_prompt, timeout)
+
+    async def extract_from_html(
+        self,
+        html_content: str,
+        fields_schema: dict[str, str],
+        base_url: str,
+        timeout: int = 90,
+    ) -> list[dict[str, str]]:
+        schema_desc = "\n".join(f"- {k}: {v}" for k, v in fields_schema.items())
+        prompt = (
+            f"Extrae datos estructurados desde el siguiente HTML.\n"
+            f"URL base: {base_url}\n"
+            f"Campos solicitados:\n{schema_desc}\n\n"
+            f"Responde SOLO con JSON válido (lista de objetos).\n\n{html_content[:self.max_content_chars]}"
+        )
+        result = await self.chat_completion(prompt, timeout=timeout)
+        return _extract_json_list(result)
+
+    async def heal_selectors(
+        self,
+        html_content: str,
+        institution_name: str,
+        base_url: str,
+        timeout: int = 90,
+    ) -> dict | None:
+        prompt = (
+            f"Eres un experto en selectores CSS. Dado el HTML de {institution_name} ({base_url}), "
+            f"encuentra selectores CSS que apunten a cada ítem de convocatoria/fondo.\n"
+            f"Responde SOLO con JSON: {{\"contenedor_items\": \"...\", \"titulo\": \"...\", "
+            f"\"link_detalle\": \"...\", \"identificador\": \"...\"}}\n\n{html_content[:self.max_content_chars]}"
+        )
+        result = await self.chat_completion(prompt, timeout=timeout)
+        return _extract_json_dict(result)
+
+
 def build_llm_client(preferred_provider: str | None = None) -> StructuredLLMClient:
-    """Factory explícita para elegir proveedor LLM sin acoplar la capa de scraping."""
+    """Factory explícita para elegir proveedor LLM sin acoplar la capa de scraping.
+
+    Jerarquía:
+    1. CommandCode (primario, si CMD_API_KEY existe)
+    2. NVIDIA (si NVIDIA_API_KEY existe)
+    3. Groq (si GROQ_API_KEY existe)
+    4. OpenRouter (fallback general)
+    """
 
     provider = (preferred_provider or settings.LLM_PROVIDER).strip().lower()
 
+    if provider == "commandcode":
+        return CommandCodeClient()
     if provider == "nvidia":
         return NvidiaClient()
     if provider == "groq":
@@ -735,7 +863,9 @@ def build_llm_client(preferred_provider: str | None = None) -> StructuredLLMClie
     if provider == "openrouter":
         return OpenRouterClient()
 
-    # auto: priorizamos NVIDIA si existe API key, luego Groq, luego OpenRouter.
+    # auto: CommandCode > NVIDIA > Groq > OpenRouter
+    if settings.CMD_API_KEY:
+        return CommandCodeClient()
     if settings.NVIDIA_API_KEY:
         return NvidiaClient()
     if settings.GROQ_API_KEY:
@@ -743,7 +873,5 @@ def build_llm_client(preferred_provider: str | None = None) -> StructuredLLMClie
     if settings.OPENROUTER_API_KEY or settings.LLM_API_KEY:
         return OpenRouterClient()
 
-    # Fail-fast controlado: devolvemos el cliente preferido por defecto para que
-    # el caller obtenga el error de configuración en el primer request real.
     logger.warning("No hay API key configurada para LLMs; se usará OpenRouter por defecto")
     return OpenRouterClient()

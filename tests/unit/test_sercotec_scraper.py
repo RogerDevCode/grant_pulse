@@ -210,8 +210,8 @@ class TestExtractSinAgrupacion:
 
         assert len(resultados) == 2
         regiones = {r["region"] for r in resultados}
-        assert "Región de Tarapacá" in regiones
-        assert "Región de Antofagasta" in regiones
+        assert "Tarapacá" in regiones
+        assert "Antofagasta" in regiones
 
 
 class TestFetchParamPagination:

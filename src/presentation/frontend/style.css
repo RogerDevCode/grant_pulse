@@ -1590,6 +1590,82 @@ select option { background: var(--bg-2); }
   .inst-grid { grid-template-columns: 1fr; }
 }
 
+/* ═══ SUSCRIPCIONES ═══ */
+.suscripciones-layout {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.region-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.region-grid label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--r);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: border-color .15s, background .15s;
+}
+
+.region-grid label:hover {
+  border-color: var(--accent-dim);
+  background: var(--bg-hover);
+}
+
+.region-grid input[type="checkbox"] {
+  accent-color: var(--accent-h);
+  width: 16px;
+  height: 16px;
+}
+
+.btn-block {
+  width: 100%;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.sub-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: 8px;
+  background: var(--bg-card);
+}
+
+.sub-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sub-item-regiones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.sub-item-region {
+  font-size: 0.7rem;
+  background: var(--accent-dim);
+  color: var(--accent-h);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
 @media (max-width: 600px) {
   .content { padding: 14px; }
   .topbar { padding: 0 14px; gap: 8px; }

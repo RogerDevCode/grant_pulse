@@ -24,23 +24,7 @@ selectores:
   estado: null      # No hay indicador de estado
   fecha_cierre: null
 
-# Excluir documentos adjuntos y de soporte que no son la convocatoria principal.
-# Estos patrones se aplican al TÍTULO del item.
-excluir_patrones_titulo:
-  - "^Bases "           # "Bases Concurso..."
-  - "^Modificación "    # "Modificación Convocatoria..."
-  - "^Productos Admisibles"
-  - "^Anexo "
-  - "^Formulario "
-  - "^Instructivo "
-  - "^Resolución "
-  - "^Acta "
-  - "^Nómina "
-  - "^Lista "
-
-# Excluir links que apuntan directamente a PDFs (son documentos, no páginas).
-excluir_patrones_url:
-  - "/docs/default-source/"
+region_defecto: "Nacional"
 
 normalizadores: {}
 

@@ -1,20 +1,26 @@
 """Registry canónico de instituciones y sus pipelines de scraping.
 
-Las URLs de listado y los pasos de scraping se definen aquí para evitar
-que queden distribuidos entre YAMLs y código de orquestación.
+Las fuentes se registran desde tres orígenes en orden de precedencia:
+1. YAML rules/ → dinámico, sin tocar código (primario)
+2. Registro en código → perfiles hardcodeados (fallback para fuentes sin YAML)
+3. Base de datos → perfiles registrados vía API
 
-Jerarquía de scraping por paso:
-1. Orgánico (json_api, wp_ajax, rss_feed) → datos estructurados sin WAF
-2. curl_cffi (impersonación TLS) → HTML de sitios con WAF (BigIP, etc.)
-3. html_static (httpx) → HTML de sitios sin protección
-4. browser (Playwright) → JS rendering necesario
-5. llm → último recurso para HTML muy ruidoso
+Agregar una nueva fuente = crear un nuevo archivo .yaml en rules/. No requiere código.
 """
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from src.infra.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass(slots=True)
@@ -42,7 +48,98 @@ def _normalize_name(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
-# --- PERFILES POR INSTITUCIÓN ---
+# ─── YAML DYNAMIC REGISTRY ──────────────────────────────────────────
+
+_RULES_DIR = Path(__file__).parent.parent.parent.parent / "rules"
+
+# Mapa de estrategias YAML → (fetcher, extractor) por defecto
+_STRATEGY_MAP: dict[str, tuple[str, str]] = {
+    "html_static": ("html_static", "html_static"),
+    "json_api": ("json_api", "json_api"),
+    "wp_ajax": ("wp_ajax", "wp_ajax"),
+    "rss_feed": ("rss_feed", "rss_feed"),
+    "curl_cffi": ("curl_cffi", "html_static"),
+    "browser": ("browser", "html_static"),
+    "llm": ("html_static", "llm"),
+    "fosis_multipage": ("fosis_multipage", "fosis_multipage"),
+    "subdere_homepage": ("subdere_homepage", "subdere_homepage"),
+}
+
+
+def _build_profile_from_yaml(filepath: Path) -> SourceProfile | None:
+    """Construye un SourceProfile a partir de un archivo YAML de reglas."""
+    try:
+        with open(filepath) as f:
+            data: dict[str, Any] = yaml.safe_load(f) or {}
+    except (OSError, yaml.YAMLError) as e:
+        logger.warning(f"Error leyendo YAML {filepath.name}: {e}")
+        return None
+
+    nombre = data.get("nombre") or filepath.stem
+    url_busqueda = data.get("url_busqueda", "")
+    estrategia = data.get("estrategia", "html_static")
+    url_base = data.get("url_base", url_busqueda)
+
+    if not url_busqueda:
+        return None
+
+    # Estrategia principal
+    fetcher, extractor = _STRATEGY_MAP.get(estrategia, ("html_static", "html_static"))
+
+    steps: list[ScrapeStep] = [
+        ScrapeStep(fetcher=fetcher, extractor=extractor, url=url_busqueda, note=f"Primario: {estrategia}"),
+    ]
+
+    # Pasos de fallback desde YAML (opcional)
+    fallback_steps: list[dict[str, str]] = data.get("fallback_steps") or []
+    for fb in fallback_steps:
+        fb_fetcher, fb_extractor = _STRATEGY_MAP.get(fb.get("estrategia", "html_static"), ("html_static", "html_static"))
+        steps.append(
+            ScrapeStep(
+                fetcher=fb_fetcher,
+                extractor=fb_extractor,
+                url=fb.get("url", url_busqueda),
+                note=fb.get("nota", f"Fallback: {fb.get('estrategia', 'html_static')}"),
+            )
+        )
+
+    # Aliases desde YAML
+    aliases: list[str] = data.get("aliases") or []
+
+    return SourceProfile(
+        key=nombre,
+        root_url=url_base,
+        list_url=url_busqueda,
+        steps=tuple(steps),
+        aliases=tuple(aliases),
+        empty_state_markers=("No hay", "Sin resultados", "No se encontraron"),
+        note=data.get("descripcion", f"Fuente {nombre} registrada desde {filepath.name}"),
+    )
+
+
+def _load_yaml_profiles() -> dict[str, SourceProfile]:
+    """Escanea rules/ y construye perfiles dinámicos."""
+    profiles: dict[str, SourceProfile] = {}
+    rules_dir = _RULES_DIR
+
+    if not rules_dir.is_dir():
+        logger.warning(f"Directorio de reglas no encontrado: {rules_dir}")
+        return profiles
+
+    for yaml_file in sorted(rules_dir.glob("*.yaml")):
+        profile = _build_profile_from_yaml(yaml_file)
+        if profile is None:
+            continue
+        key = _normalize_name(profile.key)
+        profiles[key] = profile
+        for alias in profile.aliases:
+            profiles[_normalize_name(alias)] = profile
+
+    logger.info(f"Perfiles cargados desde YAML: {len({p.key for p in profiles.values()})} fuentes")
+    return profiles
+
+
+# ─── HARDCODED FALLBACK PROFILES ──────────────────────────────────
 
 _CORFO = SourceProfile(
     key="CORFO",
@@ -54,13 +151,13 @@ _CORFO = SourceProfile(
             fetcher="wp_ajax",
             extractor="wp_ajax",
             url="https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/",
-            note="admin-ajax.php con nonce dinámico. Estructurado y confiable.",
+            note="admin-ajax.php con nonce dinámico.",
         ),
         ScrapeStep(
             fetcher="curl_cffi",
             extractor="html_static",
             url="https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/",
-            note="Fallback: curl_cffi impersona Chrome120 para saltar BigIP WAF.",
+            note="Fallback: curl_cffi para BigIP WAF.",
         ),
     ),
     empty_state_markers=("No hay", "Sin resultados", "No se encontraron"),
@@ -69,26 +166,19 @@ _CORFO = SourceProfile(
 _SERCOTEC = SourceProfile(
     key="SERCOTEC",
     root_url="https://www.sercotec.cl/",
-    # URL con parámetros completos: sin ellos la API retorna solo 8 items (default backend).
-    # Con cantidad=500 trae todos los items (76 al 2026-06-06).
-    # La paginación es nativa via 'pagina': si items < cantidad, no hay más páginas.
     list_url="https://apisctwidgets.sercotec.cl/api/convocatorias?idRegion=0&idTipoInstrumento=0&idEtapa=0&pagina=1&cantidad=500",
     steps=(
         ScrapeStep(
             fetcher="json_api",
             extractor="json_api",
             url="https://apisctwidgets.sercotec.cl/api/convocatorias?idRegion=0&idTipoInstrumento=0&idEtapa=0&pagina=1&cantidad=500",
-            note=(
-                "Widget API oficial con parámetros completos. "
-                "Sin params retorna solo 8 items (paginación por defecto del backend). "
-                "Con cantidad=500 trae todos. Cada codBp = 1 convocatoria-región independiente."
-            ),
+            note="Widget API oficial con cantidad=500.",
         ),
         ScrapeStep(
             fetcher="html_static",
             extractor="html_static",
             url="https://www.sercotec.cl/convocatorias-regionales-2024/",
-            note="Fallback HTML estático (datos limitados).",
+            note="Fallback HTML estático.",
         ),
     ),
     empty_state_markers=("No hay", "sin resultados", "No se encontraron"),
@@ -103,13 +193,13 @@ _FIA = SourceProfile(
             fetcher="json_api",
             extractor="json_api",
             url="https://www.fia.cl/wp-json/wp/v2/convocatorias?per_page=100",
-            note="REST API nativa de WordPress (CPT convocatorias, category=13).",
+            note="REST API nativa de WordPress.",
         ),
         ScrapeStep(
             fetcher="html_static",
             extractor="html_static",
             url="https://www.fia.cl/pilares-de-accion/impulso-para-innovar/convocatorias-y-licitaciones/",
-            note="Fallback HTML estático (JS-rendered, menos confiable).",
+            note="Fallback HTML estático.",
         ),
     ),
     empty_state_markers=("No hay", "sin convocatorias", "No se encontraron"),
@@ -125,13 +215,13 @@ _ANID = SourceProfile(
             fetcher="rss_feed",
             extractor="rss_feed",
             url="https://anid.cl/feed/",
-            note="RSS feed como canal orgánico primario (REST API devuelve 401).",
+            note="RSS feed primario.",
         ),
         ScrapeStep(
             fetcher="browser",
             extractor="html_static",
             url="https://anid.cl/concursos/",
-            note="Fallback: JetEngine con carga asíncrona pesada.",
+            note="Fallback browser.",
         ),
     ),
     empty_state_markers=("No hay", "sin resultados", "No se encontraron"),
@@ -146,7 +236,7 @@ _INDAP = SourceProfile(
             fetcher="html_static",
             extractor="html_static",
             url="https://www.indap.gob.cl/plataforma-de-servicios/",
-            note="Portal Drupal estable, sin WAF.",
+            note="Portal Drupal estable.",
         ),
     ),
     empty_state_markers=("No hay", "sin resultados", "No se encontraron"),
@@ -161,7 +251,7 @@ _FOSIS = SourceProfile(
             fetcher="fosis_multipage",
             extractor="fosis_multipage",
             url="https://www.fosis.gob.cl/es/programas/autonomia-economica/",
-            note="Multi-subpágina: 4 categorías de programas + convocatoria-alianzas (~30+ items únicos).",
+            note="Multi-subpágina: ~30+ items.",
         ),
     ),
     empty_state_markers=("No hay", "sin programas", "No se encontraron"),
@@ -176,11 +266,11 @@ _SUBDERE = SourceProfile(
             fetcher="subdere_homepage",
             extractor="subdere_homepage",
             url="https://www.subdere.gob.cl/",
-            note="Homepage scraping: el WAF bloquea /programas con 403. La homepage retorna 200 con noticias y programas destacados.",
+            note="Homepage scraping, WAF bloquea rutas internas.",
         ),
     ),
     empty_state_markers=("No hay", "sin programas", "No se encontraron"),
-    note="El sitio bloquea /programas, /sala-de-prensa y la mayoría de rutas con 403. Solo la homepage (/) retorna 200.",
+    note="Solo homepage (/) retorna 200.",
 )
 
 _PROCHILE = SourceProfile(
@@ -192,51 +282,110 @@ _PROCHILE = SourceProfile(
             fetcher="curl_cffi",
             extractor="html_static",
             url="https://www.prochile.gob.cl/herramientas/concursos/",
-            note="ASP.NET con TLS fingerprinting. curl_cffi con impersonación Chrome obtiene HTML renderizado.",
+            note="curl_cffi impersona Chrome para ASP.NET.",
         ),
         ScrapeStep(
             fetcher="browser",
             extractor="html_static",
             url="https://www.prochile.gob.cl/herramientas/concursos/",
-            note="Fallback browser si curl_cffi no obtiene contenido.",
+            note="Fallback browser.",
         ),
     ),
     empty_state_markers=("No hay", "sin concursos", "No se encontraron"),
-    note="ASP.NET con documentos PDF por sector/año. Sin estado ni fecha en listing.",
 )
 
 
-# --- REGISTRY ---
-
-_PROFILES: dict[str, SourceProfile] = {}
+_HARDCODED: dict[str, SourceProfile] = {}
 
 for profile in (
-    _CORFO,
-    _SERCOTEC,
-    _FIA,
-    _ANID,
-    _INDAP,
-    _FOSIS,
-    _SUBDERE,
-    _PROCHILE,
+    _CORFO, _SERCOTEC, _FIA, _ANID,
+    _INDAP, _FOSIS, _SUBDERE, _PROCHILE,
 ):
-    _PROFILES[_normalize_name(profile.key)] = profile
+    _HARDCODED[_normalize_name(profile.key)] = profile
     for alias in profile.aliases:
-        _PROFILES[_normalize_name(alias)] = profile
+        _HARDCODED[_normalize_name(alias)] = profile
+
+
+# ─── CACHE DE PERFILES YAML ────────────────────────────────────────
+
+_yaml_cache: dict[str, SourceProfile] | None = None
+
+
+def _get_yaml_profiles() -> dict[str, SourceProfile]:
+    """Retorna perfiles YAML cacheados (se recarga en cada import en dev)."""
+    global _yaml_cache
+    if _yaml_cache is None:
+        _yaml_cache = _load_yaml_profiles()
+    return _yaml_cache
+
+
+# ─── API PÚBLICA ───────────────────────────────────────────────────
 
 
 def resolve_source_profile(source_name: str) -> SourceProfile | None:
-    """Retorna el perfil canónico para una fuente conocida."""
-    return _PROFILES.get(_normalize_name(source_name))
+    """
+    Retorna el perfil canónico para una fuente.
+
+    Precedencia:
+    1. Hardcoded catalog (perfiles con pipeline steps completos y probados)
+    2. YAML rules/ (perfiles dinámicos para fuentes sin perfil hardcodeado)
+
+    Esto permite agregar nuevas fuentes simplemente creando un YAML en rules/,
+    sin tocar código. Las fuentes conocidas mantienen sus pipelines probados.
+    """
+    key = _normalize_name(source_name)
+
+    # 1. Hardcoded (perfiles con pipeline steps completos)
+    profile = _HARDCODED.get(key)
+    if profile is not None:
+        return profile
+
+    # 2. YAML dinámico (para fuentes sin perfil hardcodeado)
+    return _get_yaml_profiles().get(key)
 
 
 def iter_source_profiles() -> tuple[SourceProfile, ...]:
-    """Itera sobre los perfiles canónicos únicos."""
+    """Itera sobre todos los perfiles disponibles (YAML + hardcoded)."""
     seen: set[str] = set()
     ordered: list[SourceProfile] = []
-    for profile in _PROFILES.values():
+
+    # YAML primero
+    for profile in _get_yaml_profiles().values():
         if profile.key in seen:
             continue
         seen.add(profile.key)
         ordered.append(profile)
+
+    # Hardcoded después (solo los que no estén ya cubiertos por YAML)
+    for profile in _HARDCODED.values():
+        if profile.key in seen:
+            continue
+        seen.add(profile.key)
+        ordered.append(profile)
+
     return tuple(ordered)
+
+
+def register_yaml_profile(filepath: str | Path) -> SourceProfile | None:
+    """Registra un perfil desde un archivo YAML en tiempo de ejecución.
+    Útil para agregar fuentes sin reiniciar la aplicación.
+    """
+    global _yaml_cache
+    path = Path(filepath) if isinstance(filepath, str) else filepath
+    profile = _build_profile_from_yaml(path)
+    if profile is None:
+        return None
+    if _yaml_cache is None:
+        _yaml_cache = {}
+    key = _normalize_name(profile.key)
+    _yaml_cache[key] = profile
+    for alias in profile.aliases:
+        _yaml_cache[_normalize_name(alias)] = profile
+    logger.info("Perfil registrado dinámicamente desde %s", path.name)
+    return profile
+
+
+def invalidate_yaml_cache() -> None:
+    """Invalida el cache de perfiles YAML para forzar recarga."""
+    global _yaml_cache
+    _yaml_cache = None
