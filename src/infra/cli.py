@@ -9,7 +9,6 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
-from uuid import uuid4
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -200,7 +199,6 @@ async def run_single_source(filepath: Path) -> None:
 
             if not fuente_db:
                 fuente_db = Fuente(
-                    id=uuid4(),
                     nombre=rules_config.nombre,
                     url_base=cast(Any, source_profile.root_url if source_profile else rules_config.url_busqueda),
                     configuracion_reglas=rules_config,
@@ -326,7 +324,6 @@ async def sync_single_source_config(filepath: Path) -> None:
 
             if not fuente_db:
                 fuente_db = Fuente(
-                    id=uuid4(),
                     nombre=rules_config.nombre,
                     url_base=cast(Any, source_profile.root_url if source_profile else rules_config.url_busqueda),
                     configuracion_reglas=rules_config,

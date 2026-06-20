@@ -1,11 +1,7 @@
-"""
-Esquemas Pydantic para las respuestas de la API.
-Mantienen los contratos HTTP aislados de las entidades de dominio puro.
-"""
+"""Esquemas Pydantic para las respuestas de la API."""
 
 from datetime import datetime
 from typing import Any
-from uuid import UUID
 
 from pydantic import BaseModel, HttpUrl
 
@@ -17,7 +13,7 @@ class DeltaResponse(BaseModel):
 
 
 class EventoCambioResponse(BaseModel):
-    id: UUID
+    id: int
     tipo: str
     es_relevante: bool
     fecha_deteccion: datetime
@@ -25,8 +21,8 @@ class EventoCambioResponse(BaseModel):
 
 
 class ConvocatoriaResponse(BaseModel):
-    id: UUID
-    fuente_id: UUID
+    id: int
+    fuente_id: int
     fuente_nombre: str | None = None
     identificador_externo: str
     titulo: str
@@ -52,12 +48,12 @@ class NotificacionConfigCreate(BaseModel):
 
 
 class NotificacionConfigResponse(NotificacionConfigCreate):
-    id: UUID
+    id: int
     creado_en: datetime
 
 
 class FuenteResponse(BaseModel):
-    id: UUID
+    id: int
     nombre: str
     url_base: str
     activa: bool
@@ -70,7 +66,7 @@ class FuenteResponse(BaseModel):
 
 
 class FuenteToggleResponse(BaseModel):
-    id: UUID
+    id: int
     nombre: str
     activa: bool
 
@@ -86,8 +82,8 @@ class DashboardStats(BaseModel):
 
 
 class AuditLogResponse(BaseModel):
-    id: UUID
-    fuente_id: UUID | None
+    id: int
+    fuente_id: int | None
     fuente_nombre: str | None = None
     nivel: str
     modulo: str
@@ -97,7 +93,7 @@ class AuditLogResponse(BaseModel):
 
 
 class NotificacionResponse(BaseModel):
-    id: UUID
+    id: int
     canal: str
     destinatario: str
     estado: str
@@ -106,23 +102,19 @@ class NotificacionResponse(BaseModel):
 
 
 class SuscripcionCreate(BaseModel):
-    """Datos para crear una suscripción a notificaciones por región."""
-
     chat_id: str
     nombre: str | None = None
     regiones: list[str]
 
 
 class SuscripcionUpdate(BaseModel):
-    """Datos para actualizar una suscripción."""
-
     regiones: list[str] | None = None
     nombre: str | None = None
     activa: bool | None = None
 
 
 class SuscripcionResponse(BaseModel):
-    id: UUID
+    id: int
     chat_id: str
     nombre: str | None = None
     regiones: list[str]

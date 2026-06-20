@@ -3,7 +3,6 @@ Tests unitarios para la capa de notificaciones.
 """
 
 import logging
-from uuid import uuid4
 
 import pytest
 
@@ -25,7 +24,7 @@ from src.infra.notifications.logger_adapter import LoggerNotificationAdapter
 @pytest.fixture
 def dummy_fuente() -> Fuente:
     return Fuente(
-        id=uuid4(),
+        id=1,
         nombre="Fuente Test",
         url_base="https://test.com",  # type: ignore
         configuracion_reglas=RulesConfig(
@@ -41,6 +40,7 @@ def dummy_fuente() -> Fuente:
 @pytest.fixture
 def dummy_convocatoria(dummy_fuente: Fuente) -> Convocatoria:
     return Convocatoria(
+        id=1,
         fuente_id=dummy_fuente.id,
         identificador_externo="123",
         titulo="Fondo Prueba",
@@ -55,7 +55,7 @@ async def test_logger_adapter_apertura(
 ) -> None:
     caplog.set_level(logging.INFO)
 
-    evento = EventoCambio(convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
+    evento = EventoCambio(id=1, convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
 
     adapter = LoggerNotificationAdapter()
     result = await adapter.notify_event(evento, dummy_convocatoria, dummy_fuente)
@@ -80,6 +80,7 @@ async def test_logger_adapter_modificacion(
     caplog.set_level(logging.INFO)
 
     evento = EventoCambio(
+        id=2,
         convocatoria_id=dummy_convocatoria.id,
         tipo="MODIFICACION",
         deltas=[Delta(campo="estado", valor_anterior="ABIERTO", valor_nuevo="CERRADO")],
@@ -106,6 +107,7 @@ async def test_logger_adapter_skips_no_relevantes(
     dummy_fuente: Fuente, dummy_convocatoria: Convocatoria
 ) -> None:
     evento = EventoCambio(
+        id=3,
         convocatoria_id=dummy_convocatoria.id,
         tipo="MODIFICACION",
         deltas=[Delta(campo="url_detalle", valor_anterior="a", valor_nuevo="b")],
@@ -122,7 +124,7 @@ async def test_logger_adapter_skips_no_relevantes(
 async def test_composite_adapter_collects_results(
     dummy_fuente: Fuente, dummy_convocatoria: Convocatoria
 ) -> None:
-    evento = EventoCambio(convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
+    evento = EventoCambio(id=1, convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
 
     adapter = CompositeNotificationAdapter(
         adapters=[LoggerNotificationAdapter(), LoggerNotificationAdapter()],
@@ -144,7 +146,7 @@ class FailingAdapter(NotificationPort):
 async def test_composite_adapter_isolates_failures(
     dummy_fuente: Fuente, dummy_convocatoria: Convocatoria
 ) -> None:
-    evento = EventoCambio(convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
+    evento = EventoCambio(id=1, convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
 
     adapter = CompositeNotificationAdapter(
         adapters=[FailingAdapter(), LoggerNotificationAdapter()],
@@ -162,7 +164,7 @@ async def test_composite_adapter_isolates_failures(
 async def test_composite_adapter_all_fail(
     dummy_fuente: Fuente, dummy_convocatoria: Convocatoria
 ) -> None:
-    evento = EventoCambio(convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
+    evento = EventoCambio(id=1, convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
 
     adapter = CompositeNotificationAdapter(
         adapters=[FailingAdapter(), FailingAdapter()],
@@ -183,7 +185,7 @@ async def test_telegram_adapter_skipped_when_unconfigured(
     monkeypatch.setattr(settings, "TELEGRAM_BOT_TOKEN", "")
     monkeypatch.setattr(settings, "TELEGRAM_CHAT_ID", "")
 
-    evento = EventoCambio(convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
+    evento = EventoCambio(id=1, convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
 
     adapter = TelegramNotificationAdapter(bot_token="", chat_id="")
     result = await adapter.notify_event(evento, dummy_convocatoria, dummy_fuente)
@@ -195,7 +197,7 @@ async def test_telegram_adapter_skipped_when_unconfigured(
 @pytest.mark.asyncio
 async def test_notificacion_result_entity() -> None:
     result = NotificacionResult(
-        evento_id=uuid4(),
+        evento_id=1,
         canal="TELEGRAM",
         destinatario="12345",
         estado="ENVIADO",
@@ -203,7 +205,7 @@ async def test_notificacion_result_entity() -> None:
     assert result.error_log is None
 
     result_fail = NotificacionResult(
-        evento_id=uuid4(),
+        evento_id=1,
         canal="EMAIL",
         destinatario="a@b.com",
         estado="FALLIDO",

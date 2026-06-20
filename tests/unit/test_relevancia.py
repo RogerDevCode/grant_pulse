@@ -1,7 +1,6 @@
 """Tests para el filtro de relevancia de convocatorias."""
 
 from datetime import UTC, datetime
-from uuid import uuid4
 
 from pydantic import HttpUrl
 
@@ -16,7 +15,7 @@ from src.core.domain.relevancia import (
 
 def _conv(titulo: str = "Fondo de Innovación", descripcion: str | None = None) -> Convocatoria:
     return Convocatoria(
-        fuente_id=uuid4(),
+        fuente_id=1,
         identificador_externo="test-rel-1",
         titulo=titulo,
         url_detalle=HttpUrl("https://example.com/test/"),

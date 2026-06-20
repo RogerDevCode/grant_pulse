@@ -1,7 +1,6 @@
 """Tests para el filtro de vigencia de convocatorias."""
 
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
 
 from pydantic import HttpUrl
 
@@ -11,7 +10,7 @@ from src.core.domain.vigencia import es_convocatoria_vigente, filtrar_vigentes, 
 
 def _conv(estado: str = "ABIERTO", fecha_cierre: datetime | None = None) -> Convocatoria:
     return Convocatoria(
-        fuente_id=uuid4(),
+        fuente_id=1,
         identificador_externo="test-1",
         titulo="Convocatoria Test",
         url_detalle=HttpUrl("https://example.com/test/"),

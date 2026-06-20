@@ -3,7 +3,6 @@ Rutas HTTP de la API REST usando FastAPI.
 """
 
 from datetime import UTC, datetime, timedelta
-from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func, select
@@ -118,7 +117,7 @@ async def list_fuentes(session: DbSession) -> list[FuenteResponse]:
 
 
 @router.patch("/fuentes/{fuente_id}/toggle", response_model=FuenteToggleResponse)
-async def toggle_fuente(fuente_id: str, session: DbSession) -> FuenteToggleResponse:
+async def toggle_fuente(fuente_id: int, session: DbSession) -> FuenteToggleResponse:
     result = await session.execute(select(FuenteORM).where(FuenteORM.id == fuente_id))
     orm = result.scalar_one_or_none()
     if not orm:
@@ -134,7 +133,7 @@ async def toggle_fuente(fuente_id: str, session: DbSession) -> FuenteToggleRespo
 async def list_convocatorias(
     session: DbSession,
     estado: str | None = Query(None, description="Filtrar por estado"),
-    fuente_id: UUID | None = Query(None, description="Filtrar por ID de fuente"), # noqa: B008
+    fuente_id: int | None = Query(None, description="Filtrar por ID de fuente"), # noqa: B008
     fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
     search: str | None = Query(None, description="Buscar en título"),
     orden: str | None = Query("actualizacion", description="Orden"),
@@ -142,7 +141,7 @@ async def list_convocatorias(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[ConvocatoriaResponse]:
-    fuente_ids_por_nombre: dict[str, UUID] = {}
+    fuente_ids_por_nombre: dict[str, int] = {}
     if fuente_nombre:
         fuente_rows = (await session.execute(
             select(FuenteORM.id, FuenteORM.nombre).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%"))
@@ -198,12 +197,12 @@ async def list_convocatorias(
 async def count_convocatorias(
     session: DbSession,
     estado: str | None = Query(None),
-    fuente_id: UUID | None = Query(None), # noqa: B008
+    fuente_id: int | None = Query(None), # noqa: B008
     fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
     region: str | None = Query(None),
     search: str | None = Query(None, description="Buscar por término en título"),
 ) -> dict[str, int]:
-    fuente_ids_por_nombre: list[UUID] = []
+    fuente_ids_por_nombre: list[int] = []
     if fuente_nombre:
         fuente_rows = (await session.execute(
             select(FuenteORM.id).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%"))
@@ -231,12 +230,12 @@ async def count_convocatorias(
 async def get_convocatorias_kpi(
     session: DbSession,
     estado: str | None = Query(None),
-    fuente_id: UUID | None = Query(None), # noqa: B008
+    fuente_id: int | None = Query(None), # noqa: B008
     fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
     region: str | None = Query(None),
     search: str | None = Query(None, description="Buscar por término en título"),
 ) -> dict[str, int]:
-    fuente_ids_por_nombre: list[UUID] = []
+    fuente_ids_por_nombre: list[int] = []
     if fuente_nombre:
         fuente_rows = (await session.execute(
             select(FuenteORM.id).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%"))
@@ -293,7 +292,7 @@ async def get_convocatorias_kpi(
 
 
 @router.get("/convocatorias/{convocatoria_id}", response_model=ConvocatoriaDetailResponse)
-async def get_convocatoria_detail(convocatoria_id: str, session: DbSession) -> ConvocatoriaDetailResponse:
+async def get_convocatoria_detail(convocatoria_id: int, session: DbSession) -> ConvocatoriaDetailResponse:
     result = await session.execute(select(ConvocatoriaORM).where(ConvocatoriaORM.id == convocatoria_id))
     orm = result.scalar_one_or_none()
     if not orm:
@@ -338,7 +337,7 @@ async def get_convocatoria_detail(convocatoria_id: str, session: DbSession) -> C
 
 
 @router.delete("/convocatorias/{convocatoria_id}", status_code=204)
-async def delete_convocatoria(convocatoria_id: str, session: DbSession) -> None:
+async def delete_convocatoria(convocatoria_id: int, session: DbSession) -> None:
     result = await session.execute(select(ConvocatoriaORM).where(ConvocatoriaORM.id == convocatoria_id))
     orm = result.scalar_one_or_none()
     if not orm:
@@ -349,7 +348,7 @@ async def delete_convocatoria(convocatoria_id: str, session: DbSession) -> None:
 
 
 @router.delete("/fuentes/{fuente_id}", status_code=204)
-async def delete_fuente(fuente_id: UUID, session: DbSession) -> None:
+async def delete_fuente(fuente_id: int, session: DbSession) -> None:
     result = await session.execute(select(FuenteORM).where(FuenteORM.id == fuente_id))
     orm = result.scalar_one_or_none()
     if not orm:
@@ -371,7 +370,7 @@ async def list_audit_logs(
     query = query.limit(limite)
     result = await session.execute(query)
     orms = result.scalars().all()
-    fuentes_cache: dict[UUID, str] = {}
+    fuentes_cache: dict[int, str] = {}
     resp: list[AuditLogResponse] = []
     for orm in orms:
         fnombre: str | None = None
@@ -451,7 +450,7 @@ async def create_notification_config(data: NotificacionConfigCreate, session: Db
 
 
 @router.patch("/config/notificaciones/{config_id}/toggle", response_model=NotificacionConfigResponse)
-async def toggle_notification_config(config_id: UUID, session: DbSession) -> NotificacionConfigResponse:
+async def toggle_notification_config(config_id: int, session: DbSession) -> NotificacionConfigResponse:
     result = await session.execute(select(NotificacionConfigORM).where(NotificacionConfigORM.id == config_id))
     orm = result.scalar_one_or_none()
     if not orm:
@@ -470,7 +469,7 @@ async def toggle_notification_config(config_id: UUID, session: DbSession) -> Not
 
 
 @router.delete("/config/notificaciones/{config_id}", status_code=204)
-async def delete_notification_config(config_id: UUID, session: DbSession) -> None:
+async def delete_notification_config(config_id: int, session: DbSession) -> None:
     result = await session.execute(select(NotificacionConfigORM).where(NotificacionConfigORM.id == config_id))
     orm = result.scalar_one_or_none()
     if not orm:
@@ -561,7 +560,7 @@ async def obtener_suscripcion(chat_id: str, session: DbSession) -> SuscripcionRe
 
 
 @router.patch("/suscripciones/{suscripcion_id}", response_model=SuscripcionResponse)
-async def actualizar_suscripcion(suscripcion_id: str, data: SuscripcionUpdate, session: DbSession) -> SuscripcionResponse:
+async def actualizar_suscripcion(suscripcion_id: int, data: SuscripcionUpdate, session: DbSession) -> SuscripcionResponse:
     result = await session.execute(select(SuscripcionORM).where(SuscripcionORM.id == suscripcion_id))
     orm = result.scalar_one_or_none()
     if not orm:
@@ -587,7 +586,7 @@ async def actualizar_suscripcion(suscripcion_id: str, data: SuscripcionUpdate, s
 
 
 @router.delete("/suscripciones/{suscripcion_id}", status_code=204)
-async def eliminar_suscripcion(suscripcion_id: str, session: DbSession) -> None:
+async def eliminar_suscripcion(suscripcion_id: int, session: DbSession) -> None:
     result = await session.execute(select(SuscripcionORM).where(SuscripcionORM.id == suscripcion_id))
     orm = result.scalar_one_or_none()
     if not orm:

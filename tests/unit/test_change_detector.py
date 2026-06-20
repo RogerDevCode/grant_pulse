@@ -1,9 +1,6 @@
-"""
-Tests unitarios para el motor de detección de cambios (ChangeDetectorService).
-"""
+"""Tests unitarios para el motor de detección de cambios (ChangeDetectorService)."""
 
 from datetime import UTC, datetime
-from uuid import uuid4
 
 import pytest
 
@@ -14,7 +11,7 @@ from src.core.domain.services import ChangeDetectorService
 @pytest.fixture
 def mock_fuente_cambios() -> Fuente:
     return Fuente(
-        id=uuid4(),
+        id=1,
         nombre="Test Fuente Cambios",
         url_base="https://ejemplo.com",  # type: ignore
         configuracion_reglas=RulesConfig(
@@ -33,7 +30,8 @@ def mock_fuente_cambios() -> Fuente:
 def test_detect_apertura(mock_fuente_cambios: Fuente) -> None:
     nuevas = [
         Convocatoria(
-            fuente_id=mock_fuente_cambios.id,
+        id=1,
+        fuente_id=mock_fuente_cambios.id,
             identificador_externo="F001",
             titulo="Nueva Convocatoria",
             url_detalle="https://ejemplo.com/f001",  # type: ignore
@@ -52,6 +50,7 @@ def test_detect_apertura(mock_fuente_cambios: Fuente) -> None:
 
 def test_detect_modificacion_relevante(mock_fuente_cambios: Fuente) -> None:
     antigua = Convocatoria(
+        id=2,
         fuente_id=mock_fuente_cambios.id,
         identificador_externo="F002",
         titulo="Convocatoria Existente",
@@ -76,6 +75,7 @@ def test_detect_modificacion_relevante(mock_fuente_cambios: Fuente) -> None:
 
 def test_detect_modificacion_no_relevante(mock_fuente_cambios: Fuente) -> None:
     antigua = Convocatoria(
+        id=3,
         fuente_id=mock_fuente_cambios.id,
         identificador_externo="F003",
         titulo="Convocatoria Existente",
@@ -97,6 +97,7 @@ def test_detect_modificacion_no_relevante(mock_fuente_cambios: Fuente) -> None:
 
 def test_ignore_cambios_decorativos(mock_fuente_cambios: Fuente) -> None:
     antigua = Convocatoria(
+        id=4,
         fuente_id=mock_fuente_cambios.id,
         identificador_externo="F004",
         titulo="Titulo Original",
@@ -117,6 +118,7 @@ def test_ignore_cambios_decorativos(mock_fuente_cambios: Fuente) -> None:
 
 def test_no_changes(mock_fuente_cambios: Fuente) -> None:
     antigua = Convocatoria(
+        id=5,
         fuente_id=mock_fuente_cambios.id,
         identificador_externo="F005",
         titulo="Igual",

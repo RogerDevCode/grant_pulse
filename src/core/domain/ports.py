@@ -5,7 +5,6 @@ Permite desacoplar las reglas de negocio de los detalles de base de datos.
 
 from abc import ABC, abstractmethod
 from typing import Any
-from uuid import UUID
 
 from src.core.domain.entities import Convocatoria, EventoCambio, Fuente, NotificacionResult, Snapshot
 
@@ -14,7 +13,7 @@ class FuenteRepository(ABC):
     """Interfaz contractual para interactuar con la persistencia de Fuentes."""
 
     @abstractmethod
-    async def get_by_id(self, fuente_id: UUID) -> Fuente | None:
+    async def get_by_id(self, fuente_id: int) -> Fuente | None:
         """Obtiene una fuente por su ID único."""
         pass
 
@@ -43,7 +42,7 @@ class SnapshotRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_latest_by_fuente(self, fuente_id: UUID) -> Snapshot | None:
+    async def get_latest_by_fuente(self, fuente_id: int) -> Snapshot | None:
         """Obtiene el último snapshot guardado de una fuente en particular."""
         pass
 
@@ -52,12 +51,12 @@ class ConvocatoriaRepository(ABC):
     """Interfaz contractual para interactuar con la persistencia de Convocatorias."""
 
     @abstractmethod
-    async def get_by_fuente_and_externo(self, fuente_id: UUID, identificador_externo: str) -> Convocatoria | None:
+    async def get_by_fuente_and_externo(self, fuente_id: int, identificador_externo: str) -> Convocatoria | None:
         """Obtiene una convocatoria específica usando el ID de la fuente y el ID externo del portal."""
         pass
 
     @abstractmethod
-    async def get_all_by_fuente(self, fuente_id: UUID) -> list[Convocatoria]:
+    async def get_all_by_fuente(self, fuente_id: int) -> list[Convocatoria]:
         """Obtiene todas las convocatorias guardadas para una fuente específica."""
         pass
 
@@ -67,7 +66,7 @@ class ConvocatoriaRepository(ABC):
         pass
 
     @abstractmethod
-    async def save_evento_cambio(self, evento: EventoCambio, snapshot_id: UUID) -> EventoCambio:
+    async def save_evento_cambio(self, evento: EventoCambio, snapshot_id: int) -> EventoCambio:
         """Registra un evento de cambio asociado a una convocatoria y snapshot específicos."""
         pass
 

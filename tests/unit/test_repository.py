@@ -5,7 +5,6 @@ Tests unitarios para los repositorios SQLAlchemy usando mocks de sesión asíncr
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
@@ -25,7 +24,7 @@ def mock_session() -> AsyncSession:
 @pytest.fixture
 def dummy_fuente() -> Fuente:
     return Fuente(
-        id=uuid4(),
+        id=1,
         nombre="Fuente Test",
         url_base="https://test.com",  # type: ignore
         configuracion_reglas=RulesConfig(
@@ -53,10 +52,8 @@ def dummy_fuente_orm(dummy_fuente: Fuente) -> FuenteORM:
 
 @pytest.mark.asyncio
 async def test_fuente_repository_get_by_id_success(mock_session: Any, dummy_fuente_orm: FuenteORM) -> None:
-    # Setup mock
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = dummy_fuente_orm
-    mock_session.execute.return_value = mock_result
+    # Setup mock: get_by_id usa session.get(), no execute()
+    mock_session.get.return_value = dummy_fuente_orm
 
     repo = SQLFuenteRepository(mock_session)
     fuente = await repo.get_by_id(dummy_fuente_orm.id)
@@ -64,18 +61,16 @@ async def test_fuente_repository_get_by_id_success(mock_session: Any, dummy_fuen
     assert fuente is not None
     assert fuente.id == dummy_fuente_orm.id
     assert fuente.nombre == "Fuente Test"
-    mock_session.execute.assert_called_once()
+    mock_session.get.assert_called_once_with(FuenteORM, dummy_fuente_orm.id)
 
 
 @pytest.mark.asyncio
 async def test_fuente_repository_get_by_id_db_error(mock_session: Any) -> None:
-    mock_session.execute.side_effect = SQLAlchemyError("DB Down")
+    mock_session.get.side_effect = SQLAlchemyError("DB Down")
     repo = SQLFuenteRepository(mock_session)
 
-    with pytest.raises(PersistenceError) as exc_info:
-        await repo.get_by_id(uuid4())
-
-    assert "Error al consultar fuente por ID" in str(exc_info.value)
+    with pytest.raises(PersistenceError, match=r"(?i)error al consultar fuente"):
+        await repo.get_by_id(999)
 
 
 @pytest.mark.asyncio
@@ -110,7 +105,7 @@ async def test_convocatoria_repository_save_insert(mock_session: Any, dummy_fuen
 async def test_convocatoria_repository_save_update(mock_session: Any, dummy_fuente: Fuente) -> None:
     # Setup: existing conv found
     existing_orm = ConvocatoriaORM(
-        id=uuid4(),
+        id=1,
         fuente_id=dummy_fuente.id,
         identificador_externo="EXT-123",
         titulo="Viejo",

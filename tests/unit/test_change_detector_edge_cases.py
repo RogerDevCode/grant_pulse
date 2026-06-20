@@ -18,7 +18,7 @@ from src.core.domain.services import ChangeDetectorService
 @pytest.fixture
 def fuente_sin_sensibles() -> Fuente:
     return Fuente(
-        id=uuid4(),
+        id=1,
         nombre="Sin Sensibles",
         url_base="https://ejemplo.com",  # type: ignore
         configuracion_reglas=RulesConfig(
@@ -33,7 +33,7 @@ def fuente_sin_sensibles() -> Fuente:
 @pytest.fixture
 def fuente_solapados() -> Fuente:
     return Fuente(
-        id=uuid4(),
+        id=1,
         nombre="Solapados",
         url_base="https://ejemplo.com",  # type: ignore
         configuracion_reglas=RulesConfig(
@@ -47,6 +47,7 @@ def fuente_solapados() -> Fuente:
 
 def test_empty_campos_sensibles_all_non_relevant(fuente_sin_sensibles: Fuente) -> None:
     antigua = Convocatoria(
+        id=1,
         fuente_id=fuente_sin_sensibles.id,
         identificador_externo="X001",
         titulo="Original",
@@ -64,6 +65,7 @@ def test_empty_campos_sensibles_all_non_relevant(fuente_sin_sensibles: Fuente) -
 
 def test_ignored_field_takes_precedence_over_sensible(fuente_solapados: Fuente) -> None:
     antigua = Convocatoria(
+        id=2,
         fuente_id=fuente_solapados.id,
         identificador_externo="Y001",
         titulo="Original",
@@ -80,6 +82,7 @@ def test_ignored_field_takes_precedence_over_sensible(fuente_solapados: Fuente) 
 
 def test_mixed_deltas_sensitive_and_ignored(fuente_solapados: Fuente) -> None:
     antigua = Convocatoria(
+        id=3,
         fuente_id=fuente_solapados.id,
         identificador_externo="Z001",
         titulo="Original",
@@ -100,7 +103,7 @@ def test_mixed_deltas_sensitive_and_ignored(fuente_solapados: Fuente) -> None:
 
 def test_multiple_convocatorias_mixed_events() -> None:
     fuente = Fuente(
-        id=uuid4(),
+        id=1,
         nombre="Mix",
         url_base="https://ejemplo.com",  # type: ignore
         configuracion_reglas=RulesConfig(
@@ -112,6 +115,7 @@ def test_multiple_convocatorias_mixed_events() -> None:
     )
 
     antigua_1 = Convocatoria(
+        id=4,
         fuente_id=fuente.id,
         identificador_externo="M1",
         titulo="Existente A",
@@ -119,6 +123,7 @@ def test_multiple_convocatorias_mixed_events() -> None:
         estado="ABIERTO",
     )
     antigua_2 = Convocatoria(
+        id=5,
         fuente_id=fuente.id,
         identificador_externo="M2",
         titulo="Existente B",
@@ -129,6 +134,7 @@ def test_multiple_convocatorias_mixed_events() -> None:
     nueva_1 = antigua_1.model_copy(update={"estado": "CERRADO"})
     nueva_2 = antigua_2.model_copy(update={"descripcion": "Solo cosmético"})
     nueva_3 = Convocatoria(
+        id=6,
         fuente_id=fuente.id,
         identificador_externo="M3",
         titulo="Nueva C",
@@ -149,7 +155,7 @@ def test_multiple_convocatorias_mixed_events() -> None:
 
 def test_fecha_cierre_change_is_detected() -> None:
     fuente = Fuente(
-        id=uuid4(),
+        id=1,
         nombre="Fecha",
         url_base="https://ejemplo.com",  # type: ignore
         configuracion_reglas=RulesConfig(
@@ -161,6 +167,7 @@ def test_fecha_cierre_change_is_detected() -> None:
     )
 
     antigua = Convocatoria(
+        id=7,
         fuente_id=fuente.id,
         identificador_externo="F001",
         titulo="Fondo",
@@ -179,7 +186,7 @@ def test_fecha_cierre_change_is_detected() -> None:
 
 def test_monto_change_is_detected() -> None:
     fuente = Fuente(
-        id=uuid4(),
+        id=1,
         nombre="Monto",
         url_base="https://ejemplo.com",  # type: ignore
         configuracion_reglas=RulesConfig(
@@ -191,6 +198,7 @@ def test_monto_change_is_detected() -> None:
     )
 
     antigua = Convocatoria(
+        id=8,
         fuente_id=fuente.id,
         identificador_externo="Q001",
         titulo="Fondo",
