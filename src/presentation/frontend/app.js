@@ -1343,6 +1343,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(() => btn.classList.remove('spinning'), 1200);
   });
 
+  // ── SCRAPE MANUAL ──
+  let scrapeEnCurso = false;
+  $('#scrapeBtn').addEventListener('click', async () => {
+    if (scrapeEnCurso) return;
+    scrapeEnCurso = true;
+    const btn = $('#scrapeBtn');
+    btn.classList.add('scraping');
+    toast('Scrape iniciado en segundo plano', 'info');
+    try {
+      const r = await fetch('/api/v1/scrape', { method: 'POST' });
+      if (!r.ok) {
+        const errData = await r.json().catch(() => ({}));
+        if (r.status === 409) {
+          toast('Ya hay un scrape en ejecución', 'warning');
+        } else {
+          throw new Error(errData.detail || r.statusText);
+        }
+      } else {
+        toast('Scrape lanzado — actualizá en unos minutos para ver resultados', 'success');
+      }
+    } catch (e) {
+      if (!e.message.includes('Ya hay')) {
+        toast(`Error: ${e.message}`, 'error');
+      }
+    } finally {
+      setTimeout(() => {
+        scrapeEnCurso = false;
+        btn.classList.remove('scraping');
+      }, 5000);
+    }
+  });
+
   // ── FILTROS RADAR ──
   $('#soloActivasToggle').addEventListener('change', () => { state.convOffset = 0; loadRadar(); });
   $('#filterOrden').addEventListener('change',       () => { state.convOffset = 0; loadRadar(); });

@@ -4,7 +4,7 @@ Rutas HTTP de la API REST usando FastAPI.
 
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from sqlalchemy import func, select
 
 from src.infra.db.models import (
@@ -594,3 +594,32 @@ async def eliminar_suscripcion(suscripcion_id: int, session: DbSession) -> None:
     await session.delete(orm)
     await session.flush()
     logger.info("Suscripción eliminada", suscripcion_id=str(suscripcion_id))
+
+
+# ─── SCRAPE MANUAL ─────────────────────────────────────────────────────
+# Guardia para evitar múltiples scrapeos simultáneos
+_scrape_en_curso: bool = False
+
+
+async def _ejecutar_scrape() -> None:
+    """Corre run_all_active_sources() en background."""
+    global _scrape_en_curso  # noqa: PLW0603
+    try:
+        from src.infra.cli import run_all_active_sources  # noqa: PLC0415
+        await run_all_active_sources()
+    except Exception as exc:
+        logger.error("Scrape manual falló", exc=exc)
+    finally:
+        _scrape_en_curso = False
+
+
+@router.post("/scrape", status_code=202)
+async def trigger_scrape(background_tasks: BackgroundTasks) -> dict[str, str]:
+    """Dispara scraping manual de todas las fuentes activas en background."""
+    global _scrape_en_curso  # noqa: PLW0603
+    if _scrape_en_curso:
+        raise HTTPException(status_code=409, detail="Ya hay un scrape en curso")
+    _scrape_en_curso = True
+    background_tasks.add_task(_ejecutar_scrape)
+    logger.info("Scrape manual disparado")
+    return {"status": "iniciado", "message": "Scrape iniciado en segundo plano"}

@@ -9,5 +9,24 @@ healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 
+# ── Volumen persistente para SQLite ──────────────────────────
+# Monta el directorio /app/data como volumen persistente.
+# La base de datos SQLite (grantpulse.db) sobrevive a redeploys.
 [[volumes]]
 mountPath = "/app/data"
+
+# ── Cron Job para scraping automático ────────────────────────
+# Railway CRON ejecuta servicios separados, no puede convivir con un web server
+# en el mismo servicio. Para activar:
+#
+# 1. Crear un segundo servicio en Railway (Settings → New Service → GitHub)
+#    apuntando al mismo repositorio.
+# 2. En ese servicio, ir a Settings → Cron Schedule y usar:
+#    schedule: "0 */6 * * *"
+#    Railway usará el startCommand del railway.toml de ese servicio.
+# 3. Para ese servicio-cron, cambiar el startCommand a:
+#    "/app/.venv/bin/grantpulse-sync run-all"
+# 4. Opcional: desactivar healthcheck en el servicio cron.
+#
+# El servicio web principal (este) NO debe tener cronSchedule activo
+# porque su proceso (uvicorn) nunca termina.
