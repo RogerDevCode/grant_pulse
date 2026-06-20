@@ -21,7 +21,7 @@ RUN pip install uv
 
 COPY pyproject.toml uv.lock ./
 
-RUN uv sync --frozen --no-dev --directory /app --python 3.13 --link-mode copy \
+RUN uv sync --frozen --no-group dev --directory /app \
     && chmod -R u+x /app/.venv/bin
 
 # ── Runtime stage ──

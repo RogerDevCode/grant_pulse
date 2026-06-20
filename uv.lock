@@ -480,33 +480,36 @@ dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
     { name = "asyncpg" },
-    { name = "camoufox" },
     { name = "curl-cffi" },
     { name = "fastapi" },
     { name = "groq" },
     { name = "httpx" },
     { name = "markdownify" },
-    { name = "mypy" },
-    { name = "playwright" },
-    { name = "playwright-stealth" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
     { name = "pyyaml" },
-    { name = "respx" },
-    { name = "ruff" },
     { name = "selectolax" },
     { name = "sqlalchemy" },
     { name = "structlog" },
-    { name = "types-pyyaml" },
     { name = "uvicorn" },
 ]
 
 [package.optional-dependencies]
-stealth = [
+browser = [
     { name = "camoufox" },
+    { name = "playwright" },
+    { name = "playwright-stealth" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "respx" },
+    { name = "ruff" },
+    { name = "types-pyyaml" },
 ]
 
 [package.metadata]
@@ -515,29 +518,32 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.20.0" },
     { name = "alembic", specifier = ">=1.13.1" },
     { name = "asyncpg", specifier = ">=0.29.0" },
-    { name = "camoufox", specifier = ">=0.4.11" },
-    { name = "camoufox", marker = "extra == 'stealth'", specifier = ">=0.4.11" },
+    { name = "camoufox", marker = "extra == 'browser'", specifier = ">=0.4.11" },
     { name = "curl-cffi", specifier = ">=0.5.0" },
     { name = "fastapi", specifier = ">=0.111.0" },
     { name = "groq", specifier = ">=1.2.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "markdownify", specifier = ">=0.11.0" },
-    { name = "mypy", specifier = ">=1.10.0" },
-    { name = "playwright", specifier = ">=1.44.0" },
-    { name = "playwright-stealth", specifier = ">=2.0.3" },
+    { name = "playwright", marker = "extra == 'browser'", specifier = ">=1.44.0" },
+    { name = "playwright-stealth", marker = "extra == 'browser'", specifier = ">=2.0.3" },
     { name = "pydantic", specifier = ">=2.7.4" },
     { name = "pydantic-settings", specifier = ">=2.3.3" },
-    { name = "pytest", specifier = ">=8.2.2" },
-    { name = "pytest-asyncio", specifier = ">=0.23.7" },
-    { name = "pytest-cov", specifier = ">=5.0.0" },
     { name = "pyyaml", specifier = ">=6.0.1" },
-    { name = "respx", specifier = ">=0.21.1" },
-    { name = "ruff", specifier = ">=0.4.9" },
     { name = "selectolax", specifier = ">=0.3.21" },
     { name = "sqlalchemy", specifier = ">=2.0.30" },
     { name = "structlog", specifier = ">=24.2.0" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20240311" },
     { name = "uvicorn", specifier = ">=0.30.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.10.0" },
+    { name = "pytest", specifier = ">=8.2.2" },
+    { name = "pytest-asyncio", specifier = ">=0.23.7" },
+    { name = "pytest-cov", specifier = ">=5.0.0" },
+    { name = "respx", specifier = ">=0.21.1" },
+    { name = "ruff", specifier = ">=0.4.9" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20240311" },
 ]
 
 [[package]]
