@@ -1,47 +1,74 @@
-
-*$py.class
-alembic/versions/*.py.*
-alembic/versions/*.pyc
-# Base de datos local
-build/
-.coverage
-data/
-# Datos locales
-*.db
-dist/
-.DS_Store
-*.egg
-*.egg-info/
-env/
-.env
-!.env.example
-# Generated test artifacts
-htmlcov/
-.idea/
-# IDEs
-*.json
-*.log
-logs/
-# Logs
-# Migraciones locales (se versionan las fuentes, no el archivo generado)
-.mypy_cache/
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
-.pytest_cache/
-# Python
-.ruff_cache/
-# Sistema
+*$py.class
 *.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# ── Entornos virtuales ────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Herramientas de calidad ───────────────────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── Base de datos y datos locales ─────────────────────────────────────────────
+data/
+*.db
 *.sqlite
 *.sqlite3
-*.swo
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+logs.*.json
+cron.log
+
+# ── Secretos y entorno ───────────────────────────────────────────────────────
+.env
+!.env.example
+
+# ── Alembic ───────────────────────────────────────────────────────────────────
+alembic/versions/*.py.*
+alembic/versions/*.pyc
+
+# ── IDEs y editores ───────────────────────────────────────────────────────────
+.idea/
+.vscode/
 *.swp
+*.swo
+
+# ── Sistema operativo ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Temporales / scratchpads ─────────────────────────────────────────────────
+tmp/
 temp/
-# Testing
+.tmp_*.py
+*.html
+!src/**/*.html
+!tests/**/*.html
+
+# ── Reportes e imágenes de debug ─────────────────────────────────────────────
+reports/
+*.png
+*.gif
+
+# ── Directorios de herramientas de IA (no son parte del proyecto) ─────────────
+.antigravitycli/
+.commandcode/
+.codex/
+
+# ── Testing frontend ─────────────────────────────────────────────────────────
 tests/frontend/node_modules/
 tests/frontend/playwright-report/
 tests/frontend/test-results/
-Thumbs.db
-tmp/
-venv/
-.vscode/
