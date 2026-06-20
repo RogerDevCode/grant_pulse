@@ -1871,6 +1871,61 @@ select option { background: var(--bg-2); }
 }
 
 /* ── Nav highlight ── */
+
+/* ── Guía paso a paso Chat ID ── */
+.susc-guide {
+  margin-top: 10px;
+  max-width: 520px;
+}
+
+.susc-guide summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--text-2);
+  padding: 6px 0;
+  user-select: none;
+  transition: color .15s;
+}
+
+.susc-guide summary:hover {
+  color: var(--text-1);
+}
+
+.susc-guide-steps {
+  margin: 10px 0 6px;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.susc-guide-steps li {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.susc-guide-steps li strong {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+.susc-guide-steps li code {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  background: var(--bg-2);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.susc-guide-note {
+  font-size: 0.78rem;
+  color: var(--text-3);
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  background: var(--bg-2);
+  border-radius: var(--r);
+}
 .susc-id-row .btn-secondary {
   display: inline-flex;
   align-items: center;
