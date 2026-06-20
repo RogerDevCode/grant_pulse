@@ -14,9 +14,11 @@ dist/
 *.egg-info/
 env/
 !.env.example
+# Generated test artifacts
 htmlcov/
 .idea/
 # IDEs
+*.json
 *.log
 logs/
 # Logs
@@ -35,6 +37,9 @@ __pycache__/
 *.swp
 temp/
 # Testing
+tests/frontend/node_modules/
+tests/frontend/playwright-report/
+tests/frontend/test-results/
 Thumbs.db
 tmp/
 venv/
