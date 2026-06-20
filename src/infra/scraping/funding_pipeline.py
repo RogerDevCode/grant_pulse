@@ -83,7 +83,9 @@ class CompositeFundingScraper(ScraperPort):
         self._state: _AttemptState | None = None
 
     def _clone_fuente(self, fuente: Fuente, url: str) -> Fuente:
-        nueva_config = fuente.configuracion_reglas.model_copy(update={"url_busqueda": url})
+        from pydantic import HttpUrl, TypeAdapter
+        url_obj = TypeAdapter(HttpUrl).validate_python(url)
+        nueva_config = fuente.configuracion_reglas.model_copy(update={"url_busqueda": url_obj})
         return fuente.model_copy(update={"configuracion_reglas": nueva_config})
 
     async def _fetch_with_kind(self, kind: str, fuente: Fuente) -> Snapshot:

@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # Base de Datos
     DATABASE_URL: str = Field(
         default="sqlite+aiosqlite:///data/grantpulse.db",
-        description="URL de conexión asíncrona a la base de datos (SQLite o PostgreSQL)",
+        description="URL de conexión asíncrona a la base de datos (SQLite o PostgreSQL asyncpg)",
     )
 
     @field_validator("DATABASE_URL", mode="before")

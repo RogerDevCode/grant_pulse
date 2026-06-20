@@ -41,13 +41,17 @@ logger = get_logger(__name__)
 
 def _apply_source_profile(fuente: Fuente) -> Fuente:
     """Normaliza una fuente usando el registry duro si existe."""
+    from pydantic import HttpUrl, TypeAdapter
 
     source_profile = source_profile_for_name(fuente.nombre)
     if not source_profile:
         return fuente
 
-    nueva_config = fuente.configuracion_reglas.model_copy(update={"url_busqueda": source_profile.list_url})
-    return fuente.model_copy(update={"url_base": source_profile.root_url, "configuracion_reglas": nueva_config})
+    list_url_obj = TypeAdapter(HttpUrl).validate_python(source_profile.list_url)
+    root_url_obj = TypeAdapter(HttpUrl).validate_python(source_profile.root_url)
+
+    nueva_config = fuente.configuracion_reglas.model_copy(update={"url_busqueda": list_url_obj})
+    return fuente.model_copy(update={"url_base": root_url_obj, "configuracion_reglas": nueva_config})
 
 
 def _get_scraper(fuente: Fuente) -> ScraperPort:
@@ -181,7 +185,9 @@ async def run_single_source(filepath: Path) -> None:
     rules_config = load_rules_from_yaml(filepath)
     source_profile = source_profile_for_name(rules_config.nombre)
     if source_profile:
-        rules_config = rules_config.model_copy(update={"url_busqueda": source_profile.list_url})
+        from pydantic import HttpUrl, TypeAdapter
+        list_url_obj = TypeAdapter(HttpUrl).validate_python(source_profile.list_url)
+        rules_config = rules_config.model_copy(update={"url_busqueda": list_url_obj})
         logger.info(
             "Aplicando URL canónica desde registry duro",
             fuente=rules_config.nombre,
@@ -309,7 +315,9 @@ async def sync_single_source_config(filepath: Path) -> None:
     rules_config = load_rules_from_yaml(filepath)
     source_profile = source_profile_for_name(rules_config.nombre)
     if source_profile:
-        rules_config = rules_config.model_copy(update={"url_busqueda": source_profile.list_url})
+        from pydantic import HttpUrl, TypeAdapter
+        list_url_obj = TypeAdapter(HttpUrl).validate_python(source_profile.list_url)
+        rules_config = rules_config.model_copy(update={"url_busqueda": list_url_obj})
         logger.info(
             "Aplicando URL canónica desde registry duro",
             fuente=rules_config.nombre,

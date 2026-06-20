@@ -49,9 +49,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
 
 
 def _get_cors_origins() -> list[str]:
-    if settings.ENV == "prod":
-        return ["https://grantpulse.cl"]
-    return ["http://localhost:8000", "http://localhost:3000", "http://127.0.0.1:8000"]
+    base = [
+        "https://grantpulse.cl",
+        "https://grant-pulse-production.up.railway.app",
+        "https://grant_pulse-production.up.railway.app",
+    ]
+    # Permite agregar orígenes extra desde la variable RAILWAY_URL o CORS_ORIGINS
+    extra = os.environ.get("CORS_ORIGINS", "")
+    if extra:
+        base.extend([o.strip() for o in extra.split(",") if o.strip()])
+    if settings.ENV != "prod":
+        base += ["http://localhost:8000", "http://localhost:3000", "http://127.0.0.1:8000"]
+    return base
 
 
 def _register_exception_handlers(app: FastAPI) -> None:

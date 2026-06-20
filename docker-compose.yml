@@ -11,13 +11,14 @@ services:
     ports:
       - "${APP_PORT:-8002}:8000"
     volumes:
+      # Persiste la BD SQLite entre reinicios locales
       - grantpulse_data:/app/data
     healthcheck:
       test: ["CMD-SHELL", "/app/.venv/bin/python -c \"from urllib.request import urlopen; urlopen('http://localhost:8000/health')\" || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
     logging:
       driver: json-file
       options:
