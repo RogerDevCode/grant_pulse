@@ -42,6 +42,9 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# Copy virtual environment first so playwright binary is available
+COPY --from=builder /app/.venv /app/.venv
+
 # Crear directorio de datos persistente (Railway Volume lo monta aquí si se configura)
 RUN mkdir -p /app/data \
     && apt-get update \
@@ -50,7 +53,6 @@ RUN mkdir -p /app/data \
     && /app/.venv/bin/playwright install-deps chromium \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/.venv /app/.venv
 COPY pyproject.toml ./
 COPY src ./src
 COPY rules ./rules
