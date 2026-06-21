@@ -162,3 +162,10 @@ Reglas complejas y transversales en Python.
 - `src/core/domain/exceptions.py` — Jerarquía de excepciones
 - `src/core/application/normalizer.py` — Normalizador de datos
 - `src/infra/scraping/` — Scrapers (json_api, html_static, wp_ajax, fosis_multipage, llm_scraper)
+
+## 14. Estilo lingüístico de las respuestas
+
+- **Español neutro**. No usar modismos regionales (ej: evitar "che", "pibe", "decime", "boludo", "órale", "weón", "guay", "tío", "curro").
+- **Tono formal entre colegas profesionales**. Tratar como "usted", no tutear.
+- **Sin relleno, sin justificaciones extendidas, sin marketing**. Frases cortas y técnicas.
+- **Inglés aceptado para términos técnicos universales** (commit, push, deploy, endpoint, scraper, etc.) cuando su traducción al español resulte forzada o menos precisa.
