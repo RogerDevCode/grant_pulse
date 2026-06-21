@@ -1,6 +1,5 @@
 """Repositorios SQLAlchemy — mapeo entidad↔ORM con auto-increment integer IDs."""
 
-from uuid import UUID
 
 from pydantic import HttpUrl
 from sqlalchemy import select

@@ -1345,12 +1345,53 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── SCRAPE MANUAL ──
   let scrapeEnCurso = false;
+  let scrapePollInterval = null;
+
+  async function checkScrapeStatus() {
+    try {
+      const r = await fetch('/api/v1/scrape/status');
+      if (r.ok) {
+        const data = await r.json();
+        const btn = $('#scrapeBtn');
+        if (data.en_curso) {
+          if (!scrapeEnCurso) {
+            scrapeEnCurso = true;
+            btn.classList.add('spinning');
+            if (!scrapePollInterval) {
+              scrapePollInterval = setInterval(checkScrapeStatus, 3000);
+            }
+          }
+        } else {
+          if (scrapeEnCurso) {
+            scrapeEnCurso = false;
+            btn.classList.remove('spinning');
+            if (scrapePollInterval) {
+              clearInterval(scrapePollInterval);
+              scrapePollInterval = null;
+              toast('Scrape finalizado. Actualizando datos...', 'success');
+              loadPage(state.page);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error consultando estado de scrape:", e);
+    }
+  }
+
+  // Verificar estado inicial al cargar
+  checkScrapeStatus();
+
   $('#scrapeBtn').addEventListener('click', async () => {
-    if (scrapeEnCurso) return;
+    if (scrapeEnCurso) {
+      toast('El scrape ya se encuentra en ejecución', 'info');
+      return;
+    }
     scrapeEnCurso = true;
     const btn = $('#scrapeBtn');
-    btn.classList.add('scraping');
-    toast('Scrape iniciado en segundo plano', 'info');
+    btn.classList.add('spinning');
+    toast('Scrape iniciado en segundo plano...', 'info');
+    
     try {
       const r = await fetch('/api/v1/scrape', { method: 'POST' });
       if (!r.ok) {
@@ -1360,18 +1401,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
           throw new Error(errData.detail || r.statusText);
         }
-      } else {
-        toast('Scrape lanzado — actualizá en unos minutos para ver resultados', 'success');
+      }
+      if (!scrapePollInterval) {
+        scrapePollInterval = setInterval(checkScrapeStatus, 3000);
       }
     } catch (e) {
       if (!e.message.includes('Ya hay')) {
         toast(`Error: ${e.message}`, 'error');
-      }
-    } finally {
-      setTimeout(() => {
         scrapeEnCurso = false;
-        btn.classList.remove('scraping');
-      }, 5000);
+        btn.classList.remove('spinning');
+      }
     }
   });
 

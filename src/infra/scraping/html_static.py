@@ -11,11 +11,11 @@ from urllib.parse import urljoin
 import httpx
 from selectolax.parser import HTMLParser
 
+from src.core.application.normalizer import _coerce_region
 from src.core.domain.entities import Fuente, Snapshot
 from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import ExtractionError, NetworkError
 from src.core.domain.ports import ScraperPort
-from src.core.application.normalizer import _coerce_region
 from src.infra.logging import get_logger
 
 logger = get_logger(__name__)

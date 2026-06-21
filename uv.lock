@@ -485,6 +485,7 @@ dependencies = [
     { name = "groq" },
     { name = "httpx" },
     { name = "markdownify" },
+    { name = "playwright" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pyyaml" },
@@ -497,7 +498,6 @@ dependencies = [
 [package.optional-dependencies]
 browser = [
     { name = "camoufox" },
-    { name = "playwright" },
     { name = "playwright-stealth" },
 ]
 
@@ -524,7 +524,7 @@ requires-dist = [
     { name = "groq", specifier = ">=1.2.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "markdownify", specifier = ">=0.11.0" },
-    { name = "playwright", marker = "extra == 'browser'", specifier = ">=1.44.0" },
+    { name = "playwright", specifier = ">=1.44.0" },
     { name = "playwright-stealth", marker = "extra == 'browser'", specifier = ">=2.0.3" },
     { name = "pydantic", specifier = ">=2.7.4" },
     { name = "pydantic-settings", specifier = ">=2.3.3" },

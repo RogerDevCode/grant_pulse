@@ -623,3 +623,9 @@ async def trigger_scrape(background_tasks: BackgroundTasks) -> dict[str, str]:
     background_tasks.add_task(_ejecutar_scrape)
     logger.info("Scrape manual disparado")
     return {"status": "iniciado", "message": "Scrape iniciado en segundo plano"}
+
+
+@router.get("/scrape/status")
+async def get_scrape_status() -> dict[str, bool]:
+    """Devuelve el estado actual del scraping manual."""
+    return {"en_curso": _scrape_en_curso}

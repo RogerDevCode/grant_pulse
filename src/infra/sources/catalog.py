@@ -10,7 +10,6 @@ Agregar una nueva fuente = crear un nuevo archivo .yaml en rules/. No requiere c
 
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path

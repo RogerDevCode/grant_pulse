@@ -10,8 +10,8 @@ from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 import httpx
 
-from src.core.domain.entities import Fuente, Snapshot
 from src.core.application.normalizer import _coerce_region
+from src.core.domain.entities import Fuente, Snapshot
 from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import ExtractionError, NetworkError
 from src.core.domain.ports import ScraperPort

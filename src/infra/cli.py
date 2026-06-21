@@ -127,6 +127,7 @@ async def _notify_subscribers(
     if not suscripciones:
         return
 
+    from src.infra.config import settings
     bot_token = settings.TELEGRAM_BOT_TOKEN
     if not bot_token:
         logger.warning("TELEGRAM_BOT_TOKEN no configurado; no se enviarán notificaciones a suscriptores")
