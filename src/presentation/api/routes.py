@@ -202,8 +202,10 @@ async def list_convocatorias(
         query = query.where(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
 
     if orden == "por_vencer":
-        query = query.where(ConvocatoriaORM.fecha_cierre.isnot(None), ConvocatoriaORM.fecha_cierre >= datetime.now(UTC))
-        query = query.order_by(ConvocatoriaORM.fecha_cierre.asc())
+        query = query.where(
+            (ConvocatoriaORM.fecha_cierre.is_(None)) | (ConvocatoriaORM.fecha_cierre >= datetime.now(UTC))
+        )
+        query = query.order_by(ConvocatoriaORM.fecha_cierre.asc().nullslast())
     elif orden == "recientes_creacion":
         query = query.order_by(ConvocatoriaORM.creado_en.desc())
     else:
