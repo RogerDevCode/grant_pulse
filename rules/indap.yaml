@@ -17,3 +17,15 @@ normalizadores: {}
 alertas:
   campos_sensibles: ["titulo"]
   ignorar_cambios_en: ["descripcion"]
+
+llm_prompt_hint: |
+  INDAP (Instituto de Desarrollo Agropecuario) financia exclusivamente
+  a pequeños agricultores, campesinos y comunidades agrícolas de Chile.
+  Sus instrumentos incluyen: créditos de corto y largo plazo, SAT (asistencia técnica),
+  PDTI (desarrollo territorial), Prodesal, y diversos bonos de fomento productivo.
+  Los beneficiarios DEBEN ser agricultores con menos de 12 hectáreas de riego básico
+  y sus ingresos principales deben provenir de la explotación agropecuaria.
+  Busca: requisitos de tenencia de tierra, tope de patrimonio e ingresos,
+  si es crédito (reembolsable) o subsidio (no reembolsable),
+  y restricciones por tipo de cultivo o actividad ganadera.
+

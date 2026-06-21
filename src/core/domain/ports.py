@@ -162,6 +162,7 @@ class LLMPort(ABC):
         base_url: str,
         institution_name: str = "",
         max_content_chars: int | None = None,
+        institution_hint: str | None = None,
     ) -> dict[str, Any] | None:
         """Extrae datos profundos de una página de detalle."""
         pass

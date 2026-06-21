@@ -586,9 +586,14 @@ class OpenRouterClient:
         base_url: str,
         institution_name: str = "",
         max_content_chars: int | None = None,
+        institution_hint: str | None = None,
     ) -> dict[str, Any] | None:
         """
-        Extrae datos profundos (DetalleEnriquecido) de una página de detalle (url_detalle).
+        Extrae datos profundos (DetalleEnriquecido) de una página de detalle.
+
+        El LLM SOLO puede escribir en los campos de DetalleEnriquecido.
+        No tiene acceso ni puede modificar campos principales (region, monto, etc.).
+        institution_hint es contexto adicional por institución proveniente del YAML.
         """
         budget = max_content_chars or self.max_content_chars
         markdown_content = _build_markdown_context(
@@ -602,27 +607,44 @@ class OpenRouterClient:
             logger.warning("Contenido HTML vacío tras limpiar, cancelando extracción.", base_url=base_url)
             return None
 
-        institution_suffix = f" del portal de {institution_name}" if institution_name else ""
+        institution_suffix = f" de {institution_name}" if institution_name else ""
+        hint_block = f"\n\nCONTEXTO INSTITUCIONAL:\n{institution_hint}" if institution_hint else ""
 
         system_prompt = (
-            "Eres un experto analista de fondos de financiamiento. "
-            "Extraes información detallada desde las bases y descripciones de convocatorias. "
-            "Devuelves únicamente JSON válido."
+            "Eres un analista experto en fondos de financiamiento público chileno. "
+            "Lees bases y descripciones de convocatorias y extraes información estructurada "
+            "con precisión quirurgica, sin inventar nada. "
+            "Devuelves únicamente JSON válido, sin comentarios ni texto adicional."
+            f"{hint_block}"
         )
 
+        from datetime import UTC, datetime
+        hoy = datetime.now(UTC).strftime("%Y-%m-%d")
+
         prompt_text = (
-            f"Analiza la siguiente página de convocatoria{institution_suffix} ({base_url}).\n\n"
-            "Debes extraer la siguiente estructura JSON:\n"
+            f"Analiza la página de convocatoria{institution_suffix} ({base_url}).\n"
+            f"Fecha de referencia: {hoy}.\n\n"
+            "Extrae el siguiente JSON. Usa null si el campo no aparece explícitamente en el texto.\n"
+            "NUNCA inventes datos. Si no está escrito, es null o [].\n\n"
             "{\n"
-            '  "requisitos_postulacion": ["req 1", "req 2"],\n'
-            '  "rubros_financiables": ["rubro 1", "rubro 2"],\n'
-            '  "restricciones_excluyentes": ["restriccion 1"],\n'
-            '  "cita_evidencia": "Cita textual que justifica la respuesta"\n'
+            '  "requisitos_postulacion": [\n'
+            '    "Requisito 1 con texto exacto del documento",\n'
+            '    "Requisito 2"\n'
+            "  ],\n"
+            '  "rubros_financiables": [\n'
+            '    "Gasto o rubro que financia el fondo"\n'
+            "  ],\n"
+            '  "restricciones_excluyentes": [\n'
+            '    "Condición que descalifica automáticamente una postulación"\n'
+            "  ],\n"
+            '  "tipo_beneficiario": "PYME | Persona natural | Municipio | Cooperativa | Empresa | null",\n'
+            '  "monto_maximo": "Monto en texto original, ej: $50.000.000 o null",\n'
+            '  "porcentaje_subsidio": "Porcentaje que cubre el fondo, ej: 80% o null",\n'
+            '  "plazo_ejecucion_meses": 12,\n'
+            '  "cobertura_geografica": "Nacional | nombre de región o null",\n'
+            '  "fecha_cierre_texto": "Texto original de la fecha de cierre o null",\n'
+            '  "cita_evidencia": "Cita textual del documento que respalda los campos anteriores o null"\n'
             "}\n\n"
-            "REGLAS:\n"
-            "1. Si no hay información sobre algún campo, retorna una lista vacía `[]`.\n"
-            "2. Si no encuentras evidencia textual explícita, `cita_evidencia` debe ser `null`.\n"
-            "3. NO inventes información.\n\n"
             f"DOCUMENTO:\n{markdown_content}"
         )
 
@@ -635,7 +657,7 @@ class OpenRouterClient:
         parsed = _extract_json_from_text(response_text)
         if isinstance(parsed, dict):
             return parsed
-            
+
         logger.error("LLM no retornó JSON estructurado válido para detalle", base_url=base_url)
         return None
 
@@ -881,7 +903,6 @@ class CommandCodeClient(StructuredLLMClient):
         fields_schema: dict[str, str],
         base_url: str,
         timeout: int = 90,
-        **kwargs: Any,
     ) -> list[dict[str, str]]:
         schema_desc = "\n".join(f"- {k}: {v}" for k, v in fields_schema.items())
         prompt = (

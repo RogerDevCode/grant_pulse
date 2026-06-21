@@ -102,6 +102,14 @@ class RulesConfig(BaseModel):
         description="Patrones regex en el título del item para excluirlo (ej: '^Bases ', '^Modificación ')",
     )
     activa: bool = Field(default=True, description="Si la fuente debe ser scrapeada en producción")
+    llm_prompt_hint: str | None = Field(
+        default=None,
+        description=(
+            "Texto adicional inyectado en el system prompt del LLM cuando se usa extraccion_llm. "
+            "Permite personalizar el contexto de extraccion por institucion sin tocar el nucleo. "
+            "Ejemplo: 'Esta institucion financia exclusivamente PYMES del sector agropecuario.'"
+        ),
+    )
 
 
 class Fuente(BaseModel):
@@ -165,19 +173,51 @@ class Convocatoria(BaseModel):
 
 
 class DetalleEnriquecido(BaseModel):
-    """Modelo estructurado devuelto por el LLM en Deep Scraping."""
+    """Modelo estructurado devuelto por el LLM en Deep Scraping.
+
+    Contrato: el LLM SOLO escribe aquí. Nunca sobreescribe campos principales
+    de Convocatoria (region, monto, fechas, estado, titulo, descripcion).
+    """
 
     requisitos_postulacion: list[str] = Field(
-        default_factory=list, description="Lista de requisitos exactos para postular"
+        default_factory=list,
+        description="Lista de requisitos exactos y excluyentes para postular",
     )
     rubros_financiables: list[str] = Field(
-        default_factory=list, description="Qué rubros específicos o ítems de gasto financia el fondo"
+        default_factory=list,
+        description="Qué rubros específicos o ítems de gasto financia el fondo",
     )
     restricciones_excluyentes: list[str] = Field(
-        default_factory=list, description="Motivos por los cuales una postulación sería rechazada o inadmisible automáticamente"
+        default_factory=list,
+        description="Motivos por los cuales una postulación sería rechazada o inadmisible automáticamente",
+    )
+    tipo_beneficiario: str | None = Field(
+        default=None,
+        description="A quién va dirigido: PYME, Persona natural, Municipio, Cooperativa, etc. null si no está explícito.",
+    )
+    monto_maximo: str | None = Field(
+        default=None,
+        description="Monto máximo de financiamiento en texto original (ej: '$50.000.000'). null si no aparece.",
+    )
+    porcentaje_subsidio: str | None = Field(
+        default=None,
+        description="Porcentaje que cubre el fondo del costo total (ej: '80%'). null si no aparece.",
+    )
+    plazo_ejecucion_meses: int | None = Field(
+        default=None,
+        description="Duración máxima del proyecto financiado en meses. null si no aparece.",
+    )
+    cobertura_geografica: str | None = Field(
+        default=None,
+        description="Si es Nacional, o el nombre de la región o zona específica. null si no aparece.",
+    )
+    fecha_cierre_texto: str | None = Field(
+        default=None,
+        description="Fecha de cierre de postulación en texto original. null si no aparece.",
     )
     cita_evidencia: str | None = Field(
-        default=None, description="Cita textual extraída del HTML original que justifica los requisitos y rubros. Si no hay evidencia clara, retorna null."
+        default=None,
+        description="Cita textual extraída del HTML original que justifica los requisitos y rubros. null si no hay evidencia.",
     )
 
 

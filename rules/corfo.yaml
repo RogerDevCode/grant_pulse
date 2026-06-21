@@ -45,6 +45,16 @@ normalizadores:
 
 region_defecto: "Nacional"
 
+llm_prompt_hint: |
+  CORFO (Corporación de Fomento de la Producción) financia innovación, emprendimiento,
+  competitividad y desarrollo productivo en Chile. Sus instrumentos incluyen subsidios
+  no reembolsables, garantias, créditos blandos y asistencia técnica.
+  Beneficiarios habituales: startups, PYMES, cooperativas, centros de investigación.
+  Los montos se expresan en pesos chilenos (CLP) o UF.
+  Busca especialmente: requisitos de ventas anuales, años de funcionamiento mínimos,
+  sectores excluidos (ej: sector financiero, inmobiliario, retail puro),
+  y si requiere cofinanciamiento del postulante.
+
 alertas:
   campos_sensibles:
     - "estado"

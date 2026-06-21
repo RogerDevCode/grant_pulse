@@ -37,5 +37,15 @@ json_mapping:
 
 region_defecto: "Nacional"
 
+llm_prompt_hint: |
+  SERCOTEC (Servicio de Cooperación Técnica) financia micro y pequeñas empresas
+  (MIPE) chilenas. Instrumentos: Capital Semilla, Capital Abeja, Reactiva,
+  Crecimiento, Asociatividad. El financiamiento es parcial: siempre hay
+  cofinanciamiento obligatorio del postulante (entre 10% y 40% según instrumento).
+  Cada convocatoria es por región específica. Requisitos clave: RUT empresa vigente,
+  ventas anuales máximas (normalmente bajo UF 25.000), sin deudas tributarias.
+  Busca monto máximo del subsidio, porcentaje de cofinanciamiento requerido
+  y plazo de ejecución del proyecto.
+
 alertas:
   campos_sensibles: ["fecha_cierre", "region", "titulo"]

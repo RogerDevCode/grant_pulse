@@ -29,6 +29,7 @@ class StructuredLLMClientPort(Protocol):
         base_url: str,
         institution_name: str = "",
         max_content_chars: int | None = None,
+        institution_hint: str | None = None,
     ) -> dict[str, Any] | None:
         ...
 
@@ -78,6 +79,7 @@ class EnriquecerConvocatoriaUseCase:
                 html_content=html_content,
                 base_url=str(convocatoria.url_detalle),
                 institution_name=fuente.nombre,
+                institution_hint=fuente.configuracion_reglas.llm_prompt_hint,
             )
 
             if raw_detail:
