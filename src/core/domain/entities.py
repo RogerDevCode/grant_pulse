@@ -170,7 +170,8 @@ class EventoCambio(BaseModel):
     """Representa una alteración calificada en una convocatoria."""
 
     id: int | str | UUID | None = None
-    convocatoria_id: int | str | UUID
+    convocatoria_id: int | str | UUID | None = None
+    identificador_externo: str | None = None
     tipo: str  # ej: "APERTURA", "MODIFICACION", "OTROS"
     deltas: list[Delta] = Field(default_factory=list[Delta])
     es_relevante: bool = False

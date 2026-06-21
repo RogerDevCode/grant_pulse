@@ -103,17 +103,22 @@ class MonitoreoUseCase:
             antiguas_dict = {c.identificador_externo: c for c in antiguas_lista}
 
             eventos = ChangeDetectorService.detect_changes(nuevas_convocatorias, antiguas_dict, fuente)
-
-            nuevas_dict = {c.id: c for c in nuevas_convocatorias}
-
-            await self.snapshot_repo.save(snapshot)
-
+            convocatorias_guardadas = []
             for conv in nuevas_convocatorias:
-                await self.convocatoria_repo.save(conv)
+                conv_guardada = await self.convocatoria_repo.save(conv)
+                convocatorias_guardadas.append(conv_guardada)
 
             await self.convocatoria_repo.flush()
 
+            nuevas_dict = {c.id: c for c in convocatorias_guardadas}
+
+            # Mapear el id generado por la base de datos a los eventos de cambio
+            nuevas_dict_por_ext = {c.identificador_externo: c for c in convocatorias_guardadas}
             for evento in eventos:
+                if not evento.convocatoria_id and evento.identificador_externo:
+                    conv_guardada = nuevas_dict_por_ext.get(evento.identificador_externo)
+                    if conv_guardada:
+                        evento.convocatoria_id = conv_guardada.id
                 await self.convocatoria_repo.save_evento_cambio(evento, snapshot.id)
 
             if self.notifier:

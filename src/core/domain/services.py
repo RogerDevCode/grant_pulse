@@ -39,6 +39,7 @@ class ChangeDetectorService:
                     # Es una apertura nueva
                     evento = EventoCambio(
                         convocatoria_id=nueva.id,
+                        identificador_externo=identificador,
                         tipo="APERTURA",
                         es_relevante=True,  # Toda apertura se considera relevante
                     )
@@ -57,6 +58,7 @@ class ChangeDetectorService:
 
                     evento = EventoCambio(
                         convocatoria_id=nueva.id,
+                        identificador_externo=identificador,
                         tipo="MODIFICACION",
                         deltas=deltas,
                         es_relevante=es_relevante,
