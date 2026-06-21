@@ -1211,6 +1211,67 @@ function loadAdminTab(tab) {
     case 'fuentes':        populateAdminFuentes(state.fuentes); break;
     case 'notificaciones': loadNotificaciones(); break;
     case 'audit':          loadAudit(); break;
+    case 'system-logs':    loadSystemLogs(); break;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SYSTEM LOGS
+═══════════════════════════════════════════════════════════════ */
+
+async function loadSystemLogs() {
+  const content = $('#systemLogsContent');
+  const emptyMsg = $('#systemLogsEmpty');
+  const btn = $('#btnRefreshLogs');
+  
+  if(btn) btn.classList.add('spinning');
+  
+  try {
+    const res = await apiFetch('/debug/errors');
+    if (res.error) {
+      content.style.display = 'none';
+      emptyMsg.style.display = 'block';
+      emptyMsg.textContent = res.error;
+    } else if (!res.content || res.content.trim() === '') {
+      content.style.display = 'none';
+      emptyMsg.style.display = 'block';
+      emptyMsg.textContent = 'Sin errores registrados. Todo en orden.';
+    } else {
+      emptyMsg.style.display = 'none';
+      content.style.display = 'block';
+      content.textContent = res.content;
+      content.scrollTop = content.scrollHeight; // Scroll to bottom
+    }
+  } catch (e) {
+    toast('Error al cargar logs del sistema', 'error');
+  } finally {
+    if(btn) btn.classList.remove('spinning');
+  }
+}
+
+async function clearSystemLogs() {
+  showConfirm('Limpiar Logs', '¿Estás seguro de que deseas vaciar el archivo de logs del sistema?', async () => {
+    try {
+      await apiFetch('/debug/errors', { method: 'DELETE' });
+      toast('Logs limpiados correctamente', 'success');
+      loadSystemLogs();
+    } catch (e) {
+      toast('Error al limpiar logs', 'error');
+    }
+  });
+}
+
+async function copySystemLogs() {
+  const text = $('#systemLogsContent').textContent;
+  if (!text) {
+    toast('No hay logs para copiar', 'warning');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Logs copiados al portapapeles', 'success');
+  } catch (err) {
+    toast('Error al copiar al portapapeles', 'error');
   }
 }
 
