@@ -18,7 +18,7 @@ json_mapping:
   root_path: ""             # La respuesta es directamente una lista []
   identificador: "id"
   titulo: "title.rendered"
-  descripcion: null         # excerpt.rendered siempre vacío en FIA
+  descripcion: "content.rendered"         # Map full content so we can extract fields and clean HTML
   link_detalle: "link"
   estado: null              # 'publish' no es útil; siempre mapeará a DESCONOCIDO
   fecha_apertura: "date"    # Fecha de publicación en WP (proxy de apertura)
@@ -38,6 +38,17 @@ normalizadores:
   fecha_cierre:
     regex_extraction: "(?:Cierre|Fecha\\s+de\\s+cierre|Plazo)[:\\s]+([\\d]{1,2}[/\\-\\.][\\d]{1,2}[/\\-\\.][\\d]{2,4})"
     formato_salida: "%d/%m/%Y"
+  cupo:
+    regex_extraction: "[Cc]upo[s]?:\\s*(\\d+)"
+    tipo_dato: "int"
+  instrumento:
+    regex_extraction: "(?:[Ii]nstrumento|[Tt]ipo|[Mm]odalidad):\\s*([A-Za-záéíóú]+)"
+    tipo_dato: "mapeo_canonico"
+    mapeo_canonico:
+      subsidio: "Subsidio"
+      credito: "Crédito"
+      garantia: "Garantía"
+      concurso: "Concurso"
 
 region_defecto: "Nacional"
 

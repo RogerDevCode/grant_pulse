@@ -3,10 +3,13 @@ Módulo encargado de normalizar datos crudos extraídos y mapearlos a entidades 
 """
 
 import asyncio
+import html
 import json
 import re
 import threading
+from collections.abc import Coroutine
 from datetime import UTC, datetime
+from typing import Any
 
 from src.core.domain.entities import Convocatoria, Fuente
 from src.core.domain.estado_normalizer import normalize_estado
@@ -102,7 +105,7 @@ def _coerce_region(text: str | None) -> str | None:
     return None
 
 
-def _run_async_in_thread(coro):
+def _run_async_in_thread(coro: Coroutine[Any, Any, Any]) -> Any:
     """Ejecuta una coroutine en un hilo separado para soportar inferencia LLM desde código síncrono."""
 
     try:
@@ -110,8 +113,8 @@ def _run_async_in_thread(coro):
     except RuntimeError:
         return asyncio.run(coro)
 
-    result = None
-    error = None
+    result: Any = None
+    error: Exception | None = None
 
     def runner() -> None:
         nonlocal result, error
@@ -257,6 +260,38 @@ def _parse_float(monto_str: str, field_name: str) -> float:
         raise NormalizationError(msg) from e
 
 
+def _extract_int(text: str, field_name: str) -> int:
+    """Convierte un string numérico limpio a int."""
+    try:
+        limpio = text.replace(".", "").replace(",", "")
+        return int(limpio)
+    except ValueError as e:
+        msg = f"Fallo al parsear entero '{text}' para el campo '{field_name}'"
+        logger.error(msg, exc=e)
+        raise NormalizationError(msg) from e
+
+
+def _clean_text(s: str) -> str:
+    """Limpia tags HTML y normaliza espacios."""
+    if not s:
+        return s
+    s = html.unescape(s)
+    s = re.sub(r"<[^>]+>", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"^\s*(?:Convocatoria|Bases?)\s+", "", s, flags=re.I)
+    return s
+
+
+def _extract_canonico(text: str, regex_pattern: str, mapping: dict[str, str], field_name: str) -> str:
+    """Extrae con regex y luego aplica un mapeo canónico."""
+    extracted = _apply_regex(text, regex_pattern, field_name)
+    lowered = extracted.lower()
+    for key, canonical in mapping.items():
+        if key in lowered:
+            return canonical
+    return extracted.capitalize()
+
+
 class DataNormalizer:
     """
     Toma diccionarios de strings crudos desde los scrapers, aplica
@@ -275,17 +310,20 @@ class DataNormalizer:
         for item in raw_items:
             identificador = item.get("identificador")
             url_detalle = item.get("url_detalle")
-            titulo = item.get("titulo")
+            raw_titulo = item.get("titulo")
             estado = item.get("estado")
 
             if not identificador:
                 logger.warning("Item carece de identificador, saltando", fuente=fuente.nombre)
                 skipped += 1
                 continue
-            if not titulo:
+            if not raw_titulo:
                 logger.warning("Item carece de titulo, saltando", identificador=identificador, fuente=fuente.nombre)
                 skipped += 1
                 continue
+
+            titulo = _clean_text(raw_titulo)
+            descripcion = _clean_text(item.get("descripcion") or "") or None
             estado = normalize_estado(estado)
 
             url_final: str | None = None
@@ -299,6 +337,7 @@ class DataNormalizer:
             fecha_apertura_val: datetime | None = None
             fecha_cierre_val: datetime | None = None
             monto_val: float | None = None
+            metadatos: dict[str, str | int | float | bool | None] = {}
             skip_item = False
 
             try:
@@ -315,7 +354,10 @@ class DataNormalizer:
                         )
                 elif raw_fecha_apertura:
                     fecha_apertura_val = parse_fecha_chilena(raw_fecha_apertura)
+            except NormalizationError as e:
+                logger.warning("Campo fecha_apertura omitido por error de normalización", item_id=identificador, exc=e)
 
+            try:
                 raw_fecha_cierre = item.get("fecha_cierre")
                 if raw_fecha_cierre and norm_config.fecha_cierre:
                     texto_fecha = raw_fecha_cierre
@@ -349,7 +391,10 @@ class DataNormalizer:
                         fecha_cierre=fecha_cierre_val.isoformat(),
                     )
                     skip_item = True
+            except NormalizationError as e:
+                logger.warning("Campo fecha_cierre omitido por error de normalización", item_id=identificador, exc=e)
 
+            try:
                 raw_monto = item.get("monto")
                 if raw_monto and norm_config.monto:
                     texto_monto = raw_monto
@@ -357,9 +402,30 @@ class DataNormalizer:
                         texto_monto = _apply_regex(texto_monto, norm_config.monto.regex_extraction, "monto")
                     monto_val = _parse_float(texto_monto, "monto")
             except NormalizationError as e:
-                msg = f"Fallo al normalizar item {identificador} de la fuente {fuente.nombre}: {e}"
-                logger.warning(msg, exc=e)
-                skip_item = True
+                logger.warning("Campo monto omitido por error de normalización", item_id=identificador, exc=e)
+
+            # Extraer nuevos campos hacia metadatos
+            for extra_field in ["cupo", "porcentaje_cofinanciamiento", "plazo_ejecucion_meses", "tipo_beneficiario", "instrumento", "area_financiamiento"]:
+                try:
+                    conf = getattr(norm_config, extra_field, None)
+                    raw_val = item.get(extra_field) or item.get("descripcion") or item.get("titulo") # Fallback to raw text
+                    if conf and conf.regex_extraction and raw_val:
+                        if conf.tipo_dato == "int":
+                            extracted = _apply_regex(raw_val, conf.regex_extraction, extra_field)
+                            metadatos[extra_field] = _extract_int(extracted, extra_field)
+                        elif conf.tipo_dato == "float":
+                            extracted = _apply_regex(raw_val, conf.regex_extraction, extra_field)
+                            metadatos[extra_field] = _parse_float(extracted, extra_field)
+                        elif conf.tipo_dato == "mapeo_canonico" and conf.mapeo_canonico:
+                            metadatos[extra_field] = _extract_canonico(raw_val, conf.regex_extraction, conf.mapeo_canonico, extra_field)
+                        else:
+                            metadatos[extra_field] = _apply_regex(raw_val, conf.regex_extraction, extra_field)
+                except NormalizationError as e:
+                    logger.warning(f"Campo {extra_field} omitido por error de normalización", item_id=identificador, exc=e)
+
+            # Plazo de postulación automático
+            if fecha_apertura_val and fecha_cierre_val and fecha_cierre_val > fecha_apertura_val:
+                metadatos["plazo_postulacion_dias"] = (fecha_cierre_val - fecha_apertura_val).days
 
             if skip_item:
                 skipped += 1
@@ -372,19 +438,20 @@ class DataNormalizer:
             if not region and fuente.configuracion_reglas.region_defecto:
                 region = fuente.configuracion_reglas.region_defecto
             if not region:
-                region = _infer_region_with_llm(titulo, item.get("descripcion"), url_final, fuente)
+                region = _infer_region_with_llm(titulo, descripcion, url_final, fuente)
 
             convocatoria = Convocatoria(
-                fuente_id=fuente.id,
+                fuente_id=fuente.id, # type: ignore
                 identificador_externo=identificador,
                 titulo=titulo,
-                descripcion=item.get("descripcion"),
-                url_detalle=url_final,
+                descripcion=descripcion,
+                url_detalle=url_final, # type: ignore
                 fecha_apertura=fecha_apertura_val,
                 fecha_cierre=fecha_cierre_val,
                 monto=monto_val,
                 region=region,
                 estado=estado,
+                metadatos=metadatos,
             )
             convocatorias.append(convocatoria)
 

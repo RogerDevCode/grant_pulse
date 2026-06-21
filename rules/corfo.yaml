@@ -15,6 +15,32 @@ normalizadores:
   fecha_cierre:
     regex_extraction: "(\\d{2}/\\d{2}/\\d{4})"
     formato_salida: "%d/%m/%Y"
+  cupo:
+    regex_extraction: "[Cc]upo[s]?:\\s*(\\d+)"
+    tipo_dato: "int"
+  porcentaje_cofinanciamiento:
+    regex_extraction: "[Cc]o[\\-\\s]?financiamiento:\\s*(?:hasta\\s+(?:el\\s+)?)?(\\d{1,3})\\s*%"
+    tipo_dato: "float"
+  plazo_ejecucion_meses:
+    regex_extraction: "(?:[Pp]lazo|[Dd]uraci[oó]n)(?:\\s+de\\s+ejecuci[oó]n)?:\\s*(?:hasta\\s+)?(\\d+)\\s*mes"
+    tipo_dato: "int"
+  tipo_beneficiario:
+    regex_extraction: "(?:[Dd]irigido\\s+a|[Bb]eneficiarios?|[Pp]ara):\\s*([^\\.|]+)"
+    tipo_dato: "mapeo_canonico"
+    mapeo_canonico:
+      mipes: "MIPE"
+      microempresa: "MIPE"
+      persona: "Persona natural"
+      empresa: "Empresa"
+      pyme: "Empresa"
+  instrumento:
+    regex_extraction: "(?:[Ii]nstrumento|[Tt]ipo|[Mm]odalidad):\\s*([A-Za-záéíóú]+)"
+    tipo_dato: "mapeo_canonico"
+    mapeo_canonico:
+      subsidio: "Subsidio"
+      credito: "Crédito"
+      garantia: "Garantía"
+      concurso: "Concurso"
 
 region_defecto: "Nacional"
 

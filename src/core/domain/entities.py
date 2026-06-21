@@ -1,6 +1,8 @@
 """Entidades y modelos de dominio principales de GrantPulse."""
 
 from datetime import UTC, datetime
+from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -46,12 +48,15 @@ class PaginationConfig(BaseModel):
     max_pages: int = Field(default=50, description="Límite de seguridad para evitar loops infinitos")
 
 
+
 class NormalizerItem(BaseModel):
     """Parámetros para normalizar un campo de texto extraído."""
 
     regex_extraction: str | None = Field(default=None, description="Regex para extraer el subtexto de interés")
     formato_salida: str | None = Field(default=None, description="Formato esperado si es fecha u otro tipo")
     idioma: str | None = Field(default="es", description="Idioma para el formateador de fechas")
+    tipo_dato: Literal["str", "int", "float", "mapeo_canonico"] | None = Field(default=None, description="Tipo de dato al que se debe castear o mapear")
+    mapeo_canonico: dict[str, str] | None = Field(default=None, description="Diccionario para mapear valores extraídos a categorías canónicas")
 
 
 class NormalizerConfig(BaseModel):
@@ -62,6 +67,12 @@ class NormalizerConfig(BaseModel):
     fecha_cierre: NormalizerItem | None = None
     monto: NormalizerItem | None = None
     region: NormalizerItem | None = None
+    cupo: NormalizerItem | None = None
+    porcentaje_cofinanciamiento: NormalizerItem | None = None
+    plazo_ejecucion_meses: NormalizerItem | None = None
+    tipo_beneficiario: NormalizerItem | None = None
+    instrumento: NormalizerItem | None = None
+    area_financiamiento: NormalizerItem | None = None
 
 
 class AlertsConfig(BaseModel):
@@ -92,8 +103,6 @@ class RulesConfig(BaseModel):
     )
     activa: bool = Field(default=True, description="Si la fuente debe ser scrapeada en producción")
 
-
-from uuid import UUID
 
 class Fuente(BaseModel):
     """Entidad de dominio que representa un portal de financiamiento institucional."""

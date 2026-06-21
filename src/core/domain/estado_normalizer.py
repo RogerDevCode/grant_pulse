@@ -24,6 +24,10 @@ _STATUS_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bSUSPENDID[AO]S?\b", re.IGNORECASE), "SUSPENDIDO"),
     (re.compile(r"\bFINALIZAD[AO]S?\b", re.IGNORECASE), "FINALIZADO"),
     (re.compile(r"\bVIGENTE\b", re.IGNORECASE), "ABIERTO"),
+    (re.compile(r"\bEN\s+POSTULACI[ÓO]N\b", re.IGNORECASE), "ABIERTO"),
+    (re.compile(r"\bINSCRIPCIONES?\s+ABIERTAS?\b", re.IGNORECASE), "ABIERTO"),
+    (re.compile(r"\bEN\s+EVALUACI[ÓO]N\b", re.IGNORECASE), "PROXIMAMENTE"),
+    (re.compile(r"\bPOSTUL[AO]S?\s+(?:HASTA\s+)?AGOTAR\b", re.IGNORECASE), "ABIERTO"),
 ]
 
 # Mapeo explícito de estados de WordPress REST API.
