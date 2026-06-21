@@ -146,6 +146,17 @@ class LLMPort(ABC):
         pass
 
     @abstractmethod
+    async def extract_single_detail(
+        self,
+        html_content: str,
+        base_url: str,
+        institution_name: str = "",
+        max_content_chars: int | None = None,
+    ) -> dict[str, Any] | None:
+        """Extrae datos profundos de una página de detalle."""
+        pass
+
+    @abstractmethod
     async def heal_selectors(
         self,
         html_content: str,

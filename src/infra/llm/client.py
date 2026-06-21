@@ -83,6 +83,14 @@ class StructuredLLMClient(Protocol):
         screenshot_b64: str | None = None,
     ) -> list[dict[str, Any]]: ...
 
+    async def extract_single_detail(
+        self,
+        html_content: str,
+        base_url: str,
+        institution_name: str = "",
+        max_content_chars: int | None = None,
+    ) -> dict[str, Any] | None: ...
+
     async def discover_funding_url(self, html_content: str, base_url: str) -> str | None: ...
 
     async def heal_selectors(
@@ -572,6 +580,65 @@ class OpenRouterClient:
         )
         return items
 
+    async def extract_single_detail(
+        self,
+        html_content: str,
+        base_url: str,
+        institution_name: str = "",
+        max_content_chars: int | None = None,
+    ) -> dict[str, Any] | None:
+        """
+        Extrae datos profundos (DetalleEnriquecido) de una página de detalle (url_detalle).
+        """
+        budget = max_content_chars or self.max_content_chars
+        markdown_content = _build_markdown_context(
+            html_content=html_content,
+            base_url=base_url,
+            selectors=None,
+            max_chars=budget,
+        )
+
+        if not markdown_content.strip():
+            logger.warning("Contenido HTML vacío tras limpiar, cancelando extracción.", base_url=base_url)
+            return None
+
+        institution_suffix = f" del portal de {institution_name}" if institution_name else ""
+
+        system_prompt = (
+            "Eres un experto analista de fondos de financiamiento. "
+            "Extraes información detallada desde las bases y descripciones de convocatorias. "
+            "Devuelves únicamente JSON válido."
+        )
+
+        prompt_text = (
+            f"Analiza la siguiente página de convocatoria{institution_suffix} ({base_url}).\n\n"
+            "Debes extraer la siguiente estructura JSON:\n"
+            "{\n"
+            '  "requisitos_postulacion": ["req 1", "req 2"],\n'
+            '  "rubros_financiables": ["rubro 1", "rubro 2"],\n'
+            '  "restricciones_excluyentes": ["restriccion 1"],\n'
+            '  "cita_evidencia": "Cita textual que justifica la respuesta"\n'
+            "}\n\n"
+            "REGLAS:\n"
+            "1. Si no hay información sobre algún campo, retorna una lista vacía `[]`.\n"
+            "2. Si no encuentras evidencia textual explícita, `cita_evidencia` debe ser `null`.\n"
+            "3. NO inventes información.\n\n"
+            f"DOCUMENTO:\n{markdown_content}"
+        )
+
+        response_text = await self.chat_completion(
+            prompt_text,
+            system_prompt=system_prompt,
+            timeout=self.request_timeout_seconds,
+        )
+
+        parsed = _extract_json_from_text(response_text)
+        if isinstance(parsed, dict):
+            return parsed
+            
+        logger.error("LLM no retornó JSON estructurado válido para detalle", base_url=base_url)
+        return None
+
     async def discover_funding_url(self, html_content: str, base_url: str) -> str | None:
         """
         Descubre el link de la sección de financiamiento cuando no está explícito.
@@ -825,6 +892,51 @@ class CommandCodeClient(StructuredLLMClient):
         )
         result = await self.chat_completion(prompt, timeout=timeout)
         return _extract_json_list(result)
+
+    async def extract_single_detail(
+        self,
+        html_content: str,
+        base_url: str,
+        institution_name: str = "",
+        max_content_chars: int | None = None,
+    ) -> dict[str, Any] | None:
+        budget = max_content_chars or self.max_content_chars
+        markdown_content = _build_markdown_context(
+            html_content=html_content,
+            base_url=base_url,
+            selectors=None,
+            max_chars=budget,
+        )
+
+        if not markdown_content.strip():
+            logger.warning("Contenido HTML vacío tras limpiar, cancelando extracción.", base_url=base_url)
+            return None
+
+        prompt = (
+            f"Analiza la siguiente página de convocatoria del portal de {institution_name} ({base_url}).\n\n"
+            "Debes extraer la siguiente estructura JSON EXACTA:\n"
+            "{\n"
+            '  "requisitos_postulacion": ["req 1", "req 2"],\n'
+            '  "rubros_financiables": ["rubro 1", "rubro 2"],\n'
+            '  "restricciones_excluyentes": ["restriccion 1"],\n'
+            '  "cita_evidencia": "Cita textual que justifica la respuesta"\n'
+            "}\n\n"
+            "REGLAS:\n"
+            "1. Si no hay información sobre algún campo, retorna una lista vacía `[]`.\n"
+            "2. Si no encuentras evidencia textual explícita, `cita_evidencia` debe ser `null`.\n"
+            "3. NO inventes información.\n\n"
+            f"DOCUMENTO:\n{markdown_content}"
+        )
+
+        try:
+            result = await self.chat_completion(prompt, timeout=120)
+            parsed = _extract_json_from_text(result)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception as exc:
+            logger.error("Fallo extracción deep scraping con cmd", exc=exc)
+
+        return None
 
     async def heal_selectors(
         self,

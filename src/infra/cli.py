@@ -406,6 +406,9 @@ def main() -> None:
     purge_parser.add_argument("--dias", type=int, default=7, help="Días desde el cierre para considerar vencida (default: 7)")
     subparsers.add_parser("backfill-regions", help="Completa la región en convocatorias existentes usando inferencia LLM")
 
+    enrich_parser = subparsers.add_parser("enrich-details", help="Ejecuta el deep scraping para enriquecer convocatorias usando LLM")
+    enrich_parser.add_argument("--batch-size", type=int, default=5, help="Tamaño del lote a procesar (default: 5)")
+
     args = parser.parse_args()
 
     try:
@@ -425,6 +428,9 @@ def main() -> None:
             from src.infra.maintenance import clean_expired_convocatorias
             eliminadas = asyncio.run(clean_expired_convocatorias(args.dias))
             print(f"Purga completada: {eliminadas} convocatorias eliminadas.")
+        elif args.command == "enrich-details":
+            from src.infra.workers.enrichment_worker import run_enrichment_worker
+            asyncio.run(run_enrichment_worker(batch_size=args.batch_size))
     except GrantPulseError as e:
         logger.error("Error de dominio finalizando el worker", exc=e)
         sys.exit(1)

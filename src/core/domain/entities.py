@@ -1,7 +1,7 @@
 """Entidades y modelos de dominio principales de GrantPulse."""
 
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, HttpUrl
@@ -159,9 +159,26 @@ class Convocatoria(BaseModel):
     monto: float | None = None
     region: str | None = None
     estado: str
-    metadatos: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+    metadatos: dict[str, Any] = Field(default_factory=dict)
     creado_en: datetime = Field(default_factory=lambda: datetime.now(UTC))
     actualizado_en: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class DetalleEnriquecido(BaseModel):
+    """Modelo estructurado devuelto por el LLM en Deep Scraping."""
+
+    requisitos_postulacion: list[str] = Field(
+        default_factory=list, description="Lista de requisitos exactos para postular"
+    )
+    rubros_financiables: list[str] = Field(
+        default_factory=list, description="Qué rubros específicos o ítems de gasto financia el fondo"
+    )
+    restricciones_excluyentes: list[str] = Field(
+        default_factory=list, description="Motivos por los cuales una postulación sería rechazada o inadmisible automáticamente"
+    )
+    cita_evidencia: str | None = Field(
+        default=None, description="Cita textual extraída del HTML original que justifica los requisitos y rubros. Si no hay evidencia clara, retorna null."
+    )
 
 
 class Snapshot(BaseModel):
