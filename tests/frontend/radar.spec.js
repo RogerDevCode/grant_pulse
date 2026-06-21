@@ -242,15 +242,40 @@ test.describe('Responsive y sidebar', () => {
 
 test.describe('Suscripciones', () => {
 
+  /** Chat IDs creados durante este describe — se limpian al final para no contaminar la BD. */
+  const chatIdsLimpieza = [];
+
   /** Crea una suscripción vía API directa y retorna su chat_id. */
   async function crearSubPorApi(request) {
-    const chatId = 'pw_' + Date.now();
+    const chatId = 'pw_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    chatIdsLimpieza.push(chatId);
     const resp = await request.post('/api/v1/suscripciones', {
       data: { chat_id: chatId, nombre: 'PW Test', regiones: ['Metropolitana', 'Valparaíso'] },
     });
     expect(resp.ok()).toBeTruthy();
+    chatIdsLimpieza.push(chatId);
     return chatId;
   }
+
+  /** Elimina un chat_id de la BD vía API (DELETE requiere id numérico, usamos DELETE por chat_id). */
+  async function limpiarChatId(request, chatId) {
+    try {
+      // 1. Obtener el id numérico
+      const get = await request.get(`/api/v1/suscripciones/${encodeURIComponent(chatId)}`);
+      if (get.ok()) {
+        const data = await get.json();
+        await request.delete(`/api/v1/suscripciones/${data.id}`);
+      }
+    } catch {
+      // Ignorar errores de limpieza — no deben fallar el test
+    }
+  }
+
+  test.afterAll(async ({ request }) => {
+    for (const id of chatIdsLimpieza) {
+      await limpiarChatId(request, id);
+    }
+  });
 
   test('navega a la página y muestra layout completo', async ({ page }) => {
     await page.goto('/');
@@ -283,7 +308,8 @@ test.describe('Suscripciones', () => {
   });
 
   test('crea suscripción nueva', async ({ page }) => {
-    const testChatId = 'pw_' + Date.now();
+    const testChatId = 'pw_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    chatIdsLimpieza.push(testChatId);
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await page.locator('.nav-item[data-page="suscripciones"]').click();
@@ -306,7 +332,8 @@ test.describe('Suscripciones', () => {
   });
 
   test('error si se guarda sin regiones', async ({ page }) => {
-    const testChatId = 'pw_' + Date.now();
+    const testChatId = 'pw_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    chatIdsLimpieza.push(testChatId);
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await page.locator('.nav-item[data-page="suscripciones"]').click();
