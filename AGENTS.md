@@ -123,6 +123,7 @@ Reglas complejas y transversales en Python.
 - Validación de YAML, contratos, smoke tests, tests unitarios e integración
 - Pre-commit, cobertura
 - Regla: ningún archivo se considera terminado sin indicar cómo validarlo, qué tests correr, qué contratos toca y qué regresiones introduce
+- Regla de cero errores: no existen "errores pre-existentes" ni "errores heredados". Todo error de ruff, mypy o pyright detectado al tocar un archivo debe ser resuelto en ese mismo cambio, sin excepción. Calificar un error como "pre-existente" para justificar ignorarlo está prohibido. Si el error existe, es responsabilidad del cambio actual corregirlo.
 
 ## 10. Comportamiento al generar código
 

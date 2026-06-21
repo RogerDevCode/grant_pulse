@@ -822,7 +822,7 @@ def _extract_json_list(text: str) -> list[dict[str, str]]:
     raise ScrapingError(f"No se pudo extraer lista JSON de la respuesta: {text[:200]}")
 
 
-def _extract_json_dict(text: str) -> dict | None:
+def _extract_json_dict(text: str) -> dict[str, Any] | None:
     """Parsea una respuesta LLM como diccionario."""
     parsed = _extract_json_from_text(text)
     if isinstance(parsed, dict):
@@ -892,26 +892,31 @@ class CommandCodeClient(StructuredLLMClient):
         self,
         prompt: str,
         system_prompt: str | None = None,
-        timeout: int = 60,
+        timeout: int | None = 60,
     ) -> str:
+        effective_timeout = timeout if timeout is not None else 60
         full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-        return await asyncio.to_thread(self._call_cmd, full_prompt, timeout)
+        return await asyncio.to_thread(self._call_cmd, full_prompt, effective_timeout)
 
     async def extract_from_html(
         self,
         html_content: str,
         fields_schema: dict[str, str],
         base_url: str,
-        timeout: int = 90,
-    ) -> list[dict[str, str]]:
+        institution_name: str = "",  # noqa: ARG002
+        selectors: SelectorConfig | None = None,  # noqa: ARG002
+        max_content_chars: int | None = None,
+        screenshot_b64: str | None = None,  # noqa: ARG002
+    ) -> list[dict[str, Any]]:
+        budget = max_content_chars or self.max_content_chars
         schema_desc = "\n".join(f"- {k}: {v}" for k, v in fields_schema.items())
         prompt = (
             f"Extrae datos estructurados desde el siguiente HTML.\n"
             f"URL base: {base_url}\n"
             f"Campos solicitados:\n{schema_desc}\n\n"
-            f"Responde SOLO con JSON válido (lista de objetos).\n\n{html_content[:self.max_content_chars]}"
+            f"Responde SOLO con JSON válido (lista de objetos).\n\n{html_content[:budget]}"
         )
-        result = await self.chat_completion(prompt, timeout=timeout)
+        result = await self.chat_completion(prompt, timeout=90)
         return _extract_json_list(result)
 
     async def extract_single_detail(
@@ -920,6 +925,7 @@ class CommandCodeClient(StructuredLLMClient):
         base_url: str,
         institution_name: str = "",
         max_content_chars: int | None = None,
+        institution_hint: str | None = None,
     ) -> dict[str, Any] | None:
         budget = max_content_chars or self.max_content_chars
         markdown_content = _build_markdown_context(
@@ -933,19 +939,32 @@ class CommandCodeClient(StructuredLLMClient):
             logger.warning("Contenido HTML vacío tras limpiar, cancelando extracción.", base_url=base_url)
             return None
 
+        institution_suffix = f" de {institution_name}" if institution_name else ""
+        hint_block = f"\n\nCONTEXTO INSTITUCIONAL:\n{institution_hint}" if institution_hint else ""
+        system_part = (
+            "Eres un analista experto en fondos de financiamiento público chileno. "
+            "Extraes información estructurada con precisión, sin inventar nada. "
+            "Devuelves únicamente JSON válido."
+            f"{hint_block}"
+        )
+
         prompt = (
-            f"Analiza la siguiente página de convocatoria del portal de {institution_name} ({base_url}).\n\n"
-            "Debes extraer la siguiente estructura JSON EXACTA:\n"
+            f"{system_part}\n\n"
+            f"Analiza la página de convocatoria{institution_suffix} ({base_url}).\n\n"
+            "Extrae el siguiente JSON. Usa null si el campo no aparece explícitamente.\n"
+            "NUNCA inventes datos. Si no está escrito, es null o [].\n\n"
             "{\n"
-            '  "requisitos_postulacion": ["req 1", "req 2"],\n'
-            '  "rubros_financiables": ["rubro 1", "rubro 2"],\n'
-            '  "restricciones_excluyentes": ["restriccion 1"],\n'
-            '  "cita_evidencia": "Cita textual que justifica la respuesta"\n'
+            '  "requisitos_postulacion": ["Requisito 1", "Requisito 2"],\n'
+            '  "rubros_financiables": ["Gasto o rubro que financia el fondo"],\n'
+            '  "restricciones_excluyentes": ["Condición que descalifica la postulación"],\n'
+            '  "tipo_beneficiario": "PYME | Persona natural | Municipio | null",\n'
+            '  "monto_maximo": "Monto en texto original o null",\n'
+            '  "porcentaje_subsidio": "Porcentaje que cubre el fondo o null",\n'
+            '  "plazo_ejecucion_meses": 12,\n'
+            '  "cobertura_geografica": "Nacional | nombre de región o null",\n'
+            '  "fecha_cierre_texto": "Texto original de la fecha de cierre o null",\n'
+            '  "cita_evidencia": "Cita textual del documento o null"\n'
             "}\n\n"
-            "REGLAS:\n"
-            "1. Si no hay información sobre algún campo, retorna una lista vacía `[]`.\n"
-            "2. Si no encuentras evidencia textual explícita, `cita_evidencia` debe ser `null`.\n"
-            "3. NO inventes información.\n\n"
             f"DOCUMENTO:\n{markdown_content}"
         )
 
@@ -959,13 +978,44 @@ class CommandCodeClient(StructuredLLMClient):
 
         return None
 
+    async def discover_funding_url(self, html_content: str, base_url: str) -> str | None:
+        """Descubre el link de la sección de financiamiento en la página."""
+        from markdownify import markdownify as _md
+        from selectolax.parser import HTMLParser as _HTMLParser
+
+        tree = _HTMLParser(html_content)
+        for tag in tree.css("script, style, iframe, svg, noscript"):
+            tag.decompose()
+        clean_html: str = tree.body.html if tree.body and tree.body.html is not None else html_content
+        markdown_nav = _normalize_whitespace(_md(clean_html, strip=["img"]))
+
+        prompt = (
+            f"Página de inicio: {base_url}\n\n"
+            "Busca el link que lleva a 'Convocatorias', 'Fondos', 'Concursos' o 'Financiamiento'.\n"
+            'Devuelve SOLO este JSON: {"discovered_url": "URL_COMPLETA"} '
+            'o {"discovered_url": null} si no hay link claro.\n\n'
+            f"CONTENIDO:\n{markdown_nav[:40_000]}"
+        )
+
+        try:
+            result = await self.chat_completion(prompt, timeout=60)
+            parsed = _extract_json_from_text(result)
+            if isinstance(parsed, dict):
+                discovered = parsed.get("discovered_url")
+                if isinstance(discovered, str) and discovered.strip():
+                    return discovered.strip()
+        except Exception as exc:
+            logger.warning("CommandCodeClient.discover_funding_url falló", exc=exc)
+
+        return None
+
     async def heal_selectors(
         self,
         html_content: str,
         institution_name: str,
         base_url: str,
         timeout: int = 90,
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         prompt = (
             f"Eres un experto en selectores CSS. Dado el HTML de {institution_name} ({base_url}), "
             f"encuentra selectores CSS que apunten a cada ítem de convocatoria/fondo.\n"
