@@ -28,34 +28,10 @@ class Settings(BaseSettings):
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
-    def normalize_db_url(cls, v: Any) -> Any:
-        if not isinstance(v, str):
-            return v
-        # SQLite — pasar directo
-        if v.startswith("sqlite"):
-            return v
-        # PostgreSQL — normalizar a +asyncpg
-        if v.startswith("postgres://"):
-            v = v.replace("postgres://", "postgresql://", 1)
-            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        parsed = urlsplit(v)
-        query_params = parse_qs(parsed.query, keep_blank_values=True)
-        sslmode = query_params.get("sslmode", [None])[0]
-        if sslmode:
-            if sslmode == "require":
-                ssl_value = "require"
-            elif sslmode in {"verify-ca", "verify-full"}:
-                ssl_value = sslmode
-            elif sslmode == "prefer":
-                ssl_value = True
-            else:
-                ssl_value = sslmode != "disable"
-            query_params.pop("sslmode", None)
-            query_params["ssl"] = [ssl_value]
-            v = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query_params, doseq=True), parsed.fragment))
-        if v.startswith("postgresql://"):
-            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return v
+    def force_sqlite_url(cls, v: Any) -> Any:
+        # El usuario pidió forzar SQLite, pero Railway inyecta Postgres en DATABASE_URL por defecto.
+        # Sobreescribimos cualquier DATABASE_URL inyectado con SQLite para asegurar persistencia local.
+        return "sqlite+aiosqlite:///data/grantpulse.db"
 
     # Alertas Telegram (Opcional en desarrollo)
     TELEGRAM_BOT_TOKEN: str | None = Field(default=None, description="Token de la API del bot de Telegram")
