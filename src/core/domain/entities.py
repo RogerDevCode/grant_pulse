@@ -92,10 +92,12 @@ class RulesConfig(BaseModel):
     )
 
 
+from uuid import UUID
+
 class Fuente(BaseModel):
     """Entidad de dominio que representa un portal de financiamiento institucional."""
 
-    id: int | None = None
+    id: int | str | UUID | None = None
     nombre: str
     url_base: HttpUrl
     configuracion_reglas: RulesConfig
@@ -136,8 +138,8 @@ class Delta(BaseModel):
 class Convocatoria(BaseModel):
     """Entidad estructurada de un fondo de financiamiento extraído."""
 
-    id: int | None = None
-    fuente_id: int
+    id: int | str | UUID | None = None
+    fuente_id: int | str | UUID
     identificador_externo: str
     titulo: str
     descripcion: str | None = None
@@ -155,8 +157,8 @@ class Convocatoria(BaseModel):
 class Snapshot(BaseModel):
     """Representa la captura del contenido físico crudo de un portal."""
 
-    id: int | None = None
-    fuente_id: int
+    id: int | str | UUID | None = None
+    fuente_id: int | str | UUID
     fecha_captura: datetime = Field(default_factory=lambda: datetime.now(UTC))
     contenido_crudo: str
     screenshot_b64: str | None = Field(default=None, description="Captura de pantalla en Base64 para extracción multimodal")
@@ -167,8 +169,8 @@ class Snapshot(BaseModel):
 class EventoCambio(BaseModel):
     """Representa una alteración calificada en una convocatoria."""
 
-    id: int | None = None
-    convocatoria_id: int
+    id: int | str | UUID | None = None
+    convocatoria_id: int | str | UUID
     tipo: str  # ej: "APERTURA", "MODIFICACION", "OTROS"
     deltas: list[Delta] = Field(default_factory=list[Delta])
     es_relevante: bool = False
