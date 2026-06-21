@@ -164,6 +164,7 @@ class SQLSnapshotRepository(SnapshotRepository):
             )
             self._session.add(orm)
             await self._session.flush()
+            await self._session.refresh(orm)
             return snapshot.model_copy(update={"id": orm.id})
         except SQLAlchemyError as e:
             msg = f"Error al guardar snapshot: {e}"
