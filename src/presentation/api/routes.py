@@ -76,6 +76,14 @@ async def get_latest_report():
     with open(latest, "r") as f:
         return {"content": f.read()}
 
+@router.get("/debug/errors")
+async def get_errors():
+    try:
+        with open("data/errors.log", "r") as f:
+            return {"content": f.read()}
+    except FileNotFoundError:
+        return {"error": "No errors.log found"}
+
 
 @router.get("/fuentes", response_model=list[FuenteResponse])
 async def list_fuentes(session: DbSession) -> list[FuenteResponse]:

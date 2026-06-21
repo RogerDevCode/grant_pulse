@@ -294,6 +294,10 @@ async def run_all_active_sources() -> None:
                 await session.rollback()
                 logger.error(f"Worker falló para fuente {fuente.nombre}: {e}", exc=e, fuente_id=str(fuente.id), run_id=fuente_run_id)
                 failed_fuentes.append(fuente.nombre)
+                # Save error to file for remote debugging
+                import traceback
+                with open("data/errors.log", "a") as f:
+                    f.write(f"[{datetime.now()}] ERROR en {fuente.nombre}: {e}\n{traceback.format_exc()}\n")
 
     # Generar reporte de calidad
     async with AsyncSessionLocal() as session:
