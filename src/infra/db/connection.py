@@ -22,7 +22,7 @@ try:
     is_sqlite = settings.DATABASE_URL.startswith("sqlite")
     kwargs = {"echo": False, "future": True}
     if is_sqlite:
-        kwargs["connect_args"] = {"check_same_thread": False}
+        kwargs["connect_args"] = {"check_same_thread": False, "timeout": 30.0}
     else:
         kwargs.update(pool_pre_ping=True, pool_recycle=180, pool_size=5, max_overflow=10, pool_timeout=30)
 
