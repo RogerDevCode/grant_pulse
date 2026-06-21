@@ -58,10 +58,10 @@ class PlaywrightScraper(ScraperPort):
                 viewport={"width": 1280, "height": 720},
             )
 
-            from playwright_stealth import stealth_async  # pyright: ignore[reportMissingImports]
+            from playwright_stealth import stealth  # pyright: ignore[reportMissingImports]
 
             page = await context.new_page()  # pyright: ignore[reportUnknownMemberType]
-            await stealth_async(page)
+            await stealth(page)
 
             try:
                 # Navegar a la URL
