@@ -20,7 +20,7 @@ json_mapping:
   titulo: "title.rendered"
   descripcion: "content.rendered"         # Map full content so we can extract fields and clean HTML
   link_detalle: "link"
-  estado: null              # 'publish' no es útil; siempre mapeará a DESCONOCIDO
+  estado: "status"          # 'publish' → normalize_estado → 'ABIERTO' via _WP_STATUS_MAP
   fecha_apertura: "date"    # Fecha de publicación en WP (proxy de apertura)
   fecha_cierre: null        # No existe como campo directo — extraer de content.rendered
   monto: null

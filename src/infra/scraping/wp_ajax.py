@@ -16,6 +16,8 @@ from typing import Any
 from urllib.parse import urljoin
 
 import httpx
+from curl_cffi import requests as curl_requests
+from curl_cffi.requests.errors import RequestsError as CurlRequestsError
 from selectolax.parser import HTMLParser
 
 from src.core.domain.entities import Fuente, Snapshot
@@ -76,17 +78,16 @@ class WpAjaxScraper(ScraperPort):
 
     async def _resolve_nonce_and_ajax_url(self, page_url: str) -> tuple[str, str]:
         """Obtiene el nonce y la URL de admin-ajax.php desde la página principal usando curl_cffi."""
-        from curl_cffi import requests
-        from curl_cffi.requests.errors import RequestException
         try:
-            async with requests.AsyncSession(
+            async with curl_requests.AsyncSession(
                 timeout=self._timeout, headers=_BROWSER_HEADERS, impersonate="chrome120", proxies={"http": "", "https": "", "all": ""}
             ) as client:
                 response = await client.get(page_url)
                 response.raise_for_status()
                 html = response.text
-        except RequestException as e:
+        except CurlRequestsError as e:
             msg = f"Error de red curl_cffi al obtener nonce desde {page_url}: {e}"
+            logger.error(msg, exc=e)
             raise NetworkError(msg) from e
 
         nonce_match = _NONCE_PATTERN.search(html)
@@ -123,9 +124,7 @@ class WpAjaxScraper(ScraperPort):
         total_found = 0
         pages_fetched = 0
 
-        from curl_cffi import requests
-        from curl_cffi.requests.errors import RequestException
-        async with requests.AsyncSession(
+        async with curl_requests.AsyncSession(
             timeout=self._timeout, headers=_BROWSER_HEADERS, impersonate="chrome120", proxies={"http": "", "https": "", "all": ""}
         ) as client:
             for page_num in range(1, self._max_pages + 1):
@@ -146,9 +145,10 @@ class WpAjaxScraper(ScraperPort):
                 try:
                     response = await client.post(ajax_url, data=form_data, headers=headers)
                     response.raise_for_status()
-                except RequestException as e:
+                except CurlRequestsError as e:
                     if page_num == 1:
                         msg = f"Error de red en AJAX POST a {ajax_url}: {e}"
+                        logger.error(msg, exc=e)
                         raise NetworkError(msg) from e
                     logger.warning("Error de red en paginación AJAX", page=page_num, exc=e)
                     break
