@@ -21,6 +21,7 @@ dependencies = [
   "selectolax>=0.3.21",
   "markdownify>=0.11.0",
   "curl_cffi>=0.5.0",
+  "playwright>=1.44.0",
   # LLM
   "groq>=1.2.0",
   # Logging y utilidades
@@ -37,9 +38,8 @@ grantpulse-clean = "src.infra.maintenance:run_clean_db"
 grantpulse-purge = "src.infra.cli:main"
 
 [project.optional-dependencies]
-# Browser automation — solo para scraping avanzado local, NO para Railway
+# Browser extras — stealth y anti-detección (playwright ya está en dependencias base)
 browser = [
-    "playwright>=1.44.0",
     "playwright-stealth>=2.0.3",
     "camoufox>=0.4.11",
 ]

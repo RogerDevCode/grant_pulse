@@ -24,6 +24,11 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-group dev --directory /app \
     && chmod -R u+x /app/.venv/bin
 
+# Install Playwright browsers (headless chromium) — necesario para scraping
+ENV PLAYWRIGHT_BROWSERS_PATH=/app/.venv/ms-playwright
+RUN /app/.venv/bin/playwright install chromium \
+    && rm -rf /root/.cache /tmp/*
+
 # ── Runtime stage ──
 FROM python:3.13-slim AS runtime
 
