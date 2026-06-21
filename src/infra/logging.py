@@ -108,8 +108,26 @@ class GrantPulseLogger:
     def info(self, msg: str, **context: Any) -> None:
         self._logger.info(msg, extra={"extra_context": self._enrich(context)})
 
+    def _write_to_errors_log(self, level: str, msg: str, context: dict[str, Any], exc: Exception | None = None) -> None:
+        try:
+            import os
+            if os.path.exists("data"):
+                with open("data/errors.log", "a", encoding="utf-8") as f:
+                    from datetime import datetime, UTC
+                    ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+                    ctx_str = " | ".join(f"{k}={v}" for k, v in context.items())
+                    exc_str = ""
+                    if exc:
+                        import traceback
+                        exc_str = "\n" + "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+                    f.write(f"[{ts}] {level} {self._logger.name}: {msg} | {ctx_str}{exc_str}\n")
+        except Exception:
+            pass
+
     def warning(self, msg: str, **context: Any) -> None:
-        self._logger.warning(msg, extra={"extra_context": self._enrich(context)})
+        enriched = self._enrich(context)
+        self._logger.warning(msg, extra={"extra_context": enriched})
+        self._write_to_errors_log("WARNING", msg, enriched)
 
     def error(self, msg: str, exc: Exception | None = None, **context: Any) -> None:
         enriched = self._enrich(context)
@@ -117,6 +135,7 @@ class GrantPulseLogger:
             self._logger.error(msg, exc_info=exc, extra={"extra_context": enriched})
         else:
             self._logger.error(msg, extra={"extra_context": enriched})
+        self._write_to_errors_log("ERROR", msg, enriched, exc)
 
 
 def get_logger(name: str) -> GrantPulseLogger:

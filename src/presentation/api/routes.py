@@ -76,13 +76,32 @@ async def get_latest_report():
     with open(latest, "r") as f:
         return {"content": f.read()}
 
+
 @router.get("/debug/errors")
-async def get_errors():
-    try:
-        with open("data/errors.log", "r") as f:
-            return {"content": f.read()}
-    except FileNotFoundError:
+async def get_errors_log() -> dict[str, str]:
+    """Retorna el contenido de data/errors.log"""
+    log_path = Path("data/errors.log")
+    if not log_path.exists():
         return {"error": "No errors.log found"}
+    try:
+        content = log_path.read_text(encoding="utf-8")
+        return {"content": content}
+    except Exception as e:
+        logger.error("Error al leer errors.log", exc=e)
+        return {"error": str(e)}
+
+
+@router.delete("/debug/errors", status_code=204)
+async def clear_errors_log() -> None:
+    """Borra el contenido de data/errors.log"""
+    log_path = Path("data/errors.log")
+    if log_path.exists():
+        try:
+            log_path.write_text("", encoding="utf-8")
+            logger.info("Archivo errors.log limpiado por el usuario")
+        except Exception as e:
+            logger.error("Error al limpiar errors.log", exc=e)
+            raise HTTPException(status_code=500, detail="No se pudo limpiar el log")
 
 
 @router.get("/fuentes", response_model=list[FuenteResponse])

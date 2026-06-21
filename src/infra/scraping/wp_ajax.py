@@ -265,6 +265,7 @@ class WpAjaxScraper(ScraperPort):
                 item_data["identificador"] = identificador_raw
 
                 if not item_data["identificador"]:
+                    logger.warning(f"Item AJAX #{index} no tiene identificador ni título para fallback. Saltando.", fuente=fuente.nombre)
                     continue
 
                 if selectores.descripcion:

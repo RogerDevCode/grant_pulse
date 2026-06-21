@@ -165,11 +165,11 @@ class HtmlStaticScraper(ScraperPort):
                 item_data["identificador"] = identificador_raw
 
                 if not item_data["identificador"]:
-                    logger.debug(f"Item #{index} no tiene identificador ni título para fallback. Saltando.")
+                    logger.warning(f"Item #{index} no tiene identificador ni título para fallback. Saltando.", fuente=fuente.nombre)
                     continue
 
                 if not item_data["titulo"]:
-                    logger.debug(f"Item #{index} no tiene título. Saltando.")
+                    logger.warning(f"Item #{index} no tiene título. Saltando.", fuente=fuente.nombre)
                     continue
 
                 if selectores.descripcion:

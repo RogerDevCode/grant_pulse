@@ -1489,3 +1489,63 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 2. Navegar a radar (carga automática)
   navigate('radar');
 });
+
+/* ─── MODAL LOGS ──────────────────────────────────────────────── */
+
+function abrirLogs() {
+  const modal = $('#logsModal');
+  if (modal) {
+    modal.classList.add('active');
+    cargarLogs();
+  }
+}
+
+function cerrarLogs() {
+  const modal = $('#logsModal');
+  if (modal) modal.classList.remove('active');
+}
+
+async function cargarLogs() {
+  const content = $('#logsContent');
+  if (!content) return;
+  content.textContent = "Cargando logs...";
+  try {
+    const res = await fetch(`${API}/debug/errors`);
+    if (!res.ok) throw new Error("No se pudieron obtener los logs");
+    const data = await res.json();
+    if (data.error) {
+      content.textContent = data.error;
+    } else {
+      content.textContent = data.content || "No hay logs registrados.";
+    }
+    content.scrollTop = content.scrollHeight;
+  } catch (err) {
+    content.textContent = "Error de red al cargar logs: " + err.message;
+  }
+}
+
+async function copiarLogs() {
+  const content = $('#logsContent');
+  if (!content) return;
+  try {
+    await navigator.clipboard.writeText(content.textContent);
+    showToast("Logs copiados al portapapeles", "success");
+  } catch (err) {
+    showToast("No se pudo copiar: " + err.message, "error");
+  }
+}
+
+async function limpiarLogs() {
+  try {
+    const res = await fetch(`${API}/debug/errors`, { method: "DELETE" });
+    if (!res.ok) throw new Error("No se pudo limpiar");
+    showToast("Logs limpiados exitosamente", "success");
+    cargarLogs();
+  } catch (err) {
+    showToast("Error al limpiar logs: " + err.message, "error");
+  }
+}
+
+if ($('#logsModalClose')) $('#logsModalClose').addEventListener('click', cerrarLogs);
+if ($('#btnCopiarLogs')) $('#btnCopiarLogs').addEventListener('click', copiarLogs);
+if ($('#btnLimpiarLogs')) $('#btnLimpiarLogs').addEventListener('click', limpiarLogs);
