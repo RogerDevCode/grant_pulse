@@ -21,7 +21,7 @@ RUN pip install uv
 
 COPY pyproject.toml uv.lock ./
 
-RUN uv sync --frozen --no-group dev --directory /app \
+RUN uv sync --frozen --no-group dev --extra browser --directory /app \
     && chmod -R u+x /app/.venv/bin
 
 # Install Playwright browsers (headless chromium) — necesario para scraping
