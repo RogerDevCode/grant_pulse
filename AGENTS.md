@@ -64,6 +64,22 @@ Disciplina de separación tipo Spring, implementación idiomática Python.
 
 No usar herramientas pesadas por moda. Costo, complejidad y robustez bajo control.
 
+## 6b. Testing del frontend
+
+Para pruebas E2E del propio frontend, usar el navegador más neutro: **Chromium/Chrome sin extensiones y con perfil limpio**.
+
+- **Perfil limpio** = sin cookies, sin caché, sin estado residual entre ejecuciones. Garantiza repetibilidad.
+- **Sin extensiones** = comportamiento idéntico entre desarrollo, CI y producción, sin ruido de plugins del usuario.
+- **Modo headless obligatorio** en CI. En local se permite headed solo para depuración.
+
+Herramienta preferida: `playwright-python` con `chromium.launch(headless=True)`. NO usar Chrome del sistema: la versión varía entre máquinas y rompe selectores.
+
+Cada test debe:
+
+1. Crear un contexto nuevo con perfil limpio (`browser.new_context()`).
+2. Cerrar el contexto al finalizar (cleanup obligatorio).
+3. Evitar dependencias entre tests (orden, estado compartido, fixtures globales).
+
 ## 7. Reglas por sitio
 
 Cada sitio se define/modifica sin tocar el núcleo. YAML permite: nombre, URL base, páginas objetivo, selectores, estrategia de extracción, señales de apertura/cambio, campos a observar, exclusiones, normalizaciones, thresholds, políticas de comparación.
