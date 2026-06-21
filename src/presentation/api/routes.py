@@ -3,6 +3,7 @@ Rutas HTTP de la API REST usando FastAPI.
 """
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from sqlalchemy import func, select
