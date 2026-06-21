@@ -75,6 +75,13 @@ _REGION_ALIASES: dict[str, str] = {
 }
 
 
+# Patrón para extraer 'Región de X' o 'Region de X' en textos largos
+_RE_REGION_DE = re.compile(
+    r"[Rr]egi[oó]n\s+de\s+([A-Za-záéíóúüñÁÉÍÓÚÜÑ'\s]+?)(?:\s*[-,.]|$)",
+    re.IGNORECASE,
+)
+
+
 def _coerce_region(text: str | None) -> str | None:
     if not text or not isinstance(text, str):
         return None
@@ -82,6 +89,7 @@ def _coerce_region(text: str | None) -> str | None:
     if not value:
         return None
     lowered = value.lower()
+    # 1) Coincidencia exacta con una región conocida
     for r in REGIONES_CHILE:
         if lowered == r.lower():
             return r
@@ -94,14 +102,23 @@ def _coerce_region(text: str | None) -> str | None:
         .replace("ú", "u")
     )
     normalized = " ".join(normalized.split())
+    # 2) Alias conocidos
     for alias, canonical in _REGION_ALIASES.items():
         alias_norm = alias.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
         if alias_norm == normalized or alias_norm in normalized:
             return canonical
+    # 3) Subcadena de región en el texto normalizado
     for r in REGIONES_CHILE:
         r_norm = r.lower().replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
         if r_norm == normalized or r_norm in normalized:
             return r
+    # 4) Extracción desde patrón 'Región de X' en textos largos
+    m = _RE_REGION_DE.search(value)
+    if m:
+        candidate = m.group(1).strip()
+        found = _coerce_region(candidate)
+        if found:
+            return found
     return None
 
 
@@ -434,9 +451,19 @@ class DataNormalizer:
             if estado == "DESCONOCIDO" and fecha_cierre_val is not None and fecha_cierre_val >= now:
                 estado = "ABIERTO"
 
-            region = item.get("region")
+            # Intentar extraer región desde el campo crudo (puede ser texto largo como el título)
+            region_raw = item.get("region")
+            region = _coerce_region(region_raw) if region_raw else None
+
+            # Si el campo region vino vacío o no reconocido, intentar extraer desde el título
+            if not region and titulo:
+                region = _coerce_region(titulo)
+
+            # Fallback: region_defecto del YAML
             if not region and fuente.configuracion_reglas.region_defecto:
                 region = fuente.configuracion_reglas.region_defecto
+
+            # Último recurso: inferencia LLM (solo si no hay defecto configurado)
             if not region:
                 region = _infer_region_with_llm(titulo, descripcion, url_final, fuente)
 
