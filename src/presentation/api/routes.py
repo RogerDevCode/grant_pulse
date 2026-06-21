@@ -66,6 +66,17 @@ async def get_dashboard_stats(session: DbSession) -> DashboardStats:
     )
 
 
+@router.get("/debug/report")
+async def get_latest_report():
+    import glob
+    reports = glob.glob("reports/quality_report_*.md")
+    if not reports:
+        return {"error": "No reports found"}
+    latest = max(reports)
+    with open(latest, "r") as f:
+        return {"content": f.read()}
+
+
 @router.get("/fuentes", response_model=list[FuenteResponse])
 async def list_fuentes(session: DbSession) -> list[FuenteResponse]:
     conv_subq = (
