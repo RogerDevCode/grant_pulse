@@ -421,7 +421,7 @@ class DataNormalizer:
                         else:
                             metadatos[extra_field] = _apply_regex(raw_val, conf.regex_extraction, extra_field)
                 except NormalizationError as e:
-                    logger.warning(f"Campo {extra_field} omitido por error de normalización", item_id=identificador, exc=e)
+                    logger.debug(f"Campo {extra_field} omitido por error de normalización", item_id=identificador, exc=e)
 
             # Plazo de postulación automático
             if fecha_apertura_val and fecha_cierre_val and fecha_cierre_val > fecha_apertura_val:
