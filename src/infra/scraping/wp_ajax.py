@@ -75,19 +75,18 @@ class WpAjaxScraper(ScraperPort):
         self._max_pages = max_pages
 
     async def _resolve_nonce_and_ajax_url(self, page_url: str) -> tuple[str, str]:
-        """Obtiene el nonce y la URL de admin-ajax.php desde la página principal."""
+        """Obtiene el nonce y la URL de admin-ajax.php desde la página principal usando curl_cffi."""
+        from curl_cffi import requests
+        from curl_cffi.requests.errors import RequestException
         try:
-            async with httpx.AsyncClient(
-                timeout=self._timeout, headers=_BROWSER_HEADERS, follow_redirects=True
+            async with requests.AsyncSession(
+                timeout=self._timeout, headers=_BROWSER_HEADERS, impersonate="chrome120", proxies={"http": "", "https": "", "all": ""}
             ) as client:
                 response = await client.get(page_url)
                 response.raise_for_status()
                 html = response.text
-        except httpx.HTTPStatusError as e:
-            msg = f"Error HTTP {e.response.status_code} al obtener nonce desde {page_url}"
-            raise NetworkError(msg) from e
-        except httpx.RequestError as e:
-            msg = f"Error de red al obtener nonce desde {page_url}: {e}"
+        except RequestException as e:
+            msg = f"Error de red curl_cffi al obtener nonce desde {page_url}: {e}"
             raise NetworkError(msg) from e
 
         nonce_match = _NONCE_PATTERN.search(html)
@@ -124,8 +123,10 @@ class WpAjaxScraper(ScraperPort):
         total_found = 0
         pages_fetched = 0
 
-        async with httpx.AsyncClient(
-            timeout=self._timeout, headers=_BROWSER_HEADERS, follow_redirects=True
+        from curl_cffi import requests
+        from curl_cffi.requests.errors import RequestException
+        async with requests.AsyncSession(
+            timeout=self._timeout, headers=_BROWSER_HEADERS, impersonate="chrome120", proxies={"http": "", "https": "", "all": ""}
         ) as client:
             for page_num in range(1, self._max_pages + 1):
                 form_data = {
@@ -145,17 +146,7 @@ class WpAjaxScraper(ScraperPort):
                 try:
                     response = await client.post(ajax_url, data=form_data, headers=headers)
                     response.raise_for_status()
-                except httpx.HTTPStatusError as e:
-                    if page_num == 1:
-                        msg = f"Error HTTP {e.response.status_code} en AJAX POST a {ajax_url}"
-                        raise NetworkError(msg) from e
-                    logger.warning(
-                        "Error en página de AJAX, deteniendo paginación",
-                        page=page_num,
-                        status=e.response.status_code,
-                    )
-                    break
-                except httpx.RequestError as e:
+                except RequestException as e:
                     if page_num == 1:
                         msg = f"Error de red en AJAX POST a {ajax_url}: {e}"
                         raise NetworkError(msg) from e
