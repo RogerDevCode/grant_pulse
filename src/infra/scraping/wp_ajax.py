@@ -316,11 +316,8 @@ class WpAjaxScraper(ScraperPort):
                 else:
                     item_data["fecha_cierre"] = None
 
-                if selectores.fecha_apertura:
-                    fa_nodo = _resolve_node(nodo, selectores.fecha_apertura)
-                    item_data["fecha_apertura"] = _extract_text_or_attr(fa_nodo, selectores.fecha_apertura)
-                else:
-                    item_data["fecha_apertura"] = None
+                # fecha_apertura no está definido en SelectorConfig actualmente.
+                item_data["fecha_apertura"] = None
 
                 if selectores.monto:
                     monto_nodo = _resolve_node(nodo, selectores.monto)
