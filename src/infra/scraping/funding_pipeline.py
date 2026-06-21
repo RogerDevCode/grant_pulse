@@ -69,14 +69,8 @@ class CompositeFundingScraper(ScraperPort):
         self._profile = profile
         self._html_static = html_static or HtmlStaticScraper()
         self._json_api = json_api or JsonApiScraper()
-        self._browser = browser
-        if self._browser is None:
-            from src.infra.scraping.browser import PlaywrightScraper
-            self._browser = PlaywrightScraper()
-        self._llm = llm
-        if self._llm is None:
-            from src.infra.scraping.llm_scraper import LlmScraper
-            self._llm = LlmScraper()
+        self._browser: ScraperPort | None = None  # lazy — solo si se usa estrategia browser
+        self._llm: ScraperPort | None = None      # lazy — solo si se usa estrategia llm
         self._wp_ajax = wp_ajax or WpAjaxScraper()
         self._rss_feed = rss_feed or RssFeedScraper()
         self._curl_cffi = curl_cffi or CurlCffiScraper()
@@ -98,8 +92,14 @@ class CompositeFundingScraper(ScraperPort):
         if kind == "json_api":
             return await self._json_api.fetch(fuente)
         if kind == "browser":
+            if self._browser is None:
+                from src.infra.scraping.browser import PlaywrightScraper
+                self._browser = PlaywrightScraper()
             return await self._browser.fetch(fuente)
         if kind == "llm":
+            if self._llm is None:
+                from src.infra.scraping.llm_scraper import LlmScraper
+                self._llm = LlmScraper()
             return await self._llm.fetch(fuente)
         if kind == "curl_cffi":
             return await self._curl_cffi.fetch(fuente)
@@ -125,6 +125,9 @@ class CompositeFundingScraper(ScraperPort):
         if kind == "json_api":
             return await self._json_api.extract(snapshot, fuente, **kwargs)
         if kind == "llm":
+            if self._llm is None:
+                from src.infra.scraping.llm_scraper import LlmScraper
+                self._llm = LlmScraper()
             budget = kwargs.get("max_content_chars") or self._profile.max_llm_context_chars
             return await self._llm.extract(snapshot, fuente, max_content_chars=budget)
         if kind == "wp_ajax":
