@@ -34,7 +34,7 @@ def _fuente_orm_to_entity(orm: FuenteORM) -> Fuente:
     )
 
 
-def _convocatoria_orm_to_entity(orm: ConvocatoriaORM, fuente_nombre: str | None = None) -> Convocatoria:
+def _convocatoria_orm_to_entity(orm: ConvocatoriaORM) -> Convocatoria:
     url_detail = HttpUrl(orm.url_detail) if orm.url_detail else None
     return Convocatoria(
         id=orm.id,
@@ -165,12 +165,12 @@ class SQLSnapshotRepository(SnapshotRepository):
             self._session.add(orm)
             await self._session.flush()
             await self._session.refresh(orm)
-            
+
             if getattr(orm, "id", None) is None:
                 msg = f"CRÍTICO: orm.id es None después de flush y refresh. orm={orm.__dict__}"
                 logger.error(msg)
                 raise PersistenceError(msg)
-                
+
             return snapshot.model_copy(update={"id": orm.id})
         except SQLAlchemyError as e:
             msg = f"Error al guardar snapshot: {e}"
@@ -275,6 +275,33 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
         except SQLAlchemyError as e:
             msg = f"Error al guardar convocatoria {convocatoria.identificador_externo}: {e}"
             logger.error(msg, ext_id=convocatoria.identificador_externo, exc=e)
+            raise PersistenceError(msg) from e
+
+    async def save_metadatos(self, convocatoria: Convocatoria) -> None:
+        """Actualiza exclusivamente el campo metadatos en BD.
+
+        No toca region, monto, fechas, estado ni ningún otro campo del scraper.
+        Contrato del enricher: el LLM solo puede escribir en metadatos.
+        """
+        if not convocatoria.id:
+            logger.warning(
+                "save_metadatos llamado sin id de convocatoria, ignorando",
+                identificador=convocatoria.identificador_externo,
+            )
+            return
+        try:
+            result = await self._session.execute(
+                select(ConvocatoriaORM).where(ConvocatoriaORM.id == convocatoria.id)
+            )
+            orm = result.scalars().first()
+            if not orm:
+                logger.warning("save_metadatos: convocatoria no encontrada en BD", conv_id=convocatoria.id)
+                return
+            orm.metadatos = convocatoria.metadatos
+            await self._session.flush()
+        except SQLAlchemyError as e:
+            msg = f"Error al guardar metadatos de convocatoria {convocatoria.id}: {e}"
+            logger.error(msg, conv_id=convocatoria.id, exc=e)
             raise PersistenceError(msg) from e
 
     async def save_evento_cambio(self, evento: EventoCambio, snapshot_id: int) -> EventoCambio:

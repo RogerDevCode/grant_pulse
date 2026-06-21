@@ -6,7 +6,7 @@ y extraer requisitos específicos, rubros y restricciones.
 
 from typing import Any, Protocol
 
-from src.core.domain.entities import Convocatoria, DetalleEnriquecido, Fuente
+from src.core.domain.entities import Convocatoria, DetalleEnriquecido
 from src.core.domain.ports import ConvocatoriaRepository, FuenteRepository
 from src.infra.logging import get_logger
 
@@ -51,12 +51,17 @@ class EnriquecerConvocatoriaUseCase:
     async def execute(self, convocatoria: Convocatoria) -> Convocatoria:
         """
         Descarga el detalle de una convocatoria, pide al LLM que extraiga el
-        modelo DetalleEnriquecido y lo guarda en metadatos.
+        modelo DetalleEnriquecido y lo guarda SOLO en metadatos.
+
+        Invariante: nunca sobreescribe campos principales (region, monto,
+        fechas, estado, titulo, descripcion) que ya fueron obtenidos por el
+        scraper. El LLM es el último recurso y sus resultados van a
+        metadatos['enriquecido'] exclusivamente.
         """
         if not convocatoria.url_detalle:
             logger.info("Convocatoria sin url_detalle, ignorando enriquecimiento.", conv_id=convocatoria.id)
             convocatoria.metadatos["estado_enriquecimiento"] = "NO_APLICA"
-            await self.convocatoria_repo.save(convocatoria)
+            await self.convocatoria_repo.save_metadatos(convocatoria)
             return convocatoria
 
         fuente_id = int(str(convocatoria.fuente_id))
@@ -78,6 +83,7 @@ class EnriquecerConvocatoriaUseCase:
             if raw_detail:
                 # Validamos contra el contrato Pydantic explícito
                 detalle = DetalleEnriquecido(**raw_detail)
+                # El LLM SOLO escribe en metadatos, nunca en campos principales
                 convocatoria.metadatos["enriquecido"] = detalle.model_dump()
                 convocatoria.metadatos["estado_enriquecimiento"] = "COMPLETADO"
                 logger.info("Convocatoria enriquecida exitosamente", conv_id=convocatoria.id)
@@ -89,5 +95,6 @@ class EnriquecerConvocatoriaUseCase:
             logger.error("Error durante el enriquecimiento de la convocatoria", conv_id=convocatoria.id, exc=e)
             convocatoria.metadatos["estado_enriquecimiento"] = "FALLIDO"
 
-        await self.convocatoria_repo.save(convocatoria)
+        # Guardar SOLO metadatos: no toca region, monto, fechas ni estado
+        await self.convocatoria_repo.save_metadatos(convocatoria)
         return convocatoria

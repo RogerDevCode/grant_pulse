@@ -71,6 +71,16 @@ class ConvocatoriaRepository(ABC):
         pass
 
     @abstractmethod
+    async def save_metadatos(self, convocatoria: Convocatoria) -> None:
+        """Actualiza exclusivamente el campo metadatos de una convocatoria existente.
+
+        Contrato: no toca ninguno de los campos obtenidos por el scraper
+        (region, monto, fecha_apertura, fecha_cierre, estado, titulo, descripcion).
+        Uso exclusivo del enricher/LLM para no pisar datos ya verificados.
+        """
+        pass
+
+    @abstractmethod
     async def flush(self) -> None:
         """Flushea los cambios pendientes en la sesión para que sean visibles dentro de la misma transacción."""
         pass
@@ -163,6 +173,6 @@ class LLMPort(ABC):
         institution_name: str,
         base_url: str,
         timeout: int = 90,
-    ) -> dict | None:
+    ) -> dict[str, object] | None:
         """Re-intenta descubrir selectores CSS cuando los configurados fallan."""
         pass
