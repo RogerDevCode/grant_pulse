@@ -855,8 +855,14 @@ def build_llm_client(preferred_provider: str | None = None) -> StructuredLLMClie
 
     provider = (preferred_provider or settings.LLM_PROVIDER).strip().lower()
 
+    import shutil
+
     if provider == "commandcode":
-        return CommandCodeClient()
+        if shutil.which("cmd"):
+            return CommandCodeClient()
+        else:
+            logger.warning("LLM_PROVIDER es commandcode pero no se encontró 'cmd' en PATH. Usando OpenRouter como fallback.")
+            return OpenRouterClient()
     if provider == "nvidia":
         return NvidiaClient()
     if provider == "groq":
@@ -864,8 +870,10 @@ def build_llm_client(preferred_provider: str | None = None) -> StructuredLLMClie
     if provider == "openrouter":
         return OpenRouterClient()
 
+    import shutil
+
     # auto: CommandCode > NVIDIA > Groq > OpenRouter
-    if settings.CMD_API_KEY:
+    if settings.CMD_API_KEY and shutil.which("cmd"):
         return CommandCodeClient()
     if settings.NVIDIA_API_KEY:
         return NvidiaClient()

@@ -165,6 +165,12 @@ class SQLSnapshotRepository(SnapshotRepository):
             self._session.add(orm)
             await self._session.flush()
             await self._session.refresh(orm)
+            
+            if getattr(orm, "id", None) is None:
+                msg = f"CRÍTICO: orm.id es None después de flush y refresh. orm={orm.__dict__}"
+                logger.error(msg)
+                raise PersistenceError(msg)
+                
             return snapshot.model_copy(update={"id": orm.id})
         except SQLAlchemyError as e:
             msg = f"Error al guardar snapshot: {e}"

@@ -47,6 +47,7 @@ RUN mkdir -p /app/data \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
        ca-certificates \
+    && /app/.venv/bin/playwright install-deps chromium \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/.venv /app/.venv
