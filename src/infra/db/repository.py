@@ -262,6 +262,7 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
 
             await self._session.flush()
             if convocatoria.id is None:
+                await self._session.refresh(orm)
                 convocatoria = convocatoria.model_copy(update={"id": orm.id})
             return convocatoria
         except SQLAlchemyError as e:
@@ -282,6 +283,7 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
             )
             self._session.add(orm)
             await self._session.flush()
+            await self._session.refresh(orm)
             return evento.model_copy(update={"id": orm.id})
         except SQLAlchemyError as e:
             msg = f"Error al registrar evento de cambio para convocatoria {evento.convocatoria_id}: {e}"

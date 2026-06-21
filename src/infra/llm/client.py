@@ -814,6 +814,7 @@ class CommandCodeClient(StructuredLLMClient):
         fields_schema: dict[str, str],
         base_url: str,
         timeout: int = 90,
+        **kwargs: Any,
     ) -> list[dict[str, str]]:
         schema_desc = "\n".join(f"- {k}: {v}" for k, v in fields_schema.items())
         prompt = (
