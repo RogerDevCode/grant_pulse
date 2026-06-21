@@ -628,6 +628,9 @@ async def _ejecutar_scrape() -> None:
         await run_all_active_sources()
     except Exception as exc:
         logger.error("Scrape manual falló", exc=exc)
+        import traceback
+        with open("data/errors.log", "a") as f:
+            f.write(f"Scrape manual falló globalmente: {exc}\n{traceback.format_exc()}\n")
     finally:
         _scrape_en_curso = False
 
