@@ -29,18 +29,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
         from src.infra.db.connection import engine
         from src.infra.db.models import Base
 
-        # Fix schema drift: SQLite db from old deployment might have UUIDs. 
-        # Wipe the database file once to recreate tables correctly.
-        db_path = Path("data/grantpulse.db")
-        marker = Path("data/.db_wiped")
-        if db_path.exists() and not marker.exists():
-            try:
-                db_path.unlink()
-                marker.touch()
-                logger.info("Base de datos anterior eliminada para corregir schema drift.")
-            except Exception as e:
-                logger.warning("No se pudo limpiar la base de datos antigua", exc=e)
-
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Tablas de base de datos verificadas/creadas exitosamente")

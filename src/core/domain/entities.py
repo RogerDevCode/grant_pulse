@@ -90,6 +90,7 @@ class RulesConfig(BaseModel):
         default_factory=list,
         description="Patrones regex en el título del item para excluirlo (ej: '^Bases ', '^Modificación ')",
     )
+    activa: bool = Field(default=True, description="Si la fuente debe ser scrapeada en producción")
 
 
 from uuid import UUID

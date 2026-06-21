@@ -1,3 +1,4 @@
+activa: false
 nombre: "Start-Up Chile"
 url_busqueda: "https://startupchile.org/"
 estrategia: "llm"

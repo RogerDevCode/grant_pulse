@@ -340,11 +340,12 @@ async def sync_single_source_config(filepath: Path) -> None:
                     nombre=rules_config.nombre,
                     url_base=cast(Any, source_profile.root_url if source_profile else rules_config.url_busqueda),
                     configuracion_reglas=rules_config,
-                    activa=True,
+                    activa=rules_config.activa,
                 )
             else:
                 fuente_db.configuracion_reglas = rules_config
                 fuente_db.url_base = cast(Any, source_profile.root_url if source_profile else rules_config.url_busqueda)
+                fuente_db.activa = rules_config.activa
 
             fuente_db = _apply_source_profile(fuente_db)
             await fuente_repo.save(fuente_db)
