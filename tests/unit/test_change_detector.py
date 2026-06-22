@@ -28,6 +28,7 @@ def mock_fuente_cambios() -> Fuente:
 
 
 def test_detect_apertura(mock_fuente_cambios: Fuente) -> None:
+    assert mock_fuente_cambios.id is not None
     nuevas = [
         Convocatoria(
         id=1,
@@ -49,6 +50,7 @@ def test_detect_apertura(mock_fuente_cambios: Fuente) -> None:
 
 
 def test_detect_modificacion_relevante(mock_fuente_cambios: Fuente) -> None:
+    assert mock_fuente_cambios.id is not None
     antigua = Convocatoria(
         id=2,
         fuente_id=mock_fuente_cambios.id,
@@ -74,6 +76,7 @@ def test_detect_modificacion_relevante(mock_fuente_cambios: Fuente) -> None:
 
 
 def test_detect_modificacion_no_relevante(mock_fuente_cambios: Fuente) -> None:
+    assert mock_fuente_cambios.id is not None
     antigua = Convocatoria(
         id=3,
         fuente_id=mock_fuente_cambios.id,
@@ -96,6 +99,7 @@ def test_detect_modificacion_no_relevante(mock_fuente_cambios: Fuente) -> None:
 
 
 def test_ignore_cambios_decorativos(mock_fuente_cambios: Fuente) -> None:
+    assert mock_fuente_cambios.id is not None
     antigua = Convocatoria(
         id=4,
         fuente_id=mock_fuente_cambios.id,
@@ -117,6 +121,7 @@ def test_ignore_cambios_decorativos(mock_fuente_cambios: Fuente) -> None:
 
 
 def test_no_changes(mock_fuente_cambios: Fuente) -> None:
+    assert mock_fuente_cambios.id is not None
     antigua = Convocatoria(
         id=5,
         fuente_id=mock_fuente_cambios.id,
@@ -131,3 +136,60 @@ def test_no_changes(mock_fuente_cambios: Fuente) -> None:
     eventos = ChangeDetectorService.detect_changes([nueva], {"F005": antigua}, mock_fuente_cambios)
 
     assert len(eventos) == 0
+
+
+def test_fuzzy_match_success(mock_fuente_cambios: Fuente) -> None:
+    assert mock_fuente_cambios.id is not None
+    # Antigua tiene un identificador "OLD-1"
+    antigua = Convocatoria(
+        id=6,
+        fuente_id=mock_fuente_cambios.id,
+        identificador_externo="OLD-1",
+        titulo="Semilla Inicia 2026",
+        estado="ABIERTO",
+    )
+    # Nueva tiene un identificador "TRAF-AUTO" o un ID nuevo del portal, pero el título es casi idéntico
+    nueva = Convocatoria(
+        id=None,
+        fuente_id=mock_fuente_cambios.id,
+        identificador_externo="NEW-999",
+        titulo="Semilla Inicia 2026.",
+        estado="CERRADO",
+    )
+
+    eventos = ChangeDetectorService.detect_changes([nueva], {"OLD-1": antigua}, mock_fuente_cambios)
+
+    assert len(eventos) == 1
+    assert eventos[0].tipo == "MODIFICACION"
+    # El ID debe haberse sincronizado
+    assert nueva.id == antigua.id
+
+    # Debe haber 2 deltas: el estado que cambió a CERRADO, y el identificador_externo que cambió a NEW-999
+    campos_delta = {d.campo for d in eventos[0].deltas}
+    assert "estado" in campos_delta
+    assert "identificador_externo" in campos_delta
+
+
+def test_fuzzy_match_fails_creates_apertura(mock_fuente_cambios: Fuente) -> None:
+    assert mock_fuente_cambios.id is not None
+    antigua = Convocatoria(
+        id=7,
+        fuente_id=mock_fuente_cambios.id,
+        identificador_externo="OLD-1",
+        titulo="Semilla Inicia 2026",
+        estado="ABIERTO",
+    )
+    # Título totalmente diferente
+    nueva = Convocatoria(
+        id=None,
+        fuente_id=mock_fuente_cambios.id,
+        identificador_externo="NEW-999",
+        titulo="Fondo de Cultura",
+        estado="ABIERTO",
+    )
+
+    eventos = ChangeDetectorService.detect_changes([nueva], {"OLD-1": antigua}, mock_fuente_cambios)
+
+    assert len(eventos) == 1
+    assert eventos[0].tipo == "APERTURA"
+    assert nueva.id != antigua.id

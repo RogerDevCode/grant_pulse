@@ -113,6 +113,10 @@ async def test_extract_all_steps_fail_raises_extraction_error(fuente_test: Fuent
     )
     scraper._state = None
 
+    from unittest.mock import AsyncMock
+    scraper._trafilatura = AsyncMock()
+    scraper._trafilatura.extract.side_effect = ExtractionError("Traf bad")
+
     with (
         patch.object(scraper._json_api, "fetch", side_effect=NetworkError("API down")),
         patch.object(scraper._json_api, "extract", side_effect=ExtractionError("JSON bad")),
@@ -146,11 +150,15 @@ async def test_extract_fallback_re_fetch_and_extract_success(fuente_test: Fuente
         estado_ejecucion="SUCCESS",
     )
 
+    from unittest.mock import AsyncMock
+    scraper._trafilatura = AsyncMock()
+    scraper._trafilatura.extract.return_value = []
+
     with (
         patch.object(scraper._json_api, "fetch", side_effect=NetworkError("API down")),
         patch.object(scraper._json_api, "extract", return_value=[]),
         patch.object(scraper._html_static, "fetch", return_value=fallback_snapshot),
-        patch.object(scraper._html_static, "extract", return_value=[{"identificador": "1", "titulo": "OK"}]),
+        patch.object(scraper._html_static, "extract", return_value=[{"identificador": "1", "titulo": "OK", "_confidence_score": 0.9}]),
     ):
         items = await scraper.extract(initial_snapshot, fuente_test)
 
@@ -181,6 +189,10 @@ async def test_extract_empty_state_marker_returns_empty(fuente_test: Fuente) -> 
     )
     scraper._state = None
 
+    from unittest.mock import AsyncMock
+    scraper._trafilatura = AsyncMock()
+    scraper._trafilatura.extract.return_value = []
+
     with (
         patch.object(scraper._html_static, "fetch", return_value=empty_snapshot),
         patch.object(scraper._html_static, "extract", return_value=[]),
@@ -203,6 +215,9 @@ async def test_fetch_metrics_recorded_per_step(fuente_test: Fuente) -> None:
         hash_contenido="hash",
         estado_ejecucion="SUCCESS",
     )
+
+    from unittest.mock import AsyncMock
+    scraper._llm = AsyncMock()
 
     with (
         patch.object(scraper._json_api, "fetch", side_effect=NetworkError("fail 1")),

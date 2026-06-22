@@ -42,6 +42,8 @@ class MockSnapshotRepository(SnapshotRepository):
         self.saved: list[Snapshot] = []
 
     async def save(self, snapshot: Snapshot) -> Snapshot:
+        if snapshot.id is None:
+            snapshot = snapshot.model_copy(update={"id": len(self.saved) + 1})
         self.saved.append(snapshot)
         return snapshot
 
@@ -72,6 +74,15 @@ class MockConvocatoriaRepository(ConvocatoriaRepository):
         self.saved_eventos.append(evento)
         return evento
 
+    async def save_enriched_data(self, convocatoria: Convocatoria) -> None:
+        for i, c in enumerate(self.existing):
+            if c.id == convocatoria.id or c.identificador_externo == convocatoria.identificador_externo:
+                self.existing[i] = convocatoria
+                break
+
+    async def get_pending_enrichment(self, limit: int = 50) -> list[Convocatoria]:
+        return [c for c in self.existing if c.estado_enriquecimiento == "PENDIENTE"][:limit]
+
     async def flush(self) -> None:
         pass
 
@@ -89,6 +100,7 @@ def mock_fuente_uc() -> Fuente:
                 contenedor_items="div", identificador="id", titulo="t", descripcion="d", link_detalle="l", estado="e"
             ),
             alertas=AlertsConfig(campos_sensibles=["estado"]),
+            regiones_defecto=["Metropolitana"],
         ),
     )
 
@@ -121,7 +133,7 @@ async def test_monitoreo_flujo_feliz_con_cambios(mock_fuente_uc: Fuente) -> None
     uc = MonitoreoUseCase(scraper, repo_snaps, repo_convs)
 
     # Ejecutar
-    eventos = await uc.ejecutar_monitoreo(mock_fuente_uc)
+    eventos, _ = await uc.ejecutar_monitoreo(mock_fuente_uc)
 
     # Validar
     assert len(eventos) == 2
@@ -165,7 +177,7 @@ async def test_vigencia_filter_discards_cerrado(mock_fuente_uc: Fuente) -> None:
 
     uc = MonitoreoUseCase(scraper, repo_snaps, repo_convs)
 
-    eventos = await uc.ejecutar_monitoreo(mock_fuente_uc)
+    eventos, _ = await uc.ejecutar_monitoreo(mock_fuente_uc)
 
     assert len(eventos) == 1
     assert eventos[0].tipo == "APERTURA"

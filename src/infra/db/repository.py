@@ -51,6 +51,8 @@ def _convocatoria_orm_to_entity(orm: ConvocatoriaORM) -> Convocatoria:
         regiones=list(orm.regiones) if orm.regiones else [],
         estado=orm.estado,
         metadatos=orm.metadatos,
+        estado_enriquecimiento=orm.estado_enriquecimiento,
+        detalles_llm=orm.detalles_llm,
         creado_en=orm.creado_en,
         actualizado_en=orm.actualizado_en,
     )
@@ -230,6 +232,20 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
             logger.error(msg, fuente_id=fuente_id, exc=e)
             raise PersistenceError(msg) from e
 
+    async def get_pending_enrichment(self, limit: int = 50) -> list[Convocatoria]:
+        try:
+            result = await self._session.execute(
+                select(ConvocatoriaORM)
+                .where(ConvocatoriaORM.estado_enriquecimiento == "PENDIENTE")
+                .order_by(ConvocatoriaORM.creado_en.asc())
+                .limit(limit)
+            )
+            return [_convocatoria_orm_to_entity(orm) for orm in result.scalars().all()]
+        except SQLAlchemyError as e:
+            msg = f"Error al consultar convocatorias pendientes de enriquecimiento: {e}"
+            logger.error(msg, exc=e)
+            raise PersistenceError(msg) from e
+
     async def save(self, convocatoria: Convocatoria) -> Convocatoria:
         try:
             if convocatoria.identificador_externo and convocatoria.fuente_id:
@@ -256,6 +272,8 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
                     regiones=convocatoria.regiones,
                     estado=convocatoria.estado,
                     metadatos=convocatoria.metadatos,
+                    estado_enriquecimiento=convocatoria.estado_enriquecimiento,
+                    detalles_llm=convocatoria.detalles_llm,
                     creado_en=convocatoria.creado_en,
                     actualizado_en=convocatoria.actualizado_en,
                 )
@@ -270,6 +288,8 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
                 orm.regiones = convocatoria.regiones
                 orm.estado = convocatoria.estado
                 orm.metadatos = convocatoria.metadatos
+                orm.estado_enriquecimiento = convocatoria.estado_enriquecimiento
+                orm.detalles_llm = convocatoria.detalles_llm
                 orm.actualizado_en = convocatoria.actualizado_en
 
             await self._session.flush()
@@ -282,15 +302,15 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
             logger.error(msg, ext_id=convocatoria.identificador_externo, exc=e)
             raise PersistenceError(msg) from e
 
-    async def save_metadatos(self, convocatoria: Convocatoria) -> None:
-        """Actualiza exclusivamente el campo metadatos en BD.
+    async def save_enriched_data(self, convocatoria: Convocatoria) -> None:
+        """Actualiza exclusivamente el estado_enriquecimiento, detalles_llm y metadatos en BD.
 
         No toca region, monto, fechas, estado ni ningún otro campo del scraper.
-        Contrato del enricher: el LLM solo puede escribir en metadatos.
+        Contrato del enricher: el LLM solo puede escribir aquí.
         """
         if not convocatoria.id:
             logger.warning(
-                "save_metadatos llamado sin id de convocatoria, ignorando",
+                "save_enriched_data llamado sin id de convocatoria, ignorando",
                 identificador=convocatoria.identificador_externo,
             )
             return
@@ -298,13 +318,14 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
             result = await self._session.execute(select(ConvocatoriaORM).where(ConvocatoriaORM.id == convocatoria.id))
             orm = result.scalars().first()
             if not orm:
-                logger.warning("save_metadatos: convocatoria no encontrada en BD", conv_id=convocatoria.id)
                 return
             orm.metadatos = convocatoria.metadatos
+            orm.estado_enriquecimiento = convocatoria.estado_enriquecimiento
+            orm.detalles_llm = convocatoria.detalles_llm
             await self._session.flush()
         except SQLAlchemyError as e:
-            msg = f"Error al guardar metadatos de convocatoria {convocatoria.id}: {e}"
-            logger.error(msg, conv_id=convocatoria.id, exc=e)
+            msg = f"Error al actualizar enriquecimiento de {convocatoria.identificador_externo}: {e}"
+            logger.error(msg, ext_id=convocatoria.identificador_externo, exc=e)
             raise PersistenceError(msg) from e
 
     async def save_evento_cambio(self, evento: EventoCambio, snapshot_id: int | str | UUID) -> EventoCambio:

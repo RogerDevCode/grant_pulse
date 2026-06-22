@@ -79,6 +79,8 @@ class ConvocatoriaORM(Base):
     regiones: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]", nullable=False)
     estado: Mapped[str] = mapped_column(String(100), nullable=False)
     metadatos: Mapped[dict[str, int | float | str | bool | None]] = mapped_column(JSON, nullable=False, default=dict)
+    estado_enriquecimiento: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDIENTE", server_default="PENDIENTE")
+    detalles_llm: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     actualizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 

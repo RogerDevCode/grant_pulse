@@ -209,7 +209,7 @@ class TestExtractSinAgrupacion:
         resultados = await scraper.extract(snapshot, fuente_sercotec)
 
         assert len(resultados) == 2
-        regiones = {r["region"] for r in resultados}
+        regiones = {r.get("region", r.get("regiones", [None]))[0] if isinstance(r.get("region", r.get("regiones")), list) else r.get("region", r.get("regiones")) for r in resultados}
         assert "Tarapacá" in regiones
         assert "Antofagasta" in regiones
 

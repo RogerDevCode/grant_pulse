@@ -59,8 +59,8 @@ class EnriquecerConvocatoriaUseCase:
         """
         if not convocatoria.url_detalle:
             logger.info("Convocatoria sin url_detalle, ignorando enriquecimiento.", conv_id=convocatoria.id)
-            convocatoria.metadatos["estado_enriquecimiento"] = "NO_APLICA"
-            await self.convocatoria_repo.save_metadatos(convocatoria)
+            convocatoria.estado_enriquecimiento = "NO_APLICA"
+            await self.convocatoria_repo.save_enriched_data(convocatoria)
             return convocatoria
 
         fuente_id = int(str(convocatoria.fuente_id))
@@ -83,18 +83,45 @@ class EnriquecerConvocatoriaUseCase:
             if raw_detail:
                 # Validamos contra el contrato Pydantic explícito
                 detalle = DetalleEnriquecido(**raw_detail)
-                # El LLM SOLO escribe en metadatos, nunca en campos principales
-                convocatoria.metadatos["enriquecido"] = detalle.model_dump()
-                convocatoria.metadatos["estado_enriquecimiento"] = "COMPLETADO"
+                # El LLM SOLO escribe en campos dedicados, nunca en campos principales
+                convocatoria.detalles_llm = detalle.model_dump()
+                convocatoria.estado_enriquecimiento = "COMPLETADO"
                 logger.info("Convocatoria enriquecida exitosamente", conv_id=convocatoria.id)
             else:
-                convocatoria.metadatos["estado_enriquecimiento"] = "FALLIDO"
+                convocatoria.estado_enriquecimiento = "FALLIDO"
                 logger.warning("LLM no retornó detalle válido", conv_id=convocatoria.id)
 
         except Exception as e:
             logger.error("Error durante el enriquecimiento de la convocatoria", conv_id=convocatoria.id, exc=e)
-            convocatoria.metadatos["estado_enriquecimiento"] = "FALLIDO"
+            convocatoria.estado_enriquecimiento = "FALLIDO"
 
-        # Guardar SOLO metadatos: no toca region, monto, fechas ni estado
-        await self.convocatoria_repo.save_metadatos(convocatoria)
+        # Guardar SOLO campos de enriquecimiento: no toca region, monto, fechas ni estado
+        await self.convocatoria_repo.save_enriched_data(convocatoria)
         return convocatoria
+
+class EnriquecerLoteUseCase:
+    """Implementa el patrón Outbox para el enriquecimiento diferido."""
+
+    def __init__(self, convocatoria_repo: ConvocatoriaRepository, enricher_uc: EnriquecerConvocatoriaUseCase) -> None:
+        self.convocatoria_repo = convocatoria_repo
+        self.enricher_uc = enricher_uc
+
+    async def execute(self, limit: int = 50) -> tuple[int, int]:
+        pendientes = await self.convocatoria_repo.get_pending_enrichment(limit=limit)
+        if not pendientes:
+            logger.info("No hay convocatorias pendientes de enriquecimiento")
+            return 0, 0
+
+        exitos, fallas = 0, 0
+        for conv in pendientes:
+            try:
+                await self.enricher_uc.execute(conv)
+                if conv.estado_enriquecimiento == "COMPLETADO":
+                    exitos += 1
+                else:
+                    fallas += 1
+            except Exception as e:
+                logger.error("Fallo inesperado al enriquecer convocatoria", conv_id=conv.id, exc=e)
+                fallas += 1
+
+        return exitos, fallas

@@ -64,6 +64,11 @@ class ConvocatoriaRepository(ABC):
         pass
 
     @abstractmethod
+    async def get_pending_enrichment(self, limit: int = 50) -> list[Convocatoria]:
+        """Obtiene las convocatorias en estado_enriquecimiento = PENDIENTE."""
+        pass
+
+    @abstractmethod
     async def save(self, convocatoria: Convocatoria) -> Convocatoria:
         """Guarda o actualiza una convocatoria."""
         pass
@@ -74,8 +79,8 @@ class ConvocatoriaRepository(ABC):
         pass
 
     @abstractmethod
-    async def save_metadatos(self, convocatoria: Convocatoria) -> None:
-        """Actualiza exclusivamente el campo metadatos de una convocatoria existente.
+    async def save_enriched_data(self, convocatoria: Convocatoria) -> None:
+        """Actualiza el estado_enriquecimiento, detalles_llm y metadatos.
 
         Contrato: no toca ninguno de los campos obtenidos por el scraper
         (region, monto, fecha_apertura, fecha_cierre, estado, titulo, descripcion).
@@ -101,7 +106,7 @@ class ScraperPort(ABC):
         pass
 
     @abstractmethod
-    async def extract(self, snapshot: Snapshot, fuente: Fuente, **kwargs: Any) -> list[dict[str, str | None]]:
+    async def extract(self, snapshot: Snapshot, fuente: Fuente, **kwargs: Any) -> list[dict[str, Any]]:
         """
         Extrae datos estructurados desde un Snapshot crudo usando las reglas de la Fuente.
         Devuelve una lista de diccionarios planos con los campos extraídos.

@@ -51,26 +51,16 @@ async def run_enrichment_worker(batch_size: int = 5) -> None:
     logger.info("Iniciando worker de enriquecimiento (Deep Scraping)", batch_size=batch_size)
 
     async with AsyncSessionLocal() as session:
-        # Usamos json param filter o simplemente sacamos PENDIENTE / Null
-        # JSONB query: metadatos->>'estado_enriquecimiento' IS NULL OR == 'PENDIENTE'
-        # Y solo estado ABIERTO para no gastar en históricas
-
-        # Filtramos a nivel de BD para eficiencia
+        # Filtramos a nivel de BD usando la nueva columna
         query = (
             select(ConvocatoriaORM)
             .where(ConvocatoriaORM.estado == "ABIERTO")
             .where(ConvocatoriaORM.url_detail.is_not(None))
+            .where(ConvocatoriaORM.estado_enriquecimiento == "PENDIENTE")
         )
 
         result = await session.execute(query)
-        todas_abiertas = result.scalars().all()
-
-        # Filtramos en memoria para evitar compatibilidad de dialectos SQL con JSON
-        pendientes = []
-        for c in todas_abiertas:
-            estado_enr = c.metadatos.get("estado_enriquecimiento")
-            if not estado_enr or estado_enr == "PENDIENTE":
-                pendientes.append(c)
+        pendientes = result.scalars().all()
 
         if not pendientes:
             logger.info("No hay convocatorias pendientes de enriquecer")
@@ -106,6 +96,8 @@ async def run_enrichment_worker(batch_size: int = 5) -> None:
                 regiones=orm_record.regiones,
                 estado=orm_record.estado,
                 metadatos=orm_record.metadatos,
+                estado_enriquecimiento=orm_record.estado_enriquecimiento,
+                detalles_llm=orm_record.detalles_llm,
                 creado_en=orm_record.creado_en,
                 actualizado_en=orm_record.actualizado_en,
             )

@@ -5,9 +5,16 @@ Usa mocks para scraper y repos, pero prueba la orquestación real del use case.
 """
 
 from typing import Any
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def mock_llm_inference():
+    with patch("src.core.application.normalizer._infer_region_with_llm", return_value=[]) as m:
+        yield m
 
 from src.core.application.use_cases import MonitoreoUseCase
 from src.core.domain.entities import (
@@ -51,6 +58,8 @@ class MockSnapshotRepository(SnapshotRepository):
         self.saved: list[Snapshot] = []
 
     async def save(self, snapshot: Snapshot) -> Snapshot:
+        if not snapshot.id:
+            snapshot.id = uuid4()
         self.saved.append(snapshot)
         return snapshot
 
@@ -80,6 +89,12 @@ class MockConvocatoriaRepository(ConvocatoriaRepository):
     async def save_evento_cambio(self, evento: EventoCambio, snapshot_id: UUID) -> EventoCambio:  # noqa: ARG002
         self.saved_eventos.append(evento)
         return evento
+
+    async def save_enriched_data(self, convocatoria: Convocatoria) -> None:
+        pass
+
+    async def get_pending_enrichment(self, limit: int = 50) -> list[Convocatoria]:
+        return [c for c in self.existing if c.estado_enriquecimiento == "PENDIENTE"][:limit]
 
     async def flush(self) -> None:
         pass
@@ -159,7 +174,7 @@ async def test_full_pipeline_with_notifications(mock_fuente: Fuente) -> None:
         notificacion_repo=repo_notif,
     )
 
-    eventos = await uc.ejecutar_monitoreo(mock_fuente)
+    eventos, _ = await uc.ejecutar_monitoreo(mock_fuente)
 
     assert len(eventos) == 2
     assert len(repo_snaps.saved) == 1
@@ -197,7 +212,7 @@ async def test_notification_error_creates_fallback_result(mock_fuente: Fuente) -
         notificacion_repo=repo_notif,
     )
 
-    eventos = await uc.ejecutar_monitoreo(mock_fuente)
+    eventos, _ = await uc.ejecutar_monitoreo(mock_fuente)
 
     assert len(eventos) == 1
     assert len(repo_notif.saved) == 1
@@ -233,7 +248,7 @@ async def test_notificacion_persistence_error_tracked(mock_fuente: Fuente) -> No
         notificacion_repo=repo_notif,
     )
 
-    eventos = await uc.ejecutar_monitoreo(mock_fuente)
+    eventos, _ = await uc.ejecutar_monitoreo(mock_fuente)
 
     assert len(eventos) == 1
     assert len(notifier.calls) == 1
@@ -258,7 +273,7 @@ async def test_no_notifier_means_no_notifications(mock_fuente: Fuente) -> None:
         notificacion_repo=None,
     )
 
-    eventos = await uc.ejecutar_monitoreo(mock_fuente)
+    eventos, _ = await uc.ejecutar_monitoreo(mock_fuente)
 
     assert len(eventos) == 1
     assert eventos[0].tipo == "APERTURA"
@@ -316,7 +331,7 @@ async def test_only_relevant_events_get_notified(mock_fuente: Fuente) -> None:
         notifier=notifier,
     )
 
-    eventos = await uc.ejecutar_monitoreo(mock_fuente)
+    eventos, _ = await uc.ejecutar_monitoreo(mock_fuente)
 
     assert len(eventos) == 1
     assert eventos[0].tipo == "MODIFICACION"
@@ -349,7 +364,7 @@ async def test_zero_eventos_no_notification_loop(mock_fuente: Fuente) -> None:
         notifier=notifier,
     )
 
-    eventos = await uc.ejecutar_monitoreo(mock_fuente)
+    eventos, _ = await uc.ejecutar_monitoreo(mock_fuente)
 
     assert len(eventos) == 0
     assert len(notifier.calls) == 0

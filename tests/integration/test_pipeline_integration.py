@@ -196,6 +196,7 @@ class TestPipelineFallbackExecution:
             patch.object(scraper._wp_ajax, "fetch", side_effect=Exception("AJAX failed")),
             patch.object(scraper._curl_cffi, "fetch", return_value=fallback_snapshot),
             patch.object(scraper._html_static, "extract", return_value=[{"identificador": "1", "titulo": "OK"}]),
+            patch.object(scraper._trafilatura, "extract", return_value=[]),
         ):
             snapshot = await scraper.fetch(fuente)
             assert snapshot.contenido_crudo == fallback_snapshot.contenido_crudo

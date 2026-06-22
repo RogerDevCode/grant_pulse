@@ -336,11 +336,28 @@ async def run_all_active_sources() -> None:
                         run_id=fuente_run_id,
                     )
                     failed_fuentes.append(fuente_inst.nombre)
-                    # Guardar error para depuración remota
+
+                    # Guardar error estructurado en base de datos para observabilidad
                     import traceback
 
-                    with open("data/errors.log", "a") as f:
-                        f.write(f"[{datetime.now()}] ERROR en {fuente_inst.nombre}: {e}\n{traceback.format_exc()}\n")
+                    from src.infra.db.models import AuditLogORM
+
+                    try:
+                        audit = AuditLogORM(
+                            fuente_id=int(fuente_inst.id) if str(fuente_inst.id).isdigit() else None,
+                            nivel="ERROR",
+                            modulo="cli.run_all_active_sources",
+                            mensaje=f"Worker falló para fuente {fuente_inst.nombre}: {e}",
+                            detalles={
+                                "run_id": fuente_run_id,
+                                "error": str(e),
+                                "traceback": traceback.format_exc()
+                            }
+                        )
+                        session.add(audit)
+                        await session.commit()
+                    except Exception as inner_e:
+                        logger.error("No se pudo guardar el audit log en base de datos", exc=inner_e)
 
     # Ejecutar concurrentemente todas las tareas con control de concurrencia
     tareas = [procesar_fuente(fuente) for fuente in fuentes_activas]

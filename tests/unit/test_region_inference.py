@@ -30,12 +30,12 @@ def _make_source() -> Fuente:
 def test_normalize_and_map_infers_region_when_missing() -> None:
     fuente = _make_source()
 
-    with patch("src.core.application.normalizer._infer_region_with_llm", return_value="Metropolitana") as infer_mock:
+    with patch("src.core.application.normalizer._infer_region_with_llm", return_value=["Metropolitana"]) as infer_mock:
         convocatorias = DataNormalizer.normalize_and_map(
             [
                 {
                     "identificador": "F-1",
-                    "titulo": "Fondo para emprendedores de la Región Metropolitana",
+                    "titulo": "Fondo para emprendedores de la capital",
                     "descripcion": "Apoyo a startups ubicadas en Santiago.",
                     "url_detalle": "/fondos/F-1",
                     "estado": "ABIERTO",
@@ -45,5 +45,5 @@ def test_normalize_and_map_infers_region_when_missing() -> None:
         )
 
     assert len(convocatorias) == 1
-    assert convocatorias[0].region == "Metropolitana"
+    assert "Metropolitana" in convocatorias[0].regiones
     infer_mock.assert_called_once()

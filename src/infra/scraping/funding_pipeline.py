@@ -26,6 +26,7 @@ from src.infra.scraping.html_static import HtmlStaticScraper
 from src.infra.scraping.json_api import JsonApiScraper
 from src.infra.scraping.rss_feed import RssFeedScraper
 from src.infra.scraping.subdere_homepage import SubdereHomepageScraper
+from src.infra.scraping.trafilatura_scraper import TrafilaturaScraper
 from src.infra.scraping.wp_ajax import WpAjaxScraper
 from src.infra.sources.catalog import SourceProfile, resolve_source_profile
 
@@ -64,6 +65,7 @@ class CompositeFundingScraper(ScraperPort):
         curl_cffi: ScraperPort | None = None,
         subdere_homepage: ScraperPort | None = None,
         fosis_multipage: ScraperPort | None = None,
+        trafilatura: ScraperPort | None = None,
         sleep_fn: Any = asyncio.sleep,
     ) -> None:
         self._profile = profile
@@ -76,6 +78,7 @@ class CompositeFundingScraper(ScraperPort):
         self._curl_cffi = curl_cffi or CurlCffiScraper()
         self._subdere_homepage = subdere_homepage or SubdereHomepageScraper()
         self._fosis_multipage = fosis_multipage or FosisMultiPageScraper()
+        self._trafilatura = trafilatura or TrafilaturaScraper()
         self._sleep = sleep_fn
         self._metrics = PipelineMetrics(step_metrics=[])
         self._state: _AttemptState | None = None
@@ -116,15 +119,102 @@ class CompositeFundingScraper(ScraperPort):
             return await self._fosis_multipage.fetch(fuente)
         raise ScrapingError(f"Fetch kind no soportado: {kind}")
 
+    def _fusionar_resultados(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Fusión inteligente probabilística (Fuzzy Linkage) usando Jaro-Winkler y Confidence Scores."""
+        import jellyfish
+
+        # Agrupar items por coincidencia
+        grupos: list[list[dict[str, Any]]] = []
+
+        for item in items:
+            ident = item.get("identificador")
+            tit = str(item.get("titulo", "")).lower().strip()
+
+            # Buscar si pertenece a un grupo existente
+            grupo_encontrado = None
+            for idx, grupo in enumerate(grupos):
+                for miembro in grupo:
+                    m_ident = miembro.get("identificador")
+                    m_tit = str(miembro.get("titulo", "")).lower().strip()
+
+                    # Regla 1: Identificador exacto (y válido)
+                    if ident and m_ident and ident != "TRAF-AUTO" and m_ident != "TRAF-AUTO" and ident == m_ident:
+                        grupo_encontrado = idx
+                        break
+
+                    # Regla 2: Fuzzy matching en título (Jaro-Winkler > 0.85)
+                    if tit and m_tit:
+                        similitud = jellyfish.jaro_winkler_similarity(tit, m_tit)
+                        if similitud > 0.85:
+                            grupo_encontrado = idx
+                            break
+                if grupo_encontrado is not None:
+                    break
+
+            if grupo_encontrado is not None:
+                grupos[grupo_encontrado].append(item)
+            else:
+                grupos.append([item])
+
+        fusionados: list[dict[str, Any]] = []
+        for grupo in grupos:
+            # Ordenar el grupo por _confidence_score descendente
+            grupo_ordenado = sorted(grupo, key=lambda x: x.get("_confidence_score", 0.0), reverse=True)
+
+            # El item base es el de mayor confianza
+            item_base = dict(grupo_ordenado[0])
+
+            # Completar campos nulos usando los de menor confianza
+            for miembro in grupo_ordenado[1:]:
+                for key, value in miembro.items():
+                    if key == "_confidence_score":
+                        continue
+                    if not item_base.get(key) and value:
+                        item_base[key] = value
+
+            # Limpiar clave interna
+            item_base.pop("_confidence_score", None)
+            fusionados.append(item_base)
+
+        return fusionados
+
     async def _extract_with_kind(
         self,
         kind: str,
         snapshot: Snapshot,
         fuente: Fuente,
         **kwargs: Any,
-    ) -> list[dict[str, str | None]]:
+    ) -> list[dict[str, Any]]:
         if kind == "html_static":
-            return await self._html_static.extract(snapshot, fuente, **kwargs)
+            # Fase 1: Extracción Paralela (ParScrape) - Determinista + Heurística en el mismo snapshot
+            logger.info("Extrayendo concurrentemente vía [html_static, trafilatura]", fuente=fuente.nombre)
+            res = await asyncio.gather(
+                self._html_static.extract(snapshot, fuente, **kwargs),
+                self._trafilatura.extract(snapshot, fuente, **kwargs),
+                return_exceptions=True
+            )
+            res_html: Any = res[0]
+            res_traf: Any = res[1]
+
+            items: list[dict[str, Any]] = []
+            if isinstance(res_html, list):
+                # Type cast manual para Mypy ya que gather retorna Any
+                for i in res_html:
+                    if isinstance(i, dict):
+                        i["_confidence_score"] = 0.9  # CSS Selector (alto)
+                        items.append(i)
+            else:
+                logger.warning("Fallo en extractor html_static", fuente=fuente.nombre, exc=res_html)
+
+            if isinstance(res_traf, list):
+                for i in res_traf:
+                    if isinstance(i, dict):
+                        i["_confidence_score"] = 0.6  # Trafilatura (medio)
+                        items.append(i)
+            else:
+                logger.warning("Fallo en extractor trafilatura", fuente=fuente.nombre, exc=res_traf)
+
+            return self._fusionar_resultados(items)
         if kind == "json_api":
             return await self._json_api.extract(snapshot, fuente, **kwargs)
         if kind == "llm":
@@ -215,7 +305,7 @@ class CompositeFundingScraper(ScraperPort):
             raise last_error
         raise NetworkError(msg) from last_error
 
-    async def extract(self, snapshot: Snapshot, fuente: Fuente, **kwargs: Any) -> list[dict[str, str | None]]:
+    async def extract(self, snapshot: Snapshot, fuente: Fuente, **kwargs: Any) -> list[dict[str, Any]]:
         """Extrae items usando la cadena de mando del perfil."""
         if self._state is None:
             start_index = 0
@@ -276,20 +366,24 @@ class CompositeFundingScraper(ScraperPort):
                     )
                     if healed:
                         logger.info("Selectores sanados, reintentando extracción", fuente=fuente.nombre)
-                        # Creamos una fuente temporal con los nuevos selectores
-                        if fuente.configuracion_reglas.selectores:
-                            healed_selectors = fuente.configuracion_reglas.selectores.model_copy(update=healed)
-                        else:
-                            from src.core.domain.entities import SelectorConfig
+                        from pydantic import ValidationError
+                        
+                        try:
+                            if fuente.configuracion_reglas.selectores:
+                                healed_selectors = fuente.configuracion_reglas.selectores.model_copy(update=healed)
+                            else:
+                                from src.core.domain.entities import SelectorConfig
 
-                            healed_selectors = SelectorConfig(**healed)
-                        healed_rules = fuente.configuracion_reglas.model_copy(update={"selectores": healed_selectors})
-                        healed_fuente = fuente.model_copy(update={"configuracion_reglas": healed_rules})
+                                healed_selectors = SelectorConfig(**healed)
+                            healed_rules = fuente.configuracion_reglas.model_copy(update={"selectores": healed_selectors})
+                            healed_fuente = fuente.model_copy(update={"configuracion_reglas": healed_rules})
 
-                        resultados = await self._html_static.extract(current_snapshot, healed_fuente, **kwargs)
-                        if resultados:
-                            logger.info("Auto-healing exitoso", fuente=fuente.nombre, items=len(resultados))
-                            return resultados
+                            resultados = await self._html_static.extract(current_snapshot, healed_fuente, **kwargs)
+                            if resultados:
+                                logger.info("Auto-healing exitoso", fuente=fuente.nombre, items=len(resultados))
+                                return resultados
+                        except ValidationError as ve:
+                            logger.warning("Auto-healing devolvió selectores inválidos, omitiendo", fuente=fuente.nombre, exc=ve)
 
                 if self._explicit_empty(current_snapshot.contenido_crudo):
                     self._metrics.total_items = 0

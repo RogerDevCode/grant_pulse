@@ -4,6 +4,8 @@ Servicios de dominio que orquestan lógica de negocio compleja, como la detecci�
 
 from typing import Any
 
+import jellyfish
+
 from src.core.domain.entities import Convocatoria, Delta, EventoCambio, Fuente
 from src.core.domain.exceptions import RuleEngineError
 from src.infra.logging import get_logger
@@ -30,40 +32,99 @@ class ChangeDetectorService:
         eventos: list[EventoCambio] = []
         alertas_config = fuente.configuracion_reglas.alertas
 
+        matched_antiguas_ids: set[str] = set()
+        unmatched_nuevas: list[Convocatoria] = []
+
         try:
+            # Fase 1: Exact Matching por identificador_externo
             for nueva in nuevas_convocatorias:
                 identificador = nueva.identificador_externo
                 antigua = antiguas_convocatorias.get(identificador)
 
-                if not antigua:
-                    # Es una apertura nueva
-                    evento = EventoCambio(
+                if antigua and antigua.identificador_externo not in matched_antiguas_ids:
+                    # Sincronizamos el ID para mantener integridad relacional
+                    nueva.id = antigua.id
+                    matched_antiguas_ids.add(antigua.identificador_externo)
+
+                    # Si existe, comparamos campos
+                    deltas = ChangeDetectorService._compare_fields(antigua, nueva, alertas_config.ignorar_cambios_en)
+
+                    if deltas:
+                        # Determinar relevancia basado en campos sensibles
+                        es_relevante = any(d.campo in alertas_config.campos_sensibles for d in deltas)
+
+                        evento = EventoCambio(
+                            convocatoria_id=nueva.id,
+                            identificador_externo=identificador,
+                            tipo="MODIFICACION",
+                            deltas=deltas,
+                            es_relevante=es_relevante,
+                        )
+                        eventos.append(evento)
+                else:
+                    unmatched_nuevas.append(nueva)
+
+            # Fase 2: Fuzzy Matching por título para las nuevas no emparejadas
+            unmatched_antiguas = [
+                a for a in antiguas_convocatorias.values()
+                if a.identificador_externo not in matched_antiguas_ids
+            ]
+
+            FUZZY_THRESHOLD = 0.85
+
+            for nueva in unmatched_nuevas:
+                best_match = None
+                best_score = 0.0
+
+                if nueva.titulo:
+                    nueva_titulo = str(nueva.titulo).lower()
+                    for antigua in unmatched_antiguas:
+                        if antigua.titulo:
+                            score = jellyfish.jaro_winkler_similarity(nueva_titulo, str(antigua.titulo).lower())
+                            if score > best_score:
+                                best_score = score
+                                best_match = antigua
+
+                if best_match and best_score >= FUZZY_THRESHOLD:
+                    # Fuzzy match exitoso -> Es una modificación, el ID externo probablemente cambió
+                    logger.info(
+                        "Fuzzy match exitoso",
+                        fuente_id=str(fuente.id),
+                        score=round(best_score, 3),
+                        titulo_nuevo=nueva.titulo,
+                        titulo_antiguo=best_match.titulo
+                    )
+                    unmatched_antiguas.remove(best_match)
+                    matched_antiguas_ids.add(best_match.identificador_externo)
+
+                    nueva.id = best_match.id
+                    deltas = ChangeDetectorService._compare_fields(best_match, nueva, alertas_config.ignorar_cambios_en)
+
+                    # Añadir un delta implícito para el identificador externo si cambió
+                    if nueva.identificador_externo != best_match.identificador_externo:
+                        deltas.append(Delta(
+                            campo="identificador_externo",
+                            valor_anterior=best_match.identificador_externo,
+                            valor_nuevo=nueva.identificador_externo
+                        ))
+
+                    if deltas:
+                        es_relevante = any(d.campo in alertas_config.campos_sensibles for d in deltas)
+                        eventos.append(EventoCambio(
+                            convocatoria_id=nueva.id,
+                            identificador_externo=nueva.identificador_externo,
+                            tipo="MODIFICACION",
+                            deltas=deltas,
+                            es_relevante=es_relevante,
+                        ))
+                else:
+                    # Si no hay match difuso, es realmente una APERTURA nueva
+                    eventos.append(EventoCambio(
                         convocatoria_id=nueva.id,
-                        identificador_externo=identificador,
+                        identificador_externo=nueva.identificador_externo,
                         tipo="APERTURA",
-                        es_relevante=True,  # Toda apertura se considera relevante
-                    )
-                    eventos.append(evento)
-                    continue
-
-                # Sincronizamos el ID para mantener integridad relacional
-                nueva.id = antigua.id
-
-                # Si existe, comparamos campos
-                deltas = ChangeDetectorService._compare_fields(antigua, nueva, alertas_config.ignorar_cambios_en)
-
-                if deltas:
-                    # Determinar relevancia basado en campos sensibles
-                    es_relevante = any(d.campo in alertas_config.campos_sensibles for d in deltas)
-
-                    evento = EventoCambio(
-                        convocatoria_id=nueva.id,
-                        identificador_externo=identificador,
-                        tipo="MODIFICACION",
-                        deltas=deltas,
-                        es_relevante=es_relevante,
-                    )
-                    eventos.append(evento)
+                        es_relevante=True,
+                    ))
 
         except Exception as e:
             msg = f"Error en el motor de reglas detectando cambios para fuente {fuente.id}: {e}"

@@ -208,9 +208,9 @@ _FIA = SourceProfile(
 
 _ANID = SourceProfile(
     key="ANID",
-    aliases=("ANID_LLM",),
     root_url="https://anid.cl/",
     list_url="https://anid.cl/concursos/",
+    aliases=("ANID_LLM",),
     steps=(
         ScrapeStep(
             fetcher="rss_feed",

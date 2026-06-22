@@ -144,10 +144,12 @@ class Settings(BaseSettings):
     # Modelos OpenRouter para fallback (cuando CommandCode no está disponible)
     LLM_MODELS_FALLBACK: list[str] = Field(
         default_factory=lambda: [
-            "google/gemini-2.5-flash:free",
-            "meta-llama/llama-3.3-70b-instruct:free",
-            "deepseek/deepseek-r1:free",
-            "qwen/qwen-2.5-coder-32b-instruct:free",
+            "openai/gpt-oss-120b:free",
+            "nvidia/nemotron-3-super-120b-a12b:free",
+            "google/gemma-4-31b-it:free",
+            "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+            "nvidia/nemotron-3-nano-30b-a3b:free",
+            "openai/gpt-oss-20b:free",
         ],
         description="Lista priorizada de modelos para failover en OpenRouter",
     )

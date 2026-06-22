@@ -84,7 +84,7 @@ async def test_convocatoria_repository_save_insert(mock_session: Any, dummy_fuen
         identificador_externo="EXT-123",
         titulo="Test",
         url_detalle="https://test.com/123",  # type: ignore
-        region="Metropolitana",
+        regiones=["Metropolitana"],
         estado="ABIERTO",
     )
 
@@ -92,13 +92,13 @@ async def test_convocatoria_repository_save_insert(mock_session: Any, dummy_fuen
     result = await repo.save(conv)
 
     assert result.identificador_externo == "EXT-123"
-    assert result.region == "Metropolitana"
+    assert result.regiones == ["Metropolitana"]
     mock_session.add.assert_called_once()
     mock_session.flush.assert_called_once()
 
     added_orm = mock_session.add.call_args[0][0]
     assert isinstance(added_orm, ConvocatoriaORM)
-    assert added_orm.region == "Metropolitana"
+    assert added_orm.regiones == ["Metropolitana"]
 
 
 @pytest.mark.asyncio
@@ -126,7 +126,7 @@ async def test_convocatoria_repository_save_update(mock_session: Any, dummy_fuen
         identificador_externo="EXT-123",
         titulo="Nuevo Titulo",
         url_detalle="https://test.com/123",  # type: ignore
-        region="O'Higgins",
+        regiones=["O'Higgins"],
         estado="CERRADO",
     )
 
@@ -135,10 +135,10 @@ async def test_convocatoria_repository_save_update(mock_session: Any, dummy_fuen
 
     # Verificamos que se actualizó el ORM existente
     assert result.titulo == "Nuevo Titulo"
-    assert result.region == "O'Higgins"
+    assert result.regiones == ["O'Higgins"]
     assert existing_orm.titulo == "Nuevo Titulo"
     assert existing_orm.estado == "CERRADO"
-    assert existing_orm.region == "O'Higgins"
+    assert existing_orm.regiones == ["O'Higgins"]
 
     mock_session.add.assert_not_called()  # Fue un update
     mock_session.flush.assert_called_once()

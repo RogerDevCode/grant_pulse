@@ -78,6 +78,7 @@ async def test_corfo_pipeline_falls_back_from_wp_ajax_to_curl_cffi(fuente_corfo:
         patch.object(
             scraper._html_static, "extract", return_value=[{"identificador": "1", "titulo": "OK"}]
         ) as mock_html_extract,
+        patch.object(scraper._trafilatura, "extract", return_value=[]),
     ):
         snapshot = await scraper.fetch(fuente_corfo)
         assert snapshot.contenido_crudo == fallback_snapshot.contenido_crudo

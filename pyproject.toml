@@ -22,6 +22,8 @@ dependencies = [
   "markdownify>=0.11.0",
   "curl_cffi>=0.5.0",
   "playwright>=1.44.0",
+  "trafilatura>=1.11.0",
+  "jellyfish>=1.1.0",
   # LLM
   "groq>=1.2.0",
   # Logging y utilidades
