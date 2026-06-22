@@ -50,14 +50,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
     try:
         from src.infra.db.connection import engine
         from sqlalchemy import text
-        async with engine.begin() as conn:
+        async with engine.connect() as conn:
             try:
                 await conn.execute(text("ALTER TABLE convocatorias ADD COLUMN estado_enriquecimiento VARCHAR DEFAULT 'PENDIENTE'"))
+                await conn.commit()
                 logger.info("Columna estado_enriquecimiento agregada via SQL")
             except Exception:
                 pass
             try:
                 await conn.execute(text("ALTER TABLE convocatorias ADD COLUMN detalles_llm JSON"))
+                await conn.commit()
                 logger.info("Columna detalles_llm agregada via SQL")
             except Exception:
                 pass
