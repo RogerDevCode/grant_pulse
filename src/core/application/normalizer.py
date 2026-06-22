@@ -47,6 +47,7 @@ _REGION_ALIASES: dict[str, str] = {
     "araucanía": "La Araucanía",
     "bio bio": "Biobío",
     "biobío": "Biobío",
+    "biobio": "Biobío",
     "metropolitana": "Metropolitana",
     "santiago": "Metropolitana",
     "valparaiso": "Valparaíso",

@@ -208,6 +208,14 @@ class DetalleEnriquecido(BaseModel):
         default=None,
         description="A quién va dirigido: PYME, Persona natural, Municipio, Cooperativa, etc. null si no está explícito.",
     )
+    region_sugerida: list[str] | None = Field(
+        default=None,
+        description="Regiones mencionadas explícitamente a las que aplica (ej. 'Biobío', 'Los Lagos'). Si es alcance nacional, ['Nacional']. null si no está claro.",
+    )
+    rubro_sugerido: str | None = Field(
+        default=None,
+        description="Sector económico o rubro principal al que se orienta (ej. 'Agricultura', 'Tecnología', 'Turismo'). null si es multisectorial.",
+    )
     monto_maximo: str | None = Field(
         default=None,
         description="Monto máximo de financiamiento en texto original (ej: '$50.000.000'). null si no aparece.",
@@ -220,10 +228,7 @@ class DetalleEnriquecido(BaseModel):
         default=None,
         description="Duración máxima del proyecto financiado en meses. null si no aparece.",
     )
-    cobertura_geografica: str | None = Field(
-        default=None,
-        description="Si es Nacional, o el nombre de la región o zona específica. null si no aparece.",
-    )
+
     fecha_cierre_texto: str | None = Field(
         default=None,
         description="Fecha de cierre de postulación en texto original. null si no aparece.",

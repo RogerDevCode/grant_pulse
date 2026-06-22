@@ -739,10 +739,13 @@ class OpenRouterClient:
             '    "Condición que descalifica automáticamente una postulación"\n'
             "  ],\n"
             '  "tipo_beneficiario": "PYME | Persona natural | Municipio | Cooperativa | Empresa | null",\n'
+            '  "region_sugerida": [\n'
+            '    "Biobío"\n'
+            "  ],\n"
+            '  "rubro_sugerido": "Sector económico principal o null",\n'
             '  "monto_maximo": "Monto en texto original, ej: $50.000.000 o null",\n'
             '  "porcentaje_subsidio": "Porcentaje que cubre el fondo, ej: 80% o null",\n'
             '  "plazo_ejecucion_meses": 12,\n'
-            '  "cobertura_geografica": "Nacional | nombre de región o null",\n'
             '  "fecha_cierre_texto": "Texto original de la fecha de cierre o null",\n'
             '  "cita_evidencia": "Cita textual del documento que respalda los campos anteriores o null"\n'
             "}\n\n"
