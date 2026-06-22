@@ -6,11 +6,14 @@ async function waitForRadarReady(page) {
     const loader = document.getElementById('radarLoader');
     return !loader || loader.style.display === 'none';
   });
-  await page.waitForLoadState('networkidle').catch(() => {});
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(600);
 }
 
 test('Verifica que CORFO en Biobío tenga 3 convocatorias en producción', async ({ page }) => {
+  page.on('console', msg => console.log(`[BROWSER CONSOLE] ${msg.type()}: ${msg.text()}`));
+  page.on('pageerror', err => console.error(`[BROWSER ERROR] ${err.message}`));
+  page.on('requestfailed', request => console.error(`[BROWSER REQ FAIL] ${request.url()} - ${request.failure()?.errorText}`));
+
   console.log("Navegando a la página principal de producción...");
   await page.goto('/');
   await waitForRadarReady(page);

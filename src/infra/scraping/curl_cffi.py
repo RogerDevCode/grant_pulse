@@ -61,7 +61,6 @@ class CurlCffiScraper(ScraperPort):
                         **_DEFAULT_HEADERS,
                         "Referer": referer,
                     },
-                    proxies={"http": "", "https": "", "all": ""},
                 )
         except Exception as e:
             msg = f"Error de red en curl_cffi para {fuente.nombre}: {e}"

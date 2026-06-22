@@ -374,6 +374,33 @@ class SharedOpenRouterModelStrategy(LLMModelSelectionStrategy):
             _SHARED_STRATEGY_INDEX += 1
 
 
+class GenericSharedModelStrategy(LLMModelSelectionStrategy):
+    """Estrategia genérica de selección de modelos para proveedores específicos.
+    
+    Cada proveedor tiene su propia secuencia de rotación de modelos independiente.
+    """
+
+    def __init__(self, client: OpenRouterClient) -> None:
+        self.client = client
+        self._index = 0
+
+    def get_current_model(self) -> str:
+        models = self.client.models
+        if not models:
+            raise ScrapingError(f"No hay modelos configurados en el cliente de {self.client.provider_name}.")
+        return models[self._index % len(models)]
+
+    def record_failure(self, model: str, error: Exception | str) -> None:
+        current = self.get_current_model()
+        if model == current:
+            logger.warning(
+                f"Estrategia {self.client.provider_name}: El modelo falló. Rotando al siguiente en la lista.",
+                failed_model=model,
+                error=str(error),
+            )
+            self._index += 1
+
+
 _OPENROUTER_STRATEGY: LLMModelSelectionStrategy | None = None
 
 
@@ -854,6 +881,7 @@ class GroqClient(OpenRouterClient):
         self._rate_limiter = _AsyncRateLimiter(settings.GROQ_MIN_SECONDS_BETWEEN_REQUESTS)
         self._sleep = asyncio.sleep
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
+        self.strategy = GenericSharedModelStrategy(self)
 
     def _build_headers(self) -> dict[str, str]:
         return {
@@ -878,6 +906,7 @@ class NvidiaClient(OpenRouterClient):
         self._rate_limiter = _AsyncRateLimiter(settings.LLM_MIN_SECONDS_BETWEEN_REQUESTS)
         self._sleep = asyncio.sleep
         self.base_url = settings.NVIDIA_BASE_URL
+        self.strategy = GenericSharedModelStrategy(self)
 
     def _build_headers(self) -> dict[str, str]:
         return {

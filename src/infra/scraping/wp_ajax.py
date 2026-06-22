@@ -83,7 +83,6 @@ class WpAjaxScraper(ScraperPort):
                 timeout=self._timeout,
                 headers=_BROWSER_HEADERS,
                 impersonate="chrome120",
-                proxies={"http": "", "https": "", "all": ""},
             ) as client:
                 response = await client.get(page_url)
                 response.raise_for_status()
@@ -131,7 +130,6 @@ class WpAjaxScraper(ScraperPort):
             timeout=self._timeout,
             headers=_BROWSER_HEADERS,
             impersonate="chrome120",
-            proxies={"http": "", "https": "", "all": ""},
         ) as client:
             for page_num in range(1, self._max_pages + 1):
                 form_data = {

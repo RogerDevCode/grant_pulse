@@ -1496,7 +1496,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── FILTROS RADAR ──
   $('#soloActivasToggle').addEventListener('change', () => { state.convOffset = 0; loadRadar(); });
-$('#incluirPermanentesToggle').addEventListener('change', () => { state.convOffset = 0; loadRadar(); });
+  const inclPermToggle = $('#incluirPermanentesToggle');
+  if (inclPermToggle) {
+    inclPermToggle.addEventListener('change', () => { state.convOffset = 0; loadRadar(); });
+  }
   $('#filterOrden').addEventListener('change',       () => { state.convOffset = 0; loadRadar(); });
   $('#filterRegion').addEventListener('change',      () => { state.convOffset = 0; loadRadar(); });
   $('#searchInput').addEventListener('input', () => {
