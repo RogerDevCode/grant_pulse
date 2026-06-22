@@ -44,7 +44,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
         command.upgrade(alembic_cfg, "head")
         logger.info("Migraciones de Alembic aplicadas exitosamente")
     except Exception as e:
-        logger.warning("No se pudieron aplicar migraciones de Alembic", exc=e)
+        logger.warning("No se pudieron aplicar migraciones de Alembic (probablemente tabla ya existe)", exc=e)
+        
+    # FORZAR ADD COLUMN EN PRODUCCION
+    try:
+        from src.infra.db.connection import engine
+        from sqlalchemy import text
+        async with engine.begin() as conn:
+            try:
+                await conn.execute(text("ALTER TABLE convocatorias ADD COLUMN estado_enriquecimiento VARCHAR DEFAULT 'PENDIENTE'"))
+                logger.info("Columna estado_enriquecimiento agregada via SQL")
+            except Exception:
+                pass
+            try:
+                await conn.execute(text("ALTER TABLE convocatorias ADD COLUMN detalles_llm JSON"))
+                logger.info("Columna detalles_llm agregada via SQL")
+            except Exception:
+                pass
+    except Exception as e:
+        logger.warning("No se pudo agregar columnas de enriquecimiento", exc=e)
 
     # Crear tablas si no existen — usa el mismo engine de la app, evita thread-safety issues con aiosqlite
     try:
