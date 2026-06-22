@@ -1,9 +1,17 @@
 import asyncio
-from src.infra.db.models import AsyncSessionLocal
-from src.infra.db.repository import SQLFuenteRepository, SQLSnapshotRepository, SQLConvocatoriaRepository, SQLNotificacionRepository
-from src.infra.cli import _apply_source_profile, _get_scraper, _get_notifier
+
 from src.core.application.monitoreo import MonitoreoUseCase
+
+from src.infra.cli import _apply_source_profile, _get_notifier, _get_scraper
+from src.infra.db.models import AsyncSessionLocal
+from src.infra.db.repository import (
+    SQLConvocatoriaRepository,
+    SQLFuenteRepository,
+    SQLNotificacionRepository,
+    SQLSnapshotRepository,
+)
 from src.infra.logging import configure_logging
+
 
 async def main():
     configure_logging()
@@ -13,7 +21,7 @@ async def main():
         if not fuentes:
             print("No hay fuentes activas")
             return
-            
+
         f = fuentes[0]
         print(f"Probando scrapeo de: {f.nombre}")
         f = _apply_source_profile(f)
@@ -22,7 +30,7 @@ async def main():
         crepo = SQLConvocatoriaRepository(session)
         nrepo = SQLNotificacionRepository(session)
         notifier = await _get_notifier(session)
-        
+
         use_case = MonitoreoUseCase(scraper, srepo, crepo, notifier, nrepo)
         try:
             await use_case.ejecutar_monitoreo(f)

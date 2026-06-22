@@ -1,5 +1,6 @@
-from curl_cffi import requests
 import os
+
+from curl_cffi import requests
 
 os.environ["HTTP_PROXY"] = "http://127.0.0.1:443"
 os.environ["HTTPS_PROXY"] = "http://127.0.0.1:443"

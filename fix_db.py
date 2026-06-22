@@ -1,5 +1,9 @@
-import asyncio, asyncpg
+import asyncio
+
+import asyncpg
+
 from src.infra.config import settings
+
 
 async def main():
     url = settings.DATABASE_URL.replace('+asyncpg', '')

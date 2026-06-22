@@ -1,7 +1,9 @@
 import asyncio
-from src.infra.config import settings
-from src.infra.db.connection import AsyncSessionLocal
+
 from sqlalchemy import text
+
+from src.infra.db.connection import AsyncSessionLocal
+
 
 async def main():
     async with AsyncSessionLocal() as session:

@@ -442,11 +442,12 @@ class DataNormalizer:
 
                 if fecha_cierre_val and limite_cierre < now:
                     logger.info(
-                        "Filtrando convocatoria expirada",
+                        "Forzando estado CERRADO por fecha expirada",
                         titulo=titulo,
                         fecha_cierre=fecha_cierre_val.isoformat(),
                     )
-                    skip_item = True
+                    estado = "CERRADO"
+                    
             except NormalizationError as e:
                 logger.warning("Campo fecha_cierre omitido por error de normalización", item_id=identificador, exc=e)
 

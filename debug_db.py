@@ -1,7 +1,8 @@
 import asyncio
-from src.infra.config import settings
+
 from src.infra.db.connection import AsyncSessionLocal
 from src.infra.db.repository import SQLFuenteRepository
+
 
 async def main():
     async with AsyncSessionLocal() as session:
