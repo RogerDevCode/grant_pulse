@@ -5,7 +5,15 @@ Permite ejecutar el scraping basado en un archivo YAML específico o correr toda
 
 import argparse
 import asyncio
+import os
 import sys
+
+# Desactivar variables de entorno de proxy que rompen curl_cffi en Railway
+os.environ.pop("HTTP_PROXY", None)
+os.environ.pop("HTTPS_PROXY", None)
+os.environ.pop("http_proxy", None)
+os.environ.pop("https_proxy", None)
+
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
