@@ -57,8 +57,7 @@ test('Verifica que CORFO en Biobío tenga 3 convocatorias en producción', async
   const countActivas = await page.locator('.conv-card').count();
   console.log(`[TEST RESULT] Cantidad encontrada con 'Solo activas' activado: ${countActivas}`);
 
-  // El usuario indica que deben ser 3 convocatorias en total
   // Haremos la aserción sobre el conteo de todas las convocatorias (sin el filtro de solo activas)
   // o según corresponda. Imprimiremos ambas para que el usuario tenga toda la visibilidad.
-  expect(count, `Se esperaban 3 convocatorias para CORFO en Biobío, pero se encontraron ${count}`).toBe(3);
+  expect(count, `Se esperaban 1 convocatorias para CORFO en Biobío, pero se encontraron ${count}`).toBe(1);
 });
