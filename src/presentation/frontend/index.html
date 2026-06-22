@@ -75,7 +75,7 @@
 
     <!-- SELECTOR DE INSTITUCIÓN PROMINENTE -->
     <div class="inst-selector-wrap" id="instSelectorWrap">
-      <button class="inst-selector-btn" id="instSelectorBtn" aria-haspopup="listbox" aria-expanded="false">
+      <button class="inst-selector-btn" id="instSelectorBtn" aria-haspopup="listbox" aria-expanded="false" title="Filtrar el radar por una institución específica. 'Todas las instituciones' desactiva el filtro y muestra el conjunto completo.">
         <div class="inst-icon" id="instBtnIcon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
         </div>
@@ -92,14 +92,14 @@
     </div>
 
     <div class="topbar-right">
-      <div class="active-pill" id="activePill">
+      <div class="active-pill" id="activePill" title="Cantidad de convocatorias en el conjunto actualmente visible (después de aplicar todos los filtros).">
         <span class="pulse-dot"></span>
         <span id="activePillLabel">cargando...</span>
       </div>
-      <button class="btn-icon" id="refreshBtn" title="Actualizar datos">
+      <button class="btn-icon" id="refreshBtn" title="Recargar datos del radar desde la base de datos local (no ejecuta scraping en el servidor)." aria-label="Actualizar datos">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
       </button>
-      <button class="btn-icon scrape-btn" id="scrapeBtn" title="Scrapear todas las fuentes ahora">
+      <button class="btn-icon scrape-btn" id="scrapeBtn" title="Disparar scraping manual: consulta todas las fuentes activas en segundo plano. Puede tardar varios minutos según la cantidad de fuentes." aria-label="Scrapear todas las fuentes ahora">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
       </button>
     </div>
@@ -115,22 +115,22 @@
 
       <!-- KPI STRIP -->
       <div class="kpi-strip" id="kpiStrip">
-        <div class="kpi-item kpi-green">
+        <div class="kpi-item kpi-green" title="Convocatorias con estado ABIERTO que cumplen los filtros activos (institución, región, búsqueda, 'Solo activas').">
           <span class="kpi-num" id="kpiAbiertas">—</span>
           <span class="kpi-lbl">Activas ahora</span>
         </div>
         <div class="kpi-divider"></div>
-        <div class="kpi-item kpi-amber">
+        <div class="kpi-item kpi-amber" title="Convocatorias activas cuya fecha de cierre está dentro de los próximos 30 días calendario. Se actualiza con los filtros activos.">
           <span class="kpi-num" id="kpiVencen30">—</span>
           <span class="kpi-lbl">Cierran en 30 días</span>
         </div>
         <div class="kpi-divider"></div>
-        <div class="kpi-item kpi-blue">
+        <div class="kpi-item kpi-blue" title="Cantidad de instituciones distintas que tienen al menos una convocatoria en el subconjunto filtrado. Cuando hay un filtro de institución activo, este número refleja el filtro.">
           <span class="kpi-num" id="kpiInstituciones">—</span>
           <span class="kpi-lbl">Instituciones</span>
         </div>
         <div class="kpi-divider"></div>
-        <div class="kpi-item kpi-purple">
+        <div class="kpi-item kpi-purple" title="Convocatorias activas sin fecha de cierre registrada. Útil para detectar registros incompletos que requieren revisión.">
           <span class="kpi-num" id="kpiSinFecha">—</span>
           <span class="kpi-lbl">Sin fecha cierre</span>
         </div>
@@ -143,12 +143,12 @@
           <input type="text" id="searchInput" placeholder="Buscar por título..." autocomplete="off">
         </div>
         <div class="filter-row">
-          <select id="filterOrden" aria-label="Ordenar por">
+          <select id="filterOrden" aria-label="Ordenar por" title="Criterio de orden de las cards: 'Por vencer primero' (fecha de cierre próxima), 'Más recientes' (fecha de creación), 'Última actualización' (última detección de cambio).">
             <option value="por_vencer">Por vencer primero</option>
             <option value="recientes_creacion">Más recientes</option>
             <option value="actualizacion">Última actualización</option>
           </select>
-          <select id="filterRegion" aria-label="Región">
+          <select id="filterRegion" aria-label="Región" title="Filtrar por región geográfica. 'Todas las regiones' muestra el conjunto completo.">
             <option value="">Todas las regiones</option>
             <option value="Nacional">Nacional</option>
             <option value="Arica y Parinacota">Arica y Parinacota</option>
@@ -168,13 +168,13 @@
             <option value="Aysén">Aysén</option>
             <option value="Magallanes">Magallanes</option>
           </select>
-          <label class="solo-activas-toggle" id="soloActivasLabel">
+          <label class="solo-activas-toggle" id="soloActivasLabel" title="Cuando está activo, solo se muestran convocatorias con estado ABIERTO. Si se desactiva, se incluyen también CERRADAS, PRÓXIMAS y FINALIZADAS.">
             <input type="checkbox" id="soloActivasToggle" checked>
             <span class="toggle-switch"></span>
             <span class="toggle-text">Solo activas</span>
           </label>
         </div>
-        <div class="result-pill" id="resultPill">
+        <div class="result-pill" id="resultPill" title="Número total de resultados que cumplen los filtros activos (no solo la página actual). Si la paginación está visible, hay más páginas por revisar.">
           <span id="resultNum">—</span>&nbsp;resultados
         </div>
       </div>

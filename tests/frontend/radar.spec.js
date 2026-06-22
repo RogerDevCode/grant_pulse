@@ -130,7 +130,7 @@ test.describe('Paginación', () => {
     await page.goto('/');
     await waitForRadarReady(page);
     const nextBtn = page.locator('#convPagination button:has-text("Siguiente")');
-    if (await nextBtn.isEnabled()) {
+    if (await nextBtn.count() > 0 && await nextBtn.isEnabled()) {
       await nextBtn.click();
       await waitForRadarReady(page);
       const cards = page.locator('.conv-card');

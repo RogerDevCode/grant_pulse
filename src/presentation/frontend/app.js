@@ -444,7 +444,7 @@ function buildInstCard(f) {
   const lastSync = f.ultima_ejecucion ? fmtRelative(f.ultima_ejecucion) : 'Nunca';
 
   return `
-  <div class="inst-card">
+  <div class="inst-card" title="Tarjeta de la institución ${escHtml(f.nombre)}. Click en 'Ver activas' para filtrar el radar por esta fuente.">
     <div class="inst-card-head">
       <div class="inst-logo">${escHtml(initials)}</div>
       <div>
@@ -454,26 +454,26 @@ function buildInstCard(f) {
     </div>
 
     <div class="inst-stats">
-      <div class="inst-stat">
+      <div class="inst-stat" title="Convocatorias con estado ABIERTO en la última sincronización.">
         <div class="inst-stat-num" style="color:var(--green)">${f.abiertas ?? 0}</div>
         <div class="inst-stat-lbl">Activas</div>
       </div>
-      <div class="inst-stat">
+      <div class="inst-stat" title="Total de convocatorias registradas para esta institución, independientemente de su estado.">
         <div class="inst-stat-num">${f.total_convocatorias ?? 0}</div>
         <div class="inst-stat-lbl">Total</div>
       </div>
     </div>
 
-    <div style="font-size:0.75rem;color:var(--text-3);display:flex;justify-content:space-between;align-items:center">
+    <div style="font-size:0.75rem;color:var(--text-3);display:flex;justify-content:space-between;align-items:center" title="Fecha del último scraping ejecutado contra esta fuente.">
       <span>Última sync: <strong>${escHtml(lastSync)}</strong></span>
-      <span class="badge ${f.activa ? 'badge-green' : 'badge-gray'}">${f.activa ? 'Activa' : 'Inactiva'}</span>
+      <span class="badge ${f.activa ? 'badge-green' : 'badge-gray'}" title="${f.activa ? 'Fuente incluida en los próximos ciclos de scraping.' : 'Fuente excluida de los próximos ciclos. Se puede reactivar desde la palanca.'}">${f.activa ? 'Activa' : 'Inactiva'}</span>
     </div>
 
     <div class="inst-card-footer">
-      <button class="btn-sm primary" onclick="filterByInstitution('${f.id}', '${escHtml(f.nombre).replace(/'/g, "\\'")}')">
+      <button class="btn-sm primary" onclick="filterByInstitution('${f.id}', '${escHtml(f.nombre).replace(/'/g, "\\'")}')" title="Filtrar el radar por esta institución.">
         Ver activas
       </button>
-      <a class="btn-sm" href="${escHtml(f.url_base)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+      <a class="btn-sm" href="${escHtml(f.url_base)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir el portal institucional en una pestaña nueva.">
         Ir al portal
       </a>
     </div>
@@ -752,7 +752,7 @@ function populateAdminFuentes(fuentes) {
   body.innerHTML = fuentes.map(f => `
     <tr>
       <td>
-        <button class="toggle-btn ${f.activa ? 'on' : ''}" onclick="toggleFuente('${f.id}', this)" title="${f.activa ? 'Desactivar' : 'Activar'}"></button>
+        <button class="toggle-btn ${f.activa ? 'on' : ''}" onclick="toggleFuente('${f.id}', this)" title="${f.activa ? 'Desactivar esta fuente (no se incluirá en los próximos ciclos de scraping)' : 'Activar esta fuente (se incluirá en los próximos ciclos de scraping)'}" aria-label="Cambiar estado de la fuente"></button>
       </td>
       <td>
         <span class="fuente-name">${escHtml(f.nombre)}</span>
@@ -816,7 +816,7 @@ function renderNotifConfigs(configs) {
           <p>${escHtml(detail)}</p>
         </div>
         <div class="config-actions">
-          <button class="toggle-btn ${c.activa ? 'on' : ''}" onclick="toggleNotifConfig('${c.id}', this)"></button>
+          <button class="toggle-btn ${c.activa ? 'on' : ''}" onclick="toggleNotifConfig('${c.id}', this)" title="${c.activa ? 'Desactivar este canal de notificación' : 'Activar este canal de notificación'}" aria-label="Cambiar estado del canal"></button>
           <button class="btn-icon-sm danger" onclick="deleteNotifConfig('${c.id}', '${escHtml(c.nombre).replace(/'/g, "\\'")}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button>
