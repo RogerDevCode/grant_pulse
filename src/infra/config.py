@@ -31,6 +31,8 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             if v.startswith("postgresql://"):
                 v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+            elif v.startswith("postgres://"):
+                v = v.replace("postgres://", "postgresql+asyncpg://", 1)
             if "sslmode=" in v:
                 v = v.replace("sslmode=", "ssl=")
         return v
@@ -53,6 +55,12 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = Field(
         default="auto",
         description="Proveedor LLM preferido: auto, groq u openrouter",
+    )
+
+    # Modelo LLM específico (opcional)
+    LLM_MODEL: str | None = Field(
+        default=None,
+        description="Modelo específico a usar en el proveedor seleccionado (ej: google/gemini-2.5-flash:free)",
     )
 
     # Soporte LLM — OpenRouter
@@ -136,9 +144,10 @@ class Settings(BaseSettings):
     # Modelos OpenRouter para fallback (cuando CommandCode no está disponible)
     LLM_MODELS_FALLBACK: list[str] = Field(
         default_factory=lambda: [
-            "qwen/qwen3-235b-a22b-2507:free",
+            "google/gemini-2.5-flash:free",
             "meta-llama/llama-3.3-70b-instruct:free",
             "deepseek/deepseek-r1:free",
+            "qwen/qwen-2.5-coder-32b-instruct:free",
         ],
         description="Lista priorizada de modelos para failover en OpenRouter",
     )

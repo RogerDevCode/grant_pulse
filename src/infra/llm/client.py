@@ -70,7 +70,7 @@ class StructuredLLMClient(Protocol):
     max_output_tokens: int
     request_timeout_seconds: int
 
-    async def chat_completion(self, prompt: str, system_prompt: str = ..., timeout: int | None = ...) -> str: ...
+    async def chat_completion(self, prompt: str | list[dict[str, Any]], system_prompt: str = ..., timeout: int | None = ...) -> str: ...
 
     async def extract_from_html(
         self,
@@ -329,21 +329,83 @@ def _default_extraction_prompt(fields_schema: dict[str, str]) -> str:
     return schema_lines
 
 
+@runtime_checkable
+class LLMModelSelectionStrategy(Protocol):
+    """Interfaz para la estrategia de selección y rotación de modelos en un proveedor LLM."""
+
+    def get_current_model(self) -> str:
+        """Determina el identificador del modelo LLM activo."""
+        ...
+
+    def record_failure(self, model: str, error: Exception | str) -> None:
+        """Registra el fallo de un modelo para disparar la rotación o switch."""
+        ...
+
+
+_SHARED_STRATEGY_INDEX: int = 0
+
+
+class SharedOpenRouterModelStrategy(LLMModelSelectionStrategy):
+    """Estrategia global compartida de selección de modelos para OpenRouter.
+
+    Permite que la rotación/switch de modelos persista entre distintas
+    ejecuciones y diferentes instancias del cliente OpenRouter durante el ciclo de vida del proceso.
+    """
+
+    def __init__(self, client: OpenRouterClient) -> None:
+        self.client = client
+
+    def get_current_model(self) -> str:
+        global _SHARED_STRATEGY_INDEX
+        models = self.client.models
+        if not models:
+            raise ScrapingError("No hay modelos configurados en el cliente de OpenRouter.")
+        return models[_SHARED_STRATEGY_INDEX % len(models)]
+
+    def record_failure(self, model: str, error: Exception | str) -> None:
+        global _SHARED_STRATEGY_INDEX
+        current = self.get_current_model()
+        if model == current:
+            logger.warning(
+                "Estrategia OpenRouter: El modelo falló. Rotando globalmente al siguiente en la lista.",
+                failed_model=model,
+                error=str(error),
+            )
+            _SHARED_STRATEGY_INDEX += 1
+
+
+_OPENROUTER_STRATEGY: LLMModelSelectionStrategy | None = None
+
+
+def get_openrouter_strategy(client: OpenRouterClient) -> LLMModelSelectionStrategy:
+    """Retorna la estrategia Singleton compartida de OpenRouter."""
+    global _OPENROUTER_STRATEGY
+    if _OPENROUTER_STRATEGY is None:
+        _OPENROUTER_STRATEGY = SharedOpenRouterModelStrategy(client)
+    return _OPENROUTER_STRATEGY
+
+
 class OpenRouterClient:
     """Cliente OpenRouter con failover, backoff y parsing robusto."""
 
     provider_name = "openrouter"
     completion_tokens_key = "max_tokens"
 
-    def __init__(self) -> None:
+    def __init__(self, strategy: LLMModelSelectionStrategy | None = None) -> None:
         self.api_key = settings.OPENROUTER_API_KEY or settings.LLM_API_KEY
         self.models = list(settings.LLM_MODELS_FALLBACK)
+        if settings.LLM_MODEL:
+            # Poner el modelo configurado como primera opción
+            if settings.LLM_MODEL in self.models:
+                self.models.remove(settings.LLM_MODEL)
+            self.models.insert(0, settings.LLM_MODEL)
         self.max_content_chars = settings.LLM_MAX_CONTENT_CHARS
         self.max_output_tokens = settings.LLM_MAX_OUTPUT_TOKENS
         self.request_timeout_seconds = settings.LLM_REQUEST_TIMEOUT_SECONDS
         self._rate_limiter = _AsyncRateLimiter(settings.LLM_MIN_SECONDS_BETWEEN_REQUESTS)
         self._sleep = asyncio.sleep
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
+        self.strategy = strategy or get_openrouter_strategy(self)
 
     def _build_headers(self) -> dict[str, str]:
         return {
@@ -362,7 +424,7 @@ class OpenRouterClient:
         system_prompt: str = "Eres un asistente experto en extracción de datos estructurados.",
         timeout: int | None = None,
     ) -> str:
-        """Envia un prompt probando la cascada de modelos configurada."""
+        """Envia un prompt usando el modelo activo determinado por la estrategia de switch."""
 
         if not self.api_key:
             logger.error("OPENROUTER_API_KEY no configurada. Motor LLM deshabilitado.")
@@ -377,8 +439,11 @@ class OpenRouterClient:
         # Si el prompt es string, lo envolvemos. Si es multimodal (list), se usa directo.
         content = prompt if isinstance(prompt, list) else prompt
 
-        for model_index, model_id in enumerate(self.models):
-            if model_index > 0:
+        max_attempts = len(self.models)
+
+        for attempt in range(max_attempts):
+            model_id = self.strategy.get_current_model()
+            if attempt > 0:
                 await self._respect_rate_limit()
 
             payload: dict[str, Any] = {
@@ -396,7 +461,7 @@ class OpenRouterClient:
                 "Intentando chat completion con LLM",
                 provider=self.provider_name,
                 model=model_id,
-                is_multimodal=isinstance(prompt, list),
+                attempt=attempt + 1,
             )
 
             try:
@@ -405,10 +470,12 @@ class OpenRouterClient:
             except httpx.TimeoutException as exc:
                 last_error = f"Timeout en {model_id}"
                 logger.warning("Timeout con modelo LLM", provider=self.provider_name, model=model_id, exc=exc)
+                self.strategy.record_failure(model_id, last_error)
                 continue
             except httpx.RequestError as exc:
                 last_error = f"Error de red en {model_id}: {exc}"
                 logger.warning("Error de red al invocar LLM", provider=self.provider_name, model=model_id, exc=exc)
+                self.strategy.record_failure(model_id, last_error)
                 continue
 
             if response.status_code in _SKIP_STATUS_CODES:
@@ -420,6 +487,7 @@ class OpenRouterClient:
                     status=response.status_code,
                     preview=response.text[:200],
                 )
+                self.strategy.record_failure(model_id, last_error)
                 if response.status_code in {429, 503, 529}:
                     retry_after_raw = response.headers.get("Retry-After")
                     sleep_seconds = 0.0
@@ -429,7 +497,7 @@ class OpenRouterClient:
                         except ValueError:
                             sleep_seconds = 0.0
                     if sleep_seconds <= 0:
-                        sleep_seconds = min(30.0, 2.0**model_index)
+                        sleep_seconds = min(30.0, 2.0**attempt)
                     sleep_seconds += random.uniform(0.0, 0.75)
                     logger.info(
                         "Aplicando backoff por rate limit",
@@ -452,6 +520,7 @@ class OpenRouterClient:
                     preview=exc.response.text[:200],
                     exc=exc,
                 )
+                self.strategy.record_failure(model_id, last_error)
                 continue
 
             try:
@@ -465,22 +534,25 @@ class OpenRouterClient:
                     exc=exc,
                     preview=response.text[:200],
                 )
+                self.strategy.record_failure(model_id, last_error)
                 continue
 
             choices = data.get("choices", [])
             if not choices:
-                last_error = f"Respuesta vacía de {model_id}: {data}"
+                last_error = f"Respuesta sin choices en {model_id}: {data}"
                 logger.warning("Respuesta sin choices", provider=self.provider_name, model=model_id)
+                self.strategy.record_failure(model_id, last_error)
                 continue
 
-            content = choices[0].get("message", {}).get("content", "")
-            if not content:
+            res_content = choices[0].get("message", {}).get("content", "")
+            if not res_content:
                 last_error = f"Content vacío de {model_id}"
                 logger.warning("Content vacío del LLM", provider=self.provider_name, model=model_id)
+                self.strategy.record_failure(model_id, last_error)
                 continue
 
-            logger.info("LLM respondió exitosamente", provider=self.provider_name, model=model_id, chars=len(content))
-            return str(content)
+            logger.info("LLM respondió exitosamente", provider=self.provider_name, model=model_id, chars=len(res_content))
+            return str(res_content)
 
         msg = (
             f"FALLO_LLM_TOTAL: Ninguno de los {len(self.models)} modelos respondió correctamente. "
@@ -890,12 +962,16 @@ class CommandCodeClient(StructuredLLMClient):
 
     async def chat_completion(
         self,
-        prompt: str,
+        prompt: str | list[dict[str, Any]],
         system_prompt: str | None = None,
         timeout: int | None = 60,
     ) -> str:
         effective_timeout = timeout if timeout is not None else 60
-        full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+        if isinstance(prompt, list):
+            prompt_str = "\n".join(item.get("text", "") for item in prompt if item.get("type") == "text")
+        else:
+            prompt_str = prompt
+        full_prompt = f"{system_prompt}\n\n{prompt_str}" if system_prompt else prompt_str
         return await asyncio.to_thread(self._call_cmd, full_prompt, effective_timeout)
 
     async def extract_from_html(
@@ -1026,6 +1102,129 @@ class CommandCodeClient(StructuredLLMClient):
         return _extract_json_dict(result)
 
 
+class FailoverLLMClient(StructuredLLMClient):
+    """Cliente LLM compuesto que implementa tolerancia a fallos (Failover / Chain of Responsibility).
+
+    Intenta ejecutar cada operación con el primer cliente de la lista.
+    Si este falla (por ejemplo, debido a cuota insuficiente, tokens agotados o errores de red),
+    registra una advertencia y realiza un fallback transparente hacia el siguiente cliente disponible.
+    """
+
+    provider_name = "failover"
+
+    def __init__(self, clients: list[StructuredLLMClient]) -> None:
+        self.clients = clients
+        self.max_content_chars = self.clients[0].max_content_chars if self.clients else 100_000
+        self.max_output_tokens = self.clients[0].max_output_tokens if self.clients else 4096
+        self.request_timeout_seconds = self.clients[0].request_timeout_seconds if self.clients else 90
+
+    async def chat_completion(
+        self,
+        prompt: str | list[dict[str, Any]],
+        system_prompt: str = "Eres un asistente experto en extracción de datos estructurados.",
+        timeout: int | None = None,
+    ) -> str:
+        last_exc = None
+        for client in self.clients:
+            try:
+                return await client.chat_completion(prompt, system_prompt, timeout)
+            except Exception as e:
+                logger.warning(
+                    "Fallo en chat_completion usando cliente. Probando fallback.",
+                    client_class=client.__class__.__name__,
+                    exc=str(e),
+                )
+                last_exc = e
+        raise last_exc or ScrapingError("Todos los clientes LLM fallaron en chat_completion.")
+
+    async def extract_from_html(
+        self,
+        html_content: str,
+        fields_schema: dict[str, str],
+        base_url: str,
+        institution_name: str = "",
+        selectors: SelectorConfig | None = None,
+        max_content_chars: int | None = None,
+        screenshot_b64: str | None = None,
+    ) -> list[dict[str, Any]]:
+        last_exc = None
+        for client in self.clients:
+            try:
+                return await client.extract_from_html(
+                    html_content,
+                    fields_schema,
+                    base_url,
+                    institution_name,
+                    selectors,
+                    max_content_chars,
+                    screenshot_b64,
+                )
+            except Exception as e:
+                logger.warning(
+                    "Fallo en extract_from_html usando cliente. Probando fallback.",
+                    client_class=client.__class__.__name__,
+                    exc=str(e),
+                )
+                last_exc = e
+        raise last_exc or ScrapingError("Todos los clientes LLM fallaron en extract_from_html.")
+
+    async def extract_single_detail(
+        self,
+        html_content: str,
+        base_url: str,
+        institution_name: str = "",
+        max_content_chars: int | None = None,
+        institution_hint: str | None = None,
+    ) -> dict[str, Any] | None:
+        last_exc = None
+        for client in self.clients:
+            try:
+                return await client.extract_single_detail(
+                    html_content, base_url, institution_name, max_content_chars, institution_hint
+                )
+            except Exception as e:
+                logger.warning(
+                    "Fallo en extract_single_detail usando cliente. Probando fallback.",
+                    client_class=client.__class__.__name__,
+                    exc=str(e),
+                )
+                last_exc = e
+        raise last_exc or ScrapingError("Todos los clientes LLM fallaron en extract_single_detail.")
+
+    async def discover_funding_url(self, html_content: str, base_url: str) -> str | None:
+        last_exc = None
+        for client in self.clients:
+            try:
+                return await client.discover_funding_url(html_content, base_url)
+            except Exception as e:
+                logger.warning(
+                    "Fallo en discover_funding_url usando cliente. Probando fallback.",
+                    client_class=client.__class__.__name__,
+                    exc=str(e),
+                )
+                last_exc = e
+        raise last_exc or ScrapingError("Todos los clientes LLM fallaron en discover_funding_url.")
+
+    async def heal_selectors(
+        self,
+        html_content: str,
+        institution_name: str,
+        base_url: str,
+    ) -> dict[str, str] | None:
+        last_exc = None
+        for client in self.clients:
+            try:
+                return await client.heal_selectors(html_content, institution_name, base_url)
+            except Exception as e:
+                logger.warning(
+                    "Fallo en heal_selectors usando cliente. Probando fallback.",
+                    client_class=client.__class__.__name__,
+                    exc=str(e),
+                )
+                last_exc = e
+        raise last_exc or ScrapingError("Todos los clientes LLM fallaron en heal_selectors.")
+
+
 def build_llm_client(preferred_provider: str | None = None) -> StructuredLLMClient:
     """Factory explícita para elegir proveedor LLM sin acoplar la capa de scraping.
 
@@ -1040,14 +1239,8 @@ def build_llm_client(preferred_provider: str | None = None) -> StructuredLLMClie
 
     import shutil
 
-    if provider == "commandcode":
-        if shutil.which("cmd"):
-            return CommandCodeClient()
-        else:
-            logger.warning(
-                "LLM_PROVIDER es commandcode pero no se encontró 'cmd' en PATH. Usando OpenRouter como fallback."
-            )
-            return OpenRouterClient()
+    if provider == "commandcode" and shutil.which("cmd"):
+        return CommandCodeClient()
     if provider == "nvidia":
         return NvidiaClient()
     if provider == "groq":
@@ -1055,17 +1248,20 @@ def build_llm_client(preferred_provider: str | None = None) -> StructuredLLMClie
     if provider == "openrouter":
         return OpenRouterClient()
 
-    import shutil
+    # Si es auto o el proveedor elegido no está disponible, construimos un FailoverLLMClient
+    clients: list[StructuredLLMClient] = []
 
-    # auto: CommandCode > NVIDIA > Groq > OpenRouter
     if settings.CMD_API_KEY and shutil.which("cmd"):
-        return CommandCodeClient()
+        clients.append(CommandCodeClient())
     if settings.NVIDIA_API_KEY:
-        return NvidiaClient()
+        clients.append(NvidiaClient())
     if settings.GROQ_API_KEY:
-        return GroqClient()
-    if settings.OPENROUTER_API_KEY or settings.LLM_API_KEY:
-        return OpenRouterClient()
+        clients.append(GroqClient())
 
-    logger.warning("No hay API key configurada para LLMs; se usará OpenRouter por defecto")
-    return OpenRouterClient()
+    if settings.OPENROUTER_API_KEY or settings.LLM_API_KEY or not clients:
+        clients.append(OpenRouterClient())
+
+    if len(clients) == 1:
+        return clients[0]
+
+    return FailoverLLMClient(clients)

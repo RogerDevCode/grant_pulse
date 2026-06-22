@@ -4,6 +4,7 @@ Rutas HTTP de la API REST usando FastAPI.
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from sqlalchemy import and_, delete, func, select
@@ -244,6 +245,70 @@ async def list_convocatorias(
     ]
 
 
+@router.get("/convocatorias/filtradas")
+async def list_convocatorias_filtradas(
+    session: DbSession,
+    activo: bool | None = Query(None, description="Filtrar por convocatorias vigentes (ABIERTO) y fuentes activas"),
+    institucion: str | None = Query(None, description="Filtrar por nombre de la institución (fuente)"),
+    region: str | None = Query(None, description="Filtrar por región asociada"),
+    limit: int = Query(500, ge=1, le=1000),
+) -> list[dict[str, Any]]:
+    """Endpoint simple para recuperar convocatorias filtradas en formato JSON puro.
+    Permite contrastar los datos de Postgres con el frontend.
+    """
+    from sqlalchemy import String, and_
+
+    query = select(ConvocatoriaORM, FuenteORM.nombre, FuenteORM.activa).join(
+        FuenteORM, ConvocatoriaORM.fuente_id == FuenteORM.id
+    )
+
+    if activo is not None:
+        if activo:
+            query = query.where(
+                and_(
+                    ConvocatoriaORM.estado == "ABIERTO",
+                    FuenteORM.activa.is_(True)
+                )
+            )
+        else:
+            query = query.where(
+                (ConvocatoriaORM.estado != "ABIERTO") | (FuenteORM.activa.is_(False))
+            )
+
+    if institucion:
+        query = query.where(FuenteORM.nombre.ilike(f"%{institucion}%"))
+
+    if region:
+        region_search = region.replace("á", "%").replace("é", "%").replace("í", "%").replace("ó", "%").replace("ú", "%")
+        region_search = region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        query = query.where(ConvocatoriaORM.regiones.cast(String).ilike(f"%{region_search}%"))
+
+    query = query.order_by(ConvocatoriaORM.actualizado_en.desc()).limit(limit)
+
+    result = await session.execute(query)
+    rows = result.all()
+
+    return [
+        {
+            "id": orm.id,
+            "fuente_id": orm.fuente_id,
+            "fuente_nombre": fuente_nombre,
+            "fuente_activa": fuente_activa,
+            "identificador_externo": orm.identificador_externo,
+            "titulo": orm.titulo,
+            "descripcion": orm.descripcion,
+            "url_detalle": orm.url_detail,
+            "fecha_apertura": orm.fecha_apertura.isoformat() if orm.fecha_apertura else None,
+            "fecha_cierre": orm.fecha_cierre.isoformat() if orm.fecha_cierre else None,
+            "monto": float(orm.monto) if orm.monto is not None else None,
+            "regiones": orm.regiones,
+            "estado": orm.estado,
+            "actualizado_en": orm.actualizado_en.isoformat() if orm.actualizado_en else None,
+        }
+        for orm, fuente_nombre, fuente_activa in rows
+    ]
+
+
 @router.get("/convocatorias/count")
 async def count_convocatorias(
     session: DbSession,
@@ -295,7 +360,7 @@ async def get_convocatorias_kpi(
             await session.execute(select(FuenteORM.id).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%")))
         ).all()
         if not fuente_rows:
-            return {"abiertas": 0, "vencen_30": 0, "instituciones": 0, "sin_fecha": 0}
+            return {"abiertas": 0, "permanentes": 0, "vencen_30": 0, "instituciones": 0, "sin_fecha": 0}
         fuente_ids_por_nombre = [r.id for r in fuente_rows]
 
     now = datetime.now(UTC)
@@ -318,6 +383,11 @@ async def get_convocatorias_kpi(
     if filters:
         abiertas_q = abiertas_q.where(and_(*filters))
     abiertas = (await session.execute(abiertas_q)).scalar() or 0
+
+    permanentes_q = select(func.count(ConvocatoriaORM.id)).where(ConvocatoriaORM.estado == "PERMANENTE")
+    if filters:
+        permanentes_q = permanentes_q.where(and_(*filters))
+    permanentes = (await session.execute(permanentes_q)).scalar() or 0
 
     vencen_30_q = select(func.count(ConvocatoriaORM.id)).where(
         ConvocatoriaORM.estado == "ABIERTO",
@@ -342,6 +412,7 @@ async def get_convocatorias_kpi(
 
     return {
         "abiertas": abiertas,
+        "permanentes": permanentes,
         "vencen_30": vencen_30_count,
         "instituciones": instituciones,
         "sin_fecha": sin_fecha,

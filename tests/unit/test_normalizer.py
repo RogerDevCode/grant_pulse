@@ -88,7 +88,7 @@ def test_normalize_and_map_missing_estado_defaults_to_desconocido(mock_fuente_no
 
     convocatorias = DataNormalizer.normalize_and_map(raw_items, mock_fuente_normalizador)
     assert len(convocatorias) == 1
-    assert convocatorias[0].estado == "DESCONOCIDO"
+    assert convocatorias[0].estado == "PERMANENTE"
 
 
 def test_normalize_and_map_regex_failure_skips_gracefully(mock_fuente_normalizador: Fuente) -> None:

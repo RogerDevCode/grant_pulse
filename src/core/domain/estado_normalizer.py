@@ -16,6 +16,7 @@ _CANONICAL_NO_VIGENTES = frozenset({"CERRADO", "ADJUDICADO", "SUSPENDIDO", "FINA
 _CANONICAL_ALL = _CANONICAL_VIGENTES | _CANONICAL_NO_VIGENTES | {"DESCONOCIDO"}
 
 _STATUS_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\bPERMANENTE\b", re.IGNORECASE), "PERMANENTE"),
     (re.compile(r"\bABIERT[AO]S?\b", re.IGNORECASE), "ABIERTO"),
     (re.compile(r"\bCERRAD[AO]S?\b", re.IGNORECASE), "CERRADO"),
     (re.compile(r"\bPRÓ?XIMAMENTE\b", re.IGNORECASE), "PROXIMAMENTE"),
@@ -59,6 +60,7 @@ def normalize_estado(raw: str | None) -> str:
         'draft'         -> 'DESCONOCIDO'
         'Abierta'       -> 'ABIERTO'
         'Cerrado'       -> 'CERRADO'
+        'Permanente'    -> 'PERMANENTE'  (fondo concursable sin fecha de cierre)
         'ABRIR BARRA'   -> 'DESCONOCIDO'  (no coincide con ningún patrón)
         None            -> 'DESCONOCIDO'
     """

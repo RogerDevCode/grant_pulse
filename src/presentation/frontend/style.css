@@ -494,6 +494,7 @@ body.sidebar-collapsed .main-wrapper { margin-left: var(--sidebar-c); }
 .kpi-amber .kpi-num  { color: var(--amber); }
 .kpi-blue  .kpi-num  { color: var(--blue); }
 .kpi-purple .kpi-num { color: var(--purple); }
+.kpi-cyan .kpi-num   { color: var(--cyan); }
 
 .kpi-divider {
   width: 1px;

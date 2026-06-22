@@ -1,6 +1,7 @@
 """Tests para el factory de LLM y los proveedores."""
 
-from unittest.mock import MagicMock, patch
+from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -12,17 +13,21 @@ from src.infra.llm.client import (
 )
 
 
-def _make_settings(**overrides: object) -> MagicMock:
-    """Crea un mock de settings donde los atributos no seteados son falsy."""
-    mock = MagicMock()
-    mock.LLM_PROVIDER = "auto"
-    mock.NVIDIA_API_KEY = None
-    mock.GROQ_API_KEY = None
-    mock.OPENROUTER_API_KEY = None
-    mock.LLM_API_KEY = None
-    for key, value in overrides.items():
-        setattr(mock, key, value)
-    return mock
+class MockSettings:
+    def __init__(self, **kwargs: Any) -> None:
+        self.LLM_PROVIDER = "auto"
+        self.GROQ_MODELS_FALLBACK = ["llama-3.1-8b-instant"]
+        self.LLM_MODELS_FALLBACK = ["google/gemini-2.5-flash:free"]
+        self.LLM_MIN_SECONDS_BETWEEN_REQUESTS = 0.0
+        self.GROQ_MIN_SECONDS_BETWEEN_REQUESTS = 0.0
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+    def __getattr__(self, name: str) -> Any:
+        return None
+
+def _make_settings(**overrides: object) -> Any:
+    """Crea un mock de settings donde los atributos no seteados son None."""
+    return MockSettings(**overrides)
 
 
 def test_build_llm_client_auto_nvidia() -> None:

@@ -43,7 +43,8 @@ normalizadores:
       garantia: "Garantía"
       concurso: "Concurso"
 
-region_defecto: "Nacional"
+regiones_defecto:
+  - "Nacional"
 
 llm_prompt_hint: |
   CORFO (Corporación de Fomento de la Producción) financia innovación, emprendimiento,

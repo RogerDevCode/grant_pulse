@@ -90,6 +90,7 @@ function badgeClass(estado) {
   if (e.includes('ABIERT'))     return 'badge-green';
   if (e.includes('CERRAD') || e.includes('FINALIZAD') || e.includes('ADJUDICAD') || e.includes('SUSPENDID')) return 'badge-red';
   if (e.includes('PROXIM'))     return 'badge-amber';
+  if (e.includes('PERMANENT'))  return 'badge-cyan';
   if (e.includes('DESCONOCID')) return 'badge-gray';
   return 'badge-cyan';
 }
@@ -1495,6 +1496,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── FILTROS RADAR ──
   $('#soloActivasToggle').addEventListener('change', () => { state.convOffset = 0; loadRadar(); });
+$('#incluirPermanentesToggle').addEventListener('change', () => { state.convOffset = 0; loadRadar(); });
   $('#filterOrden').addEventListener('change',       () => { state.convOffset = 0; loadRadar(); });
   $('#filterRegion').addEventListener('change',      () => { state.convOffset = 0; loadRadar(); });
   $('#searchInput').addEventListener('input', () => {

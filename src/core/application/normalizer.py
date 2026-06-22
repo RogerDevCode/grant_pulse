@@ -427,7 +427,19 @@ class DataNormalizer:
                             raw=raw_fecha_cierre,
                         )
 
-                if fecha_cierre_val and fecha_cierre_val < now:
+                # Una convocatoria solo se considera expirada si el momento actual (now)
+                # es posterior al final del día de cierre en Chile (usando un buffer de 4 horas en UTC).
+                limite_cierre = fecha_cierre_val
+                if (
+                    fecha_cierre_val
+                    and fecha_cierre_val.hour == 0
+                    and fecha_cierre_val.minute == 0
+                    and fecha_cierre_val.second == 0
+                ):
+                    from datetime import timedelta
+                    limite_cierre = fecha_cierre_val + timedelta(days=1, hours=4)
+
+                if fecha_cierre_val and limite_cierre < now:
                     logger.info(
                         "Filtrando convocatoria expirada",
                         titulo=titulo,
@@ -489,6 +501,9 @@ class DataNormalizer:
 
             if estado == "DESCONOCIDO" and fecha_cierre_val is not None and fecha_cierre_val >= now:
                 estado = "ABIERTO"
+            elif estado == "DESCONOCIDO" and fecha_cierre_val is None:
+                # Fondo concursable permanente: sin fecha de cierre
+                estado = "PERMANENTE"
 
             # Intentar extraer región desde el campo crudo (puede ser texto largo como el título)
             region_raw = item.get("region")
