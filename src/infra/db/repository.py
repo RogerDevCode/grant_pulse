@@ -1,4 +1,7 @@
-"""Repositorios SQLAlchemy — mapeo entidad↔ORM con auto-increment integer IDs."""
+"""
+Repositorios SQLAlchemy — mapeo entidad↔ORM con auto-increment integer IDs.
+Implementación optimizada para el uso exclusivo con la base de datos PostgreSQL.
+"""
 
 from uuid import UUID
 

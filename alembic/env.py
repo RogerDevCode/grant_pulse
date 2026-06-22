@@ -1,3 +1,9 @@
+"""
+Configuración de entorno de migraciones Alembic.
+Las migraciones en este proyecto asumen el uso exclusivo de PostgreSQL.
+La URL de la base de datos se toma directamente de settings.DATABASE_URL
+el cual se encarga de forzar el dialecto asíncrono adecuado (postgresql+asyncpg).
+"""
 import asyncio
 from logging.config import fileConfig
 

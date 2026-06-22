@@ -1,4 +1,8 @@
-"""Modelos ORM de SQLAlchemy 2.0 — auto-increment integer PKs."""
+"""
+Modelos ORM de SQLAlchemy 2.0 — auto-increment integer PKs.
+El sistema de persistencia y esquemas están optimizados y destinados
+exclusivamente para el uso con PostgreSQL.
+"""
 
 from datetime import UTC, datetime
 from typing import Any

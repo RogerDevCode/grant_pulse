@@ -19,7 +19,7 @@ class Settings(BaseSettings):
         description="Nivel de logs: DEBUG, INFO, WARNING, ERROR, CRITICAL",
     )
 
-    # Base de Datos
+    # Base de Datos (USO EXCLUSIVO DE POSTGRESQL)
     DATABASE_URL: str = Field(
         default="postgresql+asyncpg://grantpulse:grantpulse@localhost:5432/grantpulse",
         description="URL de conexión asíncrona a la base de datos (PostgreSQL asyncpg)",
@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def ensure_asyncpg(cls, v: Any) -> Any:  # noqa: ARG003
+        """
+        El proyecto está diseñado exclusivamente para usar PostgreSQL.
+        Plataformas como Railway inyectan variables DATABASE_URL con el prefijo
+        síncrono 'postgresql://' o 'postgres://'. Este validador intercepta
+        y reemplaza ese prefijo por 'postgresql+asyncpg://' para forzar el
+        driver asíncrono requerido por SQLAlchemy.
+        """
         if isinstance(v, str):
             if v.startswith("postgresql://"):
                 v = v.replace("postgresql://", "postgresql+asyncpg://", 1)

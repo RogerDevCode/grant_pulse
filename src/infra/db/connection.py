@@ -1,5 +1,8 @@
 """
-Gestión de conexión asíncrona a la base de datos (SQLite / PostgreSQL).
+Gestión de conexión asíncrona a la base de datos.
+El proyecto utiliza exclusivamente PostgreSQL (via asyncpg).
+Cualquier URL provista por el entorno (ej. Railway) es normalizada en config.py
+para asegurar el uso del driver asíncrono.
 """
 
 from collections.abc import AsyncGenerator
