@@ -2,6 +2,7 @@
 Entrypoint de línea de comandos (CLI) para ejecutar los workers de monitoreo.
 Permite ejecutar el scraping basado en un archivo YAML específico o correr todas las fuentes activas.
 """
+# ruff: noqa: E402
 
 import argparse
 import asyncio
@@ -13,6 +14,9 @@ os.environ.pop("HTTP_PROXY", None)
 os.environ.pop("HTTPS_PROXY", None)
 os.environ.pop("http_proxy", None)
 os.environ.pop("https_proxy", None)
+
+# Asegurar que el directorio de datos existe
+os.makedirs("data", exist_ok=True)
 
 from datetime import UTC, datetime
 from pathlib import Path

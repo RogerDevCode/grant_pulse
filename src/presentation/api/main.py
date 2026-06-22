@@ -1,6 +1,7 @@
 """
 Instancia principal de la aplicación FastAPI.
 """
+# ruff: noqa: E402
 
 import os
 
@@ -9,6 +10,9 @@ os.environ.pop("HTTP_PROXY", None)
 os.environ.pop("HTTPS_PROXY", None)
 os.environ.pop("http_proxy", None)
 os.environ.pop("https_proxy", None)
+
+# Asegurar que el directorio de datos existe
+os.makedirs("data", exist_ok=True)
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
