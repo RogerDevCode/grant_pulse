@@ -108,9 +108,19 @@ async def run_backfill_regions(limit: int | None = None) -> int:
                     )
                     continue
 
-                regiones = _infer_region_with_llm(
-                    convocatoria.titulo, convocatoria.descripcion, convocatoria.url_detail, fuente
+                # Primero intentar inferencia determinística (sin LLM)
+                from src.core.application.region_inferrer import inferir_regiones as _inferir_heuristica
+
+                regiones = _inferir_heuristica(
+                    convocatoria.titulo, convocatoria.descripcion or ""
                 )
+
+                # Fallback a LLM solo si la heurística no encontró nada
+                if not regiones:
+                    regiones = _infer_region_with_llm(
+                        convocatoria.titulo, convocatoria.descripcion, convocatoria.url_detail, fuente
+                    )
+
                 if regiones:
                     convocatoria.regiones = regiones
                     updated += 1
