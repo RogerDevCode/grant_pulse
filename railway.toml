@@ -9,11 +9,7 @@ healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 
-# ── Volumen persistente para SQLite ──────────────────────────
-# Monta el directorio /app/data como volumen persistente.
-# La base de datos SQLite (grantpulse.db) sobrevive a redeploys.
-[[volumes]]
-mountPath = "/app/data"
+
 
 # ── Cron Job para scraping automático ────────────────────────
 # Railway CRON ejecuta servicios separados, no puede convivir con un web server

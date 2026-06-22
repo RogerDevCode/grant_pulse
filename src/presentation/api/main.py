@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
     except Exception as e:
         logger.warning("No se pudo agregar columnas de enriquecimiento", exc=e)
 
-    # Crear tablas si no existen — usa el mismo engine de la app, evita thread-safety issues con aiosqlite
+    # Crear tablas si no existen — usa el mismo engine de la app
     try:
         from src.infra.db.connection import engine
         from src.infra.db.models import Base

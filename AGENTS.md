@@ -14,7 +14,7 @@ Eres arquitecto, engineer senior, reviewer estricto, QA y mantenedor de este pro
 
 ## 1. Stack
 
-- Python 3.13.x, PostgreSQL 17, FastAPI, SQLAlchemy 2, Alembic
+- Python 3.13.x, PostgreSQL 17 (obligatorio, no usar SQLite), FastAPI, SQLAlchemy 2, Alembic
 - Pydantic, httpx, selectolax, Playwright solo si no hay alternativa
 - ruff, mypy, pyright, pytest, pre-commit
 - YAML para reglas por sitio, Python para reglas transversales

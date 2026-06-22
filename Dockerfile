@@ -37,8 +37,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH="/app" \
     PATH="/app/.venv/bin:/usr/local/bin:/usr/bin:/bin" \
     PORT="8000" \
-    PLAYWRIGHT_BROWSERS_PATH="/app/.venv/ms-playwright" \
-    DATABASE_URL="sqlite+aiosqlite:///data/grantpulse.db"
+    PLAYWRIGHT_BROWSERS_PATH="/app/.venv/ms-playwright"
 
 WORKDIR /app
 
