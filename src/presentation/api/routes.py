@@ -213,10 +213,15 @@ async def list_convocatorias(
         query = query.where(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
 
     if orden == "por_vencer":
-        query = query.where(
-            (ConvocatoriaORM.fecha_cierre.is_(None)) | (ConvocatoriaORM.fecha_cierre >= datetime.now(UTC))
+        # Ordenar primero las que vencen en el futuro (ascendente), 
+        # luego las vencidas, y al final las sin fecha (nullslast).
+        now = datetime.now(UTC)
+        query = query.order_by(
+            # Si ya venció (fecha_cierre < now), le damos prioridad 1 (va al final). Si no, prioridad 0 (va al inicio)
+            # Para SQL Standard y Postgres:
+            func.coalesce(ConvocatoriaORM.fecha_cierre < now, False).asc(),
+            ConvocatoriaORM.fecha_cierre.asc().nullslast()
         )
-        query = query.order_by(ConvocatoriaORM.fecha_cierre.asc().nullslast())
     elif orden == "recientes_creacion":
         query = query.order_by(ConvocatoriaORM.creado_en.desc())
     else:
