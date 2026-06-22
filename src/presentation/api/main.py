@@ -35,6 +35,17 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
     logger.info("Iniciando aplicación API GrantPulse")
 
+    # Ejecutar migraciones de Alembic para asegurar esquema actualizado (ej. añadir columnas)
+    try:
+        from alembic import command
+        from alembic.config import Config
+        alembic_cfg = Config("alembic.ini")
+        logger.info("Ejecutando migraciones de Alembic (upgrade head)...")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Migraciones de Alembic aplicadas exitosamente")
+    except Exception as e:
+        logger.warning("No se pudieron aplicar migraciones de Alembic", exc=e)
+
     # Crear tablas si no existen — usa el mismo engine de la app, evita thread-safety issues con aiosqlite
     try:
         from src.infra.db.connection import engine
