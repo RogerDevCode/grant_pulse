@@ -227,7 +227,7 @@ def test_item_partial_preserved(mock_fuente_normalizador: Fuente) -> None:
     # Ahora si monto falla, el item sobrevive pero monto_val es None
     assert mock_fuente_normalizador.configuracion_reglas.normalizadores.monto is not None
     mock_fuente_normalizador.configuracion_reglas.normalizadores.monto.regex_extraction = r"Monto máximo:\s*(.*)"
-    
+
     raw_items = [{
         "identificador": "F005",
         "titulo": "Fondo Error Monto",
@@ -241,7 +241,7 @@ def test_item_partial_preserved(mock_fuente_normalizador: Fuente) -> None:
 def test_plazo_postulacion_calculado(mock_fuente_normalizador: Fuente) -> None:
     mock_fuente_normalizador.configuracion_reglas.normalizadores.fecha_apertura = NormalizerItem(formato_salida="%Y-%m-%d")
     mock_fuente_normalizador.configuracion_reglas.normalizadores.fecha_cierre = NormalizerItem(formato_salida="%Y-%m-%d")
-    
+
     raw_items = [{
         "identificador": "F001",
         "titulo": "Test",

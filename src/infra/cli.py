@@ -302,41 +302,49 @@ async def run_all_active_sources() -> None:
 
     failed_fuentes: list[str] = []
 
-    for fuente in fuentes_activas:
-        fuente_run_id = new_run_id()
-        async with AsyncSessionLocal() as session:
-            try:
-                snapshot_repo = SQLSnapshotRepository(session)
-                convocatoria_repo = SQLConvocatoriaRepository(session)
-                notificacion_repo = SQLNotificacionRepository(session)
-                fuente = _apply_source_profile(fuente)
-                scraper = _get_scraper(fuente)
-                notifier = await _get_notifier(session)
+    # Fase 1: Limitar la concurrencia a maximo 3 tareas simultaneas en el event loop
+    sem = asyncio.Semaphore(3)
 
-                use_case = MonitoreoUseCase(
-                    scraper=scraper,
-                    snapshot_repo=snapshot_repo,
-                    convocatoria_repo=convocatoria_repo,
-                    notifier=notifier,
-                    notificacion_repo=notificacion_repo,
-                )
+    async def procesar_fuente(fuente_inst: Fuente) -> None:
+        async with sem:
+            fuente_run_id = new_run_id()
+            async with AsyncSessionLocal() as session:
+                try:
+                    snapshot_repo = SQLSnapshotRepository(session)
+                    convocatoria_repo = SQLConvocatoriaRepository(session)
+                    notificacion_repo = SQLNotificacionRepository(session)
+                    fuente_normalizada = _apply_source_profile(fuente_inst)
+                    scraper = _get_scraper(fuente_normalizada)
+                    notifier = await _get_notifier(session)
 
-                await use_case.ejecutar_monitoreo(fuente)
-                await session.commit()
-            except Exception as e:
-                await session.rollback()
-                logger.error(
-                    f"Worker falló para fuente {fuente.nombre}: {e}",
-                    exc=e,
-                    fuente_id=str(fuente.id),
-                    run_id=fuente_run_id,
-                )
-                failed_fuentes.append(fuente.nombre)
-                # Save error to file for remote debugging
-                import traceback
+                    use_case = MonitoreoUseCase(
+                        scraper=scraper,
+                        snapshot_repo=snapshot_repo,
+                        convocatoria_repo=convocatoria_repo,
+                        notifier=notifier,
+                        notificacion_repo=notificacion_repo,
+                    )
 
-                with open("data/errors.log", "a") as f:
-                    f.write(f"[{datetime.now()}] ERROR en {fuente.nombre}: {e}\n{traceback.format_exc()}\n")
+                    await use_case.ejecutar_monitoreo(fuente_normalizada)
+                    await session.commit()
+                except Exception as e:
+                    await session.rollback()
+                    logger.error(
+                        f"Worker falló para fuente {fuente_inst.nombre}: {e}",
+                        exc=e,
+                        fuente_id=str(fuente_inst.id),
+                        run_id=fuente_run_id,
+                    )
+                    failed_fuentes.append(fuente_inst.nombre)
+                    # Guardar error para depuración remota
+                    import traceback
+
+                    with open("data/errors.log", "a") as f:
+                        f.write(f"[{datetime.now()}] ERROR en {fuente_inst.nombre}: {e}\n{traceback.format_exc()}\n")
+
+    # Ejecutar concurrentemente todas las tareas con control de concurrencia
+    tareas = [procesar_fuente(fuente) for fuente in fuentes_activas]
+    await asyncio.gather(*tareas, return_exceptions=True)
 
     # Generar reporte de calidad
     async with AsyncSessionLocal() as session:

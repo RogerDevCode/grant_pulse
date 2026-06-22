@@ -376,7 +376,7 @@ class SharedOpenRouterModelStrategy(LLMModelSelectionStrategy):
 
 class GenericSharedModelStrategy(LLMModelSelectionStrategy):
     """Estrategia genérica de selección de modelos para proveedores específicos.
-    
+
     Cada proveedor tiene su propia secuencia de rotación de modelos independiente.
     """
 
