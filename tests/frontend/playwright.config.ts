@@ -9,7 +9,7 @@ export default defineConfig({
   workers: 2,
   reporter: [['list'], ['html', { outputFolder: 'playwright-report' }]],
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:8003',
+    baseURL: process.env.BASE_URL || 'https://grantpulse-production.up.railway.app',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     // AGENTS.md 6b: perfil limpio, sin extensiones, headless
