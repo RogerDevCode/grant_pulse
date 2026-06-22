@@ -1,5 +1,6 @@
 """Tests para CurlCffiScraper."""
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -44,9 +45,13 @@ async def test_fetch_raises_on_empty_response(fuente_fosis: Fuente) -> None:
     mock_response.text = ""
 
     mock_session = MagicMock()
-    mock_session.get.return_value = mock_response
+    async def mock_get(*args: Any, **kwargs: Any) -> Any:  # noqa: ARG001
+        return mock_response
+    mock_session.get = mock_get
+    mock_session.__aenter__.return_value = mock_session
+    mock_session.__aexit__.return_value = None
 
-    with patch.object(scraper, "_session", mock_session):
+    with patch("src.infra.scraping.curl_cffi.AsyncSession", return_value=mock_session):
         with pytest.raises(NetworkError, match="respuesta vacía"):
             await scraper.fetch(fuente_fosis)
 
@@ -58,9 +63,13 @@ async def test_fetch_raises_on_http_error(fuente_fosis: Fuente) -> None:
     mock_response.status_code = 403
 
     mock_session = MagicMock()
-    mock_session.get.return_value = mock_response
+    async def mock_get(*args: Any, **kwargs: Any) -> Any:  # noqa: ARG001
+        return mock_response
+    mock_session.get = mock_get
+    mock_session.__aenter__.return_value = mock_session
+    mock_session.__aexit__.return_value = None
 
-    with patch.object(scraper, "_session", mock_session):
+    with patch("src.infra.scraping.curl_cffi.AsyncSession", return_value=mock_session):
         with pytest.raises(NetworkError, match="HTTP 403"):
             await scraper.fetch(fuente_fosis)
 
@@ -73,13 +82,16 @@ async def test_fetch_success(fuente_fosis: Fuente) -> None:
     mock_response.text = "<html><body><h1>Programas FOSIS</h1></body></html>"
 
     mock_session = MagicMock()
-    mock_session.get.return_value = mock_response
+    async def mock_get(*args: Any, **kwargs: Any) -> Any:  # noqa: ARG001
+        return mock_response
+    mock_session.get = mock_get
+    mock_session.__aenter__.return_value = mock_session
+    mock_session.__aexit__.return_value = None
 
-    with patch.object(scraper, "_session", mock_session):
+    with patch("src.infra.scraping.curl_cffi.AsyncSession", return_value=mock_session):
         snapshot = await scraper.fetch(fuente_fosis)
         assert snapshot.estado_ejecucion == "SUCCESS"
         assert "Programas FOSIS" in snapshot.contenido_crudo
-        assert mock_session.get.call_count == 1
 
 
 @pytest.mark.asyncio

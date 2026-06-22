@@ -13,7 +13,7 @@ import hashlib
 from datetime import UTC, datetime
 from typing import Any
 
-from curl_cffi.requests import BrowserTypeLiteral, Session
+from curl_cffi.requests import AsyncSession, BrowserTypeLiteral
 
 from src.core.domain.entities import Fuente, Snapshot
 from src.core.domain.exceptions import NetworkError
@@ -46,7 +46,6 @@ class CurlCffiScraper(ScraperPort):
     ) -> None:
         self._timeout = timeout
         self._impersonate: BrowserTypeLiteral = impersonate
-        self._session = Session(impersonate=impersonate)
 
     async def fetch(self, fuente: Fuente) -> Snapshot:
         url = str(fuente.configuracion_reglas.url_busqueda)
@@ -54,15 +53,16 @@ class CurlCffiScraper(ScraperPort):
         logger.info("CurlCffiScraper: iniciando fetch", url=url, fuente=fuente.nombre, impersonate=self._impersonate)
 
         try:
-            response = self._session.get(
-                url,
-                timeout=self._timeout,
-                headers={
-                    **_DEFAULT_HEADERS,
-                    "Referer": referer,
-                },
-                proxies={"http": "", "https": "", "all": ""},
-            )
+            async with AsyncSession(impersonate=self._impersonate) as session:
+                response = await session.get(
+                    url,
+                    timeout=self._timeout,
+                    headers={
+                        **_DEFAULT_HEADERS,
+                        "Referer": referer,
+                    },
+                    proxies={"http": "", "https": "", "all": ""},
+                )
         except Exception as e:
             msg = f"Error de red en curl_cffi para {fuente.nombre}: {e}"
             logger.error(msg, exc=e)
