@@ -89,6 +89,7 @@ class StructuredLLMClient(Protocol):
         base_url: str,
         institution_name: str = "",
         max_content_chars: int | None = None,
+        institution_hint: str | None = None,
     ) -> dict[str, Any] | None: ...
 
     async def discover_funding_url(self, html_content: str, base_url: str) -> str | None: ...
@@ -619,6 +620,7 @@ class OpenRouterClient:
         )
 
         from datetime import UTC, datetime
+
         hoy = datetime.now(UTC).strftime("%Y-%m-%d")
 
         prompt_text = (
@@ -879,9 +881,7 @@ class CommandCodeClient(StructuredLLMClient):
                 env=env,
             )
             if result.returncode != 0:
-                raise ScrapingError(
-                    f"CommandCode CLI error (exit {result.returncode}): {result.stderr[:500]}"
-                )
+                raise ScrapingError(f"CommandCode CLI error (exit {result.returncode}): {result.stderr[:500]}")
             return result.stdout.strip()
         except subprocess.TimeoutExpired:
             raise ScrapingError(f"CommandCode CLI timed out after {timeout}s")  # noqa: B904
@@ -1019,8 +1019,8 @@ class CommandCodeClient(StructuredLLMClient):
         prompt = (
             f"Eres un experto en selectores CSS. Dado el HTML de {institution_name} ({base_url}), "
             f"encuentra selectores CSS que apunten a cada ítem de convocatoria/fondo.\n"
-            f"Responde SOLO con JSON: {{\"contenedor_items\": \"...\", \"titulo\": \"...\", "
-            f"\"link_detalle\": \"...\", \"identificador\": \"...\"}}\n\n{html_content[:self.max_content_chars]}"
+            f'Responde SOLO con JSON: {{"contenedor_items": "...", "titulo": "...", '
+            f'"link_detalle": "...", "identificador": "..."}}\n\n{html_content[: self.max_content_chars]}'
         )
         result = await self.chat_completion(prompt, timeout=timeout)
         return _extract_json_dict(result)
@@ -1044,7 +1044,9 @@ def build_llm_client(preferred_provider: str | None = None) -> StructuredLLMClie
         if shutil.which("cmd"):
             return CommandCodeClient()
         else:
-            logger.warning("LLM_PROVIDER es commandcode pero no se encontró 'cmd' en PATH. Usando OpenRouter como fallback.")
+            logger.warning(
+                "LLM_PROVIDER es commandcode pero no se encontró 'cmd' en PATH. Usando OpenRouter como fallback."
+            )
             return OpenRouterClient()
     if provider == "nvidia":
         return NvidiaClient()

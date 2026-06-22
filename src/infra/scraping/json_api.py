@@ -172,9 +172,7 @@ class JsonApiScraper(ScraperPort):
                 if total_pages_str:
                     total_pages = int(total_pages_str)
                     total_items_str = (
-                        response.headers.get(pagination.total_items_header)
-                        if pagination.total_items_header
-                        else "?"
+                        response.headers.get(pagination.total_items_header) if pagination.total_items_header else "?"
                     )
                     logger.info(
                         "Paginación detectada",
@@ -310,7 +308,9 @@ class JsonApiScraper(ScraperPort):
             logger.error(msg, root_path=mapping.root_path, fuente=fuente.nombre)
             raise ExtractionError(msg)
 
-        resultados: list[dict[str, str | None]] = []
+        from typing import Any
+
+        resultados: list[dict[str, Any]] = []
 
         raw_items: list[Any] = items  # pyright: ignore[reportUnknownVariableType]
         for index, raw_item in enumerate(raw_items):
@@ -325,7 +325,9 @@ class JsonApiScraper(ScraperPort):
                     "url_detalle": _coerce_text(get_by_path(raw_item, mapping.link_detalle))
                     if mapping.link_detalle
                     else None,
-                    "estado": normalize_estado(_coerce_text(get_by_path(raw_item, mapping.estado))) if mapping.estado else "DESCONOCIDO",
+                    "estado": normalize_estado(_coerce_text(get_by_path(raw_item, mapping.estado)))
+                    if mapping.estado
+                    else "DESCONOCIDO",
                     # fecha_apertura: campo opcional — presente en SERCOTEC (fechaInicio) y FIA (date)
                     "fecha_apertura": _coerce_text(get_by_path(raw_item, mapping.fecha_apertura))
                     if mapping.fecha_apertura
@@ -334,7 +336,9 @@ class JsonApiScraper(ScraperPort):
                     if mapping.fecha_cierre
                     else None,
                     "monto": _coerce_text(get_by_path(raw_item, mapping.monto)) if mapping.monto else None,
-                    "region": _coerce_region(_coerce_text(get_by_path(raw_item, mapping.region))) if mapping.region else None,
+                    "region": _coerce_region(_coerce_text(get_by_path(raw_item, mapping.region)))
+                    if mapping.region
+                    else None,
                 }
 
                 # Agrupación opcional
@@ -354,20 +358,22 @@ class JsonApiScraper(ScraperPort):
                 raise ExtractionError(f"Error en estructura JSON item #{index}") from e
 
         if mapping.agrupar_por:
-            agrupados: dict[str, dict[str, str | None]] = {}
+            agrupados: dict[str, dict[str, Any]] = {}
             for item in resultados:
                 gid = item.pop("_grupo_id", None)
                 if not gid:
                     # Si no tiene grupo, lo usamos como identificador único
-                    agrupados[item["identificador"]] = item  # type: ignore
+                    agrupados[item["identificador"]] = item
                     continue
 
                 if gid in agrupados:
                     # Combinar regiones
                     existente = agrupados[gid]
-                    if item.get("region") and existente.get("region"):
-                        if item["region"] not in existente["region"]:  # type: ignore
-                            existente["region"] = f"{existente['region']}, {item['region']}"
+                    if item.get("region"):
+                        if not existente.get("region"):
+                            existente["region"] = item["region"]
+                        else:
+                            existente["region"] = list(set(existente["region"] + item["region"]))
                 else:
                     item["identificador"] = gid  # El ID agrupador se vuelve el identificador oficial
 

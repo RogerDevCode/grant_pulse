@@ -111,14 +111,17 @@ class GrantPulseLogger:
     def _write_to_errors_log(self, level: str, msg: str, context: dict[str, Any], exc: Exception | None = None) -> None:
         try:
             import os
+
             if os.path.exists("data"):
                 with open("data/errors.log", "a", encoding="utf-8") as f:
-                    from datetime import datetime, UTC
+                    from datetime import UTC, datetime
+
                     ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
                     ctx_str = " | ".join(f"{k}={v}" for k, v in context.items())
                     exc_str = ""
                     if exc:
                         import traceback
+
                         exc_str = "\n" + "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
                     f.write(f"[{ts}] {level} {self._logger.name}: {msg} | {ctx_str}{exc_str}\n")
         except Exception:

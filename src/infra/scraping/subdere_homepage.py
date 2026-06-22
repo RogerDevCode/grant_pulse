@@ -50,8 +50,7 @@ _DATE_PATTERN = re.compile(
 
 _REALISTIC_HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "es-CL,es;q=0.9",
@@ -111,9 +110,7 @@ class SubdereHomepageScraper(ScraperPort):
             estado_ejecucion="SUCCESS",
         )
 
-    async def extract(
-        self, snapshot: Snapshot, fuente: Fuente, **_kwargs: Any
-    ) -> list[dict[str, str | None]]:
+    async def extract(self, snapshot: Snapshot, fuente: Fuente, **_kwargs: Any) -> list[dict[str, str | None]]:
         logger.info("SubdereHomepageScraper: iniciando extracción", fuente=fuente.nombre)
 
         try:

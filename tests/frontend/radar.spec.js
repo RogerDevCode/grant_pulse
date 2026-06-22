@@ -29,6 +29,8 @@ async function kpiValue(page, id) {
 
 test.describe('Carga inicial del Radar', () => {
   test('renderiza el grid con tarjetas de convocatorias', async ({ page }) => {
+    page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+    page.on('pageerror', error => console.log('PAGE ERROR:', error.message));
     await page.goto('/');
     await waitForRadarReady(page);
     const cards = page.locator('.conv-card');

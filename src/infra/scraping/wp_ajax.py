@@ -15,7 +15,6 @@ from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urljoin
 
-import httpx
 from curl_cffi import requests as curl_requests
 from curl_cffi.requests.errors import RequestsError as CurlRequestsError
 from selectolax.parser import HTMLParser
@@ -80,7 +79,10 @@ class WpAjaxScraper(ScraperPort):
         """Obtiene el nonce y la URL de admin-ajax.php desde la página principal usando curl_cffi."""
         try:
             async with curl_requests.AsyncSession(
-                timeout=self._timeout, headers=_BROWSER_HEADERS, impersonate="chrome120", proxies={"http": "", "https": "", "all": ""}
+                timeout=self._timeout,
+                headers=_BROWSER_HEADERS,
+                impersonate="chrome120",
+                proxies={"http": "", "https": "", "all": ""},
             ) as client:
                 response = await client.get(page_url)
                 response.raise_for_status()
@@ -125,7 +127,10 @@ class WpAjaxScraper(ScraperPort):
         pages_fetched = 0
 
         async with curl_requests.AsyncSession(
-            timeout=self._timeout, headers=_BROWSER_HEADERS, impersonate="chrome120", proxies={"http": "", "https": "", "all": ""}
+            timeout=self._timeout,
+            headers=_BROWSER_HEADERS,
+            impersonate="chrome120",
+            proxies={"http": "", "https": "", "all": ""},
         ) as client:
             for page_num in range(1, self._max_pages + 1):
                 form_data = {
@@ -249,9 +254,7 @@ class WpAjaxScraper(ScraperPort):
                 if not item_data["titulo"]:
                     continue
 
-                if excluir_titulo and any(
-                    re.search(p, item_data["titulo"], re.IGNORECASE) for p in excluir_titulo
-                ):
+                if excluir_titulo and any(re.search(p, item_data["titulo"], re.IGNORECASE) for p in excluir_titulo):
                     logger.debug(
                         "Item AJAX excluido por patrón de título",
                         titulo=item_data["titulo"][:60],
@@ -265,7 +268,10 @@ class WpAjaxScraper(ScraperPort):
                 item_data["identificador"] = identificador_raw
 
                 if not item_data["identificador"]:
-                    logger.warning(f"Item AJAX #{index} no tiene identificador ni título para fallback. Saltando.", fuente=fuente.nombre)
+                    logger.warning(
+                        f"Item AJAX #{index} no tiene identificador ni título para fallback. Saltando.",
+                        fuente=fuente.nombre,
+                    )
                     continue
 
                 if selectores.descripcion:
@@ -282,9 +288,7 @@ class WpAjaxScraper(ScraperPort):
                 href_val = link_nodo.attributes.get("href") if link_nodo else None
                 if isinstance(href_val, str) and href_val.strip():
                     full_url = urljoin(str(fuente.url_base), href_val.strip())
-                    if excluir_url and any(
-                        re.search(p, full_url, re.IGNORECASE) for p in excluir_url
-                    ):
+                    if excluir_url and any(re.search(p, full_url, re.IGNORECASE) for p in excluir_url):
                         logger.debug(
                             "Item AJAX excluido por patrón de URL",
                             url=full_url[:80],

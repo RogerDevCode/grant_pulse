@@ -82,17 +82,21 @@ _RE_REGION_DE = re.compile(
 )
 
 
-def _coerce_region(text: str | None) -> str | None:
-    if not text or not isinstance(text, str):
-        return None
-    value = text.strip()
+def _coerce_region(text: Any) -> list[str]:
+    if not text:
+        return []
+
+    if isinstance(text, list):
+        results = set()
+        for item in text:
+            results.update(_coerce_region(item))
+        return list(results)
+
+    value = str(text).strip()
     if not value:
-        return None
+        return []
+
     lowered = value.lower()
-    # 1) Coincidencia exacta con una región conocida
-    for r in REGIONES_CHILE:
-        if lowered == r.lower():
-            return r
     normalized = (
         lowered.replace("-", " ")
         .replace("á", "a")
@@ -102,24 +106,42 @@ def _coerce_region(text: str | None) -> str | None:
         .replace("ú", "u")
     )
     normalized = " ".join(normalized.split())
-    # 2) Alias conocidos
-    for alias, canonical in _REGION_ALIASES.items():
-        alias_norm = alias.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
-        if alias_norm == normalized or alias_norm in normalized:
-            return canonical
-    # 3) Subcadena de región en el texto normalizado
+
+    found = set()
+    # 1) Exact match or substring of canonical names
     for r in REGIONES_CHILE:
         r_norm = r.lower().replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
-        if r_norm == normalized or r_norm in normalized:
-            return r
-    # 4) Extracción desde patrón 'Región de X' en textos largos
-    m = _RE_REGION_DE.search(value)
-    if m:
-        candidate = m.group(1).strip()
-        found = _coerce_region(candidate)
-        if found:
-            return found
-    return None
+        if r_norm in normalized:
+            found.add(r)
+
+    # 2) Aliases
+    for alias, canonical in _REGION_ALIASES.items():
+        alias_norm = alias.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+        if alias_norm in normalized and canonical not in found:
+            found.add(canonical)
+
+    # 3) 'Región de X' pattern if no region found yet
+    if not found:
+        m = _RE_REGION_DE.search(value)
+        if m:
+            candidate = m.group(1).strip()
+            # Avoid recursion loop, just check if candidate matches any known
+            c_lowered = candidate.lower()
+            c_norm = c_lowered.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+            for r in REGIONES_CHILE:
+                r_norm = (
+                    r.lower().replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+                )
+                if r_norm in c_norm:
+                    found.add(r)
+            for alias, canonical in _REGION_ALIASES.items():
+                alias_norm = (
+                    alias.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+                )
+                if alias_norm in c_norm and canonical not in found:
+                    found.add(canonical)
+
+    return list(found)
 
 
 def _run_async_in_thread(coro: Coroutine[Any, Any, Any]) -> Any:
@@ -154,7 +176,7 @@ def _run_async_in_thread(coro: Coroutine[Any, Any, Any]) -> Any:
     return result
 
 
-def _extract_region_from_response(response_text: str) -> str | None:
+def _extract_region_from_response(response_text: str) -> list[str]:
     """Extrae una región desde una respuesta LLM robusta a ruido en JSON."""
 
     cleaned = response_text.strip()
@@ -174,24 +196,26 @@ def _extract_region_from_response(response_text: str) -> str | None:
     if match:
         return _coerce_region(match.group(1).strip())
 
-    return None
+    return []
 
 
-def _infer_region_with_llm(titulo: str | None, descripcion: str | None, url_detalle: str | None, fuente: Fuente) -> str | None:
+def _infer_region_with_llm(
+    titulo: str | None, descripcion: str | None, url_detalle: str | None, fuente: Fuente
+) -> list[str]:
     """Intenta inferir la región de una convocatoria usando LLM si no viene explícita en los datos crudos."""
 
     if not titulo and not descripcion and not url_detalle:
-        return None
+        return []
 
     if not (settings.OPENROUTER_API_KEY or settings.LLM_API_KEY or settings.GROQ_API_KEY or settings.NVIDIA_API_KEY):
         logger.info("No hay API key LLM configurada; se omite inferencia de región", fuente=fuente.nombre)
-        return None
+        return []
 
     opciones = ", ".join(REGIONES_CHILE)
     prompt = (
         "Eres un clasificador geográfico para convocatorias chilenas. "
         "Responde SOLO con JSON válido con la clave 'region'. "
-        "Elige UNA región desde esta lista exacta: "
+        "Elige UNA o MÁS regiones desde esta lista exacta: "
         f"{opciones}.\n\n"
         f"Fuente: {fuente.nombre}\n"
         f"Título: {titulo or 'Sin título'}\n"
@@ -203,7 +227,9 @@ def _infer_region_with_llm(titulo: str | None, descripcion: str | None, url_deta
         client = build_llm_client()
 
         async def _ask() -> str:
-            return await client.chat_completion(prompt, system_prompt="Eres un asistente experto en geografía chilena.", timeout=45)
+            return await client.chat_completion(
+                prompt, system_prompt="Eres un asistente experto en geografía chilena.", timeout=45
+            )
 
         response_text = _run_async_in_thread(_ask())
         inferred = _extract_region_from_response(response_text)
@@ -213,7 +239,7 @@ def _infer_region_with_llm(titulo: str | None, descripcion: str | None, url_deta
     except Exception as exc:  # noqa: BLE001
         logger.warning("Fallo al inferir región con LLM", fuente=fuente.nombre, exc=exc)
 
-    return None
+    return []
 
 
 def _apply_regex(text: str, regex_pattern: str, field_name: str) -> str:
@@ -422,10 +448,19 @@ class DataNormalizer:
                 logger.warning("Campo monto omitido por error de normalización", item_id=identificador, exc=e)
 
             # Extraer nuevos campos hacia metadatos
-            for extra_field in ["cupo", "porcentaje_cofinanciamiento", "plazo_ejecucion_meses", "tipo_beneficiario", "instrumento", "area_financiamiento"]:
+            for extra_field in [
+                "cupo",
+                "porcentaje_cofinanciamiento",
+                "plazo_ejecucion_meses",
+                "tipo_beneficiario",
+                "instrumento",
+                "area_financiamiento",
+            ]:
                 try:
                     conf = getattr(norm_config, extra_field, None)
-                    raw_val = item.get(extra_field) or item.get("descripcion") or item.get("titulo") # Fallback to raw text
+                    raw_val = (
+                        item.get(extra_field) or item.get("descripcion") or item.get("titulo")
+                    )  # Fallback to raw text
                     if conf and conf.regex_extraction and raw_val:
                         if conf.tipo_dato == "int":
                             extracted = _apply_regex(raw_val, conf.regex_extraction, extra_field)
@@ -434,11 +469,15 @@ class DataNormalizer:
                             extracted = _apply_regex(raw_val, conf.regex_extraction, extra_field)
                             metadatos[extra_field] = _parse_float(extracted, extra_field)
                         elif conf.tipo_dato == "mapeo_canonico" and conf.mapeo_canonico:
-                            metadatos[extra_field] = _extract_canonico(raw_val, conf.regex_extraction, conf.mapeo_canonico, extra_field)
+                            metadatos[extra_field] = _extract_canonico(
+                                raw_val, conf.regex_extraction, conf.mapeo_canonico, extra_field
+                            )
                         else:
                             metadatos[extra_field] = _apply_regex(raw_val, conf.regex_extraction, extra_field)
                 except NormalizationError as e:
-                    logger.debug(f"Campo {extra_field} omitido por error de normalización", item_id=identificador, exc=e)
+                    logger.debug(
+                        f"Campo {extra_field} omitido por error de normalización", item_id=identificador, exc=e
+                    )
 
             # Plazo de postulación automático
             if fecha_apertura_val and fecha_cierre_val and fecha_cierre_val > fecha_apertura_val:
@@ -453,30 +492,30 @@ class DataNormalizer:
 
             # Intentar extraer región desde el campo crudo (puede ser texto largo como el título)
             region_raw = item.get("region")
-            region = _coerce_region(region_raw) if region_raw else None
+            regiones = _coerce_region(region_raw) if region_raw else []
 
             # Si el campo region vino vacío o no reconocido, intentar extraer desde el título
-            if not region and titulo:
-                region = _coerce_region(titulo)
+            if not regiones and titulo:
+                regiones = _coerce_region(titulo)
 
             # Fallback: region_defecto del YAML
-            if not region and fuente.configuracion_reglas.region_defecto:
-                region = fuente.configuracion_reglas.region_defecto
+            if not regiones and fuente.configuracion_reglas.regiones_defecto:
+                regiones = fuente.configuracion_reglas.regiones_defecto
 
             # Último recurso: inferencia LLM (solo si no hay defecto configurado)
-            if not region:
-                region = _infer_region_with_llm(titulo, descripcion, url_final, fuente)
+            if not regiones:
+                regiones = _infer_region_with_llm(titulo, descripcion, url_final, fuente)
 
             convocatoria = Convocatoria(
-                fuente_id=fuente.id, # type: ignore
+                fuente_id=fuente.id,  # type: ignore
                 identificador_externo=identificador,
                 titulo=titulo,
                 descripcion=descripcion,
-                url_detalle=url_final, # type: ignore
+                url_detalle=url_final,  # type: ignore
                 fecha_apertura=fecha_apertura_val,
                 fecha_cierre=fecha_cierre_val,
                 monto=monto_val,
-                region=region,
+                regiones=regiones,
                 estado=estado,
                 metadatos=metadatos,
             )

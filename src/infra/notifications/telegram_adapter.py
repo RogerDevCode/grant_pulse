@@ -22,9 +22,17 @@ class TelegramNotificationAdapter(NotificationPort):
     def __init__(self, bot_token: str | None = None, chat_id: str | None = None) -> None:
         self.bot_token = bot_token or settings.TELEGRAM_BOT_TOKEN
         self.chat_id = chat_id or settings.TELEGRAM_CHAT_ID
-        self.api_url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage" if self.bot_token else "" if self.bot_token else ""
+        self.api_url = (
+            f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+            if self.bot_token
+            else ""
+            if self.bot_token
+            else ""
+        )
 
-    async def notify_event(self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente) -> NotificacionResult:
+    async def notify_event(
+        self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente
+    ) -> NotificacionResult:
         if not self.bot_token or not self.chat_id:
             logger.warning("Telegram no configurado. Saltando notificación.", fuente=fuente.nombre)
             return NotificacionResult(

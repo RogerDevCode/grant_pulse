@@ -34,19 +34,24 @@ class JsonMappingConfig(BaseModel):
     fecha_cierre: str | None = Field(default=None, description="Path a la fecha de cierre")
     monto: str | None = Field(default=None, description="Path al monto")
     region: str | None = Field(default=None, description="Path a la región")
-    agrupar_por: str | None = Field(default=None, description="Path para agrupar items duplicados (ej: 'idInstrumento')")
-    paginacion: "PaginationConfig" = Field(default_factory=lambda: PaginationConfig(), description="Configuración de paginación")
+    agrupar_por: str | None = Field(
+        default=None, description="Path para agrupar items duplicados (ej: 'idInstrumento')"
+    )
+    paginacion: "PaginationConfig" = Field(
+        default_factory=lambda: PaginationConfig(), description="Configuración de paginación"
+    )
 
 
 class PaginationConfig(BaseModel):
     """Configuración de paginación para APIs JSON tipo WordPress."""
 
-    total_pages_header: str | None = Field(default=None, description="Header con el total de páginas (ej: 'X-WP-TotalPages')")
+    total_pages_header: str | None = Field(
+        default=None, description="Header con el total de páginas (ej: 'X-WP-TotalPages')"
+    )
     total_items_header: str | None = Field(default=None, description="Header con el total de items (ej: 'X-WP-Total')")
     page_param: str = Field(default="page", description="Nombre del query param para la página")
     per_page_param: str = Field(default="per_page", description="Nombre del query param para items por página")
     max_pages: int = Field(default=50, description="Límite de seguridad para evitar loops infinitos")
-
 
 
 class NormalizerItem(BaseModel):
@@ -55,8 +60,12 @@ class NormalizerItem(BaseModel):
     regex_extraction: str | None = Field(default=None, description="Regex para extraer el subtexto de interés")
     formato_salida: str | None = Field(default=None, description="Formato esperado si es fecha u otro tipo")
     idioma: str | None = Field(default="es", description="Idioma para el formateador de fechas")
-    tipo_dato: Literal["str", "int", "float", "mapeo_canonico"] | None = Field(default=None, description="Tipo de dato al que se debe castear o mapear")
-    mapeo_canonico: dict[str, str] | None = Field(default=None, description="Diccionario para mapear valores extraídos a categorías canónicas")
+    tipo_dato: Literal["str", "int", "float", "mapeo_canonico"] | None = Field(
+        default=None, description="Tipo de dato al que se debe castear o mapear"
+    )
+    mapeo_canonico: dict[str, str] | None = Field(
+        default=None, description="Diccionario para mapear valores extraídos a categorías canónicas"
+    )
 
 
 class NormalizerConfig(BaseModel):
@@ -92,7 +101,9 @@ class RulesConfig(BaseModel):
     json_mapping: JsonMappingConfig | None = Field(default=None)
     normalizadores: NormalizerConfig = Field(default_factory=NormalizerConfig)
     alertas: AlertsConfig = Field(default_factory=AlertsConfig)
-    region_defecto: str | None = Field(default=None, description="Región por defecto para todas las convocatorias de esta fuente")
+    regiones_defecto: list[str] = Field(
+        default_factory=list, description="Regiones por defecto para todas las convocatorias de esta fuente"
+    )
     excluir_patrones_url: list[str] = Field(
         default_factory=list,
         description="Patrones de substring en la URL del item para excluirlo (ej: '.pdf', 'cdn.com')",
@@ -165,7 +176,7 @@ class Convocatoria(BaseModel):
     fecha_apertura: datetime | None = None
     fecha_cierre: datetime | None = None
     monto: float | None = None
-    region: str | None = None
+    regiones: list[str] = Field(default_factory=list)
     estado: str
     metadatos: dict[str, Any] = Field(default_factory=dict)
     creado_en: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -225,10 +236,12 @@ class Snapshot(BaseModel):
     """Representa la captura del contenido físico crudo de un portal."""
 
     id: int | str | UUID | None = None
-    fuente_id: int | str | UUID
+    fuente_id: int | str | UUID | None
     fecha_captura: datetime = Field(default_factory=lambda: datetime.now(UTC))
     contenido_crudo: str
-    screenshot_b64: str | None = Field(default=None, description="Captura de pantalla en Base64 para extracción multimodal")
+    screenshot_b64: str | None = Field(
+        default=None, description="Captura de pantalla en Base64 para extracción multimodal"
+    )
     hash_contenido: str
     estado_ejecucion: str
 
@@ -248,7 +261,7 @@ class EventoCambio(BaseModel):
 class NotificacionResult(BaseModel):
     """Resultado del intento de envío de una notificación por un canal específico."""
 
-    evento_id: int
+    evento_id: int | str | UUID | None
     canal: str
     destinatario: str
     estado: str  # "ENVIADO", "FALLIDO", "SKIPPED"

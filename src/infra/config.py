@@ -4,7 +4,6 @@ Maneja la carga y validación estricta de variables de entorno mediante Pydantic
 """
 
 from typing import Any
-from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,16 +21,19 @@ class Settings(BaseSettings):
 
     # Base de Datos
     DATABASE_URL: str = Field(
-        default="sqlite+aiosqlite:///data/grantpulse.db",
-        description="URL de conexión asíncrona a la base de datos (SQLite o PostgreSQL asyncpg)",
+        default="postgresql+asyncpg://grantpulse:grantpulse@localhost:5432/grantpulse",
+        description="URL de conexión asíncrona a la base de datos (PostgreSQL asyncpg)",
     )
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
-    def force_sqlite_url(cls, v: Any) -> Any:
-        # El usuario pidió forzar SQLite, pero Railway inyecta Postgres en DATABASE_URL por defecto.
-        # Sobreescribimos cualquier DATABASE_URL inyectado con SQLite para asegurar persistencia local.
-        return "sqlite+aiosqlite:///data/grantpulse.db"
+    def ensure_asyncpg(cls, v: Any) -> Any:  # noqa: ARG003
+        if isinstance(v, str):
+            if v.startswith("postgresql://"):
+                v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+            if "sslmode=" in v:
+                v = v.replace("sslmode=", "ssl=")
+        return v
 
     # Alertas Telegram (Opcional en desarrollo)
     TELEGRAM_BOT_TOKEN: str | None = Field(default=None, description="Token de la API del bot de Telegram")
@@ -64,7 +66,10 @@ class Settings(BaseSettings):
     # Soporte LLM — NVIDIA
     NVIDIA_API_KEY: str | None = Field(default=None, description="API Key para NVIDIA integrate")
     NVIDIA_MODEL: str = Field(default="z-ai/glm-5.1", description="Modelo a usar en NVIDIA")
-    NVIDIA_BASE_URL: str = Field(default="https://integrate.api.nvidia.com/v1/chat/completions", description="URL completa del endpoint de chat de NVIDIA")
+    NVIDIA_BASE_URL: str = Field(
+        default="https://integrate.api.nvidia.com/v1/chat/completions",
+        description="URL completa del endpoint de chat de NVIDIA",
+    )
 
     # Máximo de caracteres de contenido a enviar al LLM (protección de contexto)
     LLM_MAX_CONTENT_CHARS: int = Field(

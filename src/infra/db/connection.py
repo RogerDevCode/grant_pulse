@@ -20,10 +20,13 @@ logger = get_logger(__name__)
 
 try:
     is_sqlite = settings.DATABASE_URL.startswith("sqlite")
-    kwargs = {"echo": False, "future": True}
+    from typing import Any
+
+    kwargs: dict[str, Any] = {"echo": False, "future": True}
     if is_sqlite:
         kwargs["connect_args"] = {"check_same_thread": False, "timeout": 30.0}
     else:
+        kwargs["connect_args"] = {"server_settings": {"jit": "off"}, "statement_cache_size": 0}
         kwargs.update(pool_pre_ping=True, pool_recycle=180, pool_size=5, max_overflow=10, pool_timeout=30)
 
     engine = create_async_engine(settings.DATABASE_URL, **kwargs)

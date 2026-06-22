@@ -57,8 +57,8 @@ class CompositeFundingScraper(ScraperPort):
         profile: SourceProfile,
         html_static: ScraperPort | None = None,
         json_api: ScraperPort | None = None,
-        browser: ScraperPort | None = None,
-        llm: ScraperPort | None = None,
+        browser: ScraperPort | None = None,  # noqa: ARG002
+        llm: ScraperPort | None = None,  # noqa: ARG002
         wp_ajax: ScraperPort | None = None,
         rss_feed: ScraperPort | None = None,
         curl_cffi: ScraperPort | None = None,
@@ -70,7 +70,7 @@ class CompositeFundingScraper(ScraperPort):
         self._html_static = html_static or HtmlStaticScraper()
         self._json_api = json_api or JsonApiScraper()
         self._browser: ScraperPort | None = None  # lazy — solo si se usa estrategia browser
-        self._llm: ScraperPort | None = None      # lazy — solo si se usa estrategia llm
+        self._llm: ScraperPort | None = None  # lazy — solo si se usa estrategia llm
         self._wp_ajax = wp_ajax or WpAjaxScraper()
         self._rss_feed = rss_feed or RssFeedScraper()
         self._curl_cffi = curl_cffi or CurlCffiScraper()
@@ -82,6 +82,7 @@ class CompositeFundingScraper(ScraperPort):
 
     def _clone_fuente(self, fuente: Fuente, url: str) -> Fuente:
         from pydantic import HttpUrl, TypeAdapter
+
         url_obj = TypeAdapter(HttpUrl).validate_python(url)
         nueva_config = fuente.configuracion_reglas.model_copy(update={"url_busqueda": url_obj})
         return fuente.model_copy(update={"configuracion_reglas": nueva_config})
@@ -94,11 +95,13 @@ class CompositeFundingScraper(ScraperPort):
         if kind == "browser":
             if self._browser is None:
                 from src.infra.scraping.browser import PlaywrightScraper
+
                 self._browser = PlaywrightScraper()
             return await self._browser.fetch(fuente)
         if kind == "llm":
             if self._llm is None:
                 from src.infra.scraping.llm_scraper import LlmScraper
+
                 self._llm = LlmScraper()
             return await self._llm.fetch(fuente)
         if kind == "curl_cffi":
@@ -127,6 +130,7 @@ class CompositeFundingScraper(ScraperPort):
         if kind == "llm":
             if self._llm is None:
                 from src.infra.scraping.llm_scraper import LlmScraper
+
                 self._llm = LlmScraper()
             budget = kwargs.get("max_content_chars") or self._profile.max_llm_context_chars
             return await self._llm.extract(snapshot, fuente, max_content_chars=budget)
@@ -273,7 +277,12 @@ class CompositeFundingScraper(ScraperPort):
                     if healed:
                         logger.info("Selectores sanados, reintentando extracción", fuente=fuente.nombre)
                         # Creamos una fuente temporal con los nuevos selectores
-                        healed_selectors = fuente.configuracion_reglas.selectores.model_copy(update=healed)
+                        if fuente.configuracion_reglas.selectores:
+                            healed_selectors = fuente.configuracion_reglas.selectores.model_copy(update=healed)
+                        else:
+                            from src.core.domain.entities import SelectorConfig
+
+                            healed_selectors = SelectorConfig(**healed)
                         healed_rules = fuente.configuracion_reglas.model_copy(update={"selectores": healed_selectors})
                         healed_fuente = fuente.model_copy(update={"configuracion_reglas": healed_rules})
 
@@ -338,9 +347,11 @@ def build_scraper_for_source(fuente: Fuente, fallback_strategy: str | None = Non
         return JsonApiScraper()
     if estrategia == "browser":
         from src.infra.scraping.browser import PlaywrightScraper
+
         return PlaywrightScraper()
     if estrategia == "llm":
         from src.infra.scraping.llm_scraper import LlmScraper
+
         return LlmScraper()
     if estrategia == "wp_ajax":
         return WpAjaxScraper()

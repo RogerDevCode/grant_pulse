@@ -5,6 +5,7 @@ Permite desacoplar las reglas de negocio de los detalles de base de datos.
 
 from abc import ABC, abstractmethod
 from typing import Any
+from uuid import UUID
 
 from src.core.domain.entities import Convocatoria, EventoCambio, Fuente, NotificacionResult, Snapshot
 
@@ -42,7 +43,7 @@ class SnapshotRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_latest_by_fuente(self, fuente_id: int) -> Snapshot | None:
+    async def get_latest_by_fuente(self, fuente_id: int | str | UUID) -> Snapshot | None:
         """Obtiene el último snapshot guardado de una fuente en particular."""
         pass
 
@@ -51,12 +52,14 @@ class ConvocatoriaRepository(ABC):
     """Interfaz contractual para interactuar con la persistencia de Convocatorias."""
 
     @abstractmethod
-    async def get_by_fuente_and_externo(self, fuente_id: int, identificador_externo: str) -> Convocatoria | None:
+    async def get_by_fuente_and_externo(
+        self, fuente_id: int | str | UUID, identificador_externo: str
+    ) -> Convocatoria | None:
         """Obtiene una convocatoria específica usando el ID de la fuente y el ID externo del portal."""
         pass
 
     @abstractmethod
-    async def get_all_by_fuente(self, fuente_id: int) -> list[Convocatoria]:
+    async def get_all_by_fuente(self, fuente_id: int | str | UUID) -> list[Convocatoria]:
         """Obtiene todas las convocatorias guardadas para una fuente específica."""
         pass
 
@@ -66,7 +69,7 @@ class ConvocatoriaRepository(ABC):
         pass
 
     @abstractmethod
-    async def save_evento_cambio(self, evento: EventoCambio, snapshot_id: int) -> EventoCambio:
+    async def save_evento_cambio(self, evento: EventoCambio, snapshot_id: int | str | UUID) -> EventoCambio:
         """Registra un evento de cambio asociado a una convocatoria y snapshot específicos."""
         pass
 
@@ -111,7 +114,9 @@ class NotificationPort(ABC):
     """Interfaz contractual para el envío de alertas y notificaciones."""
 
     @abstractmethod
-    async def notify_event(self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente) -> NotificacionResult:
+    async def notify_event(
+        self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente
+    ) -> NotificacionResult:
         """
         Envía una notificación sobre un evento de cambio en una convocatoria.
         Retorna un NotificacionResult con el estado del envío.

@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import and_, delete, func, select
 
 from src.infra.db.models import (
     AuditLogORM,
@@ -44,7 +44,9 @@ router = APIRouter(prefix="/api/v1", tags=["GrantPulse"])
 @router.get("/dashboard", response_model=DashboardStats)
 async def get_dashboard_stats(session: DbSession) -> DashboardStats:
     total_fuentes = (await session.execute(select(func.count(FuenteORM.id)))).scalar() or 0
-    fuentes_activas = (await session.execute(select(func.count(FuenteORM.id)).where(FuenteORM.activa.is_(True)))).scalar() or 0
+    fuentes_activas = (
+        await session.execute(select(func.count(FuenteORM.id)).where(FuenteORM.activa.is_(True)))
+    ).scalar() or 0
     total_convocatorias = (await session.execute(select(func.count(ConvocatoriaORM.id)))).scalar() or 0
     convocatorias_abiertas = (
         await session.execute(select(func.count(ConvocatoriaORM.id)).where(ConvocatoriaORM.estado == "ABIERTO"))
@@ -54,7 +56,9 @@ async def get_dashboard_stats(session: DbSession) -> DashboardStats:
     ).scalar() or 0
     total_eventos = (await session.execute(select(func.count(HistorialCambiosORM.id)))).scalar() or 0
     eventos_relevantes = (
-        await session.execute(select(func.count(HistorialCambiosORM.id)).where(HistorialCambiosORM.es_relevante.is_(True)))
+        await session.execute(
+            select(func.count(HistorialCambiosORM.id)).where(HistorialCambiosORM.es_relevante.is_(True))
+        )
     ).scalar() or 0
     return DashboardStats(
         total_fuentes=total_fuentes,
@@ -68,13 +72,14 @@ async def get_dashboard_stats(session: DbSession) -> DashboardStats:
 
 
 @router.get("/debug/report")
-async def get_latest_report():
+async def get_logs_report() -> dict[str, str]:
     import glob
+
     reports = glob.glob("reports/quality_report_*.md")
     if not reports:
         return {"error": "No reports found"}
     latest = max(reports)
-    with open(latest, "r") as f:
+    with open(latest) as f:
         return {"content": f.read()}
 
 
@@ -102,7 +107,7 @@ async def clear_errors_log() -> None:
             logger.info("Archivo errors.log limpiado por el usuario")
         except Exception as e:
             logger.error("Error al limpiar errors.log", exc=e)
-            raise HTTPException(status_code=500, detail="No se pudo limpiar el log")
+            raise HTTPException(status_code=500, detail="No se pudo limpiar el log") from e
 
 
 @router.get("/fuentes", response_model=list[FuenteResponse])
@@ -172,7 +177,7 @@ async def toggle_fuente(fuente_id: int, session: DbSession) -> FuenteToggleRespo
 async def list_convocatorias(
     session: DbSession,
     estado: str | None = Query(None, description="Filtrar por estado"),
-    fuente_id: int | None = Query(None, description="Filtrar por ID de fuente"), # noqa: B008
+    fuente_id: int | None = Query(None, description="Filtrar por ID de fuente"),  # noqa: B008
     fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
     search: str | None = Query(None, description="Buscar en título"),
     orden: str | None = Query("actualizacion", description="Orden"),
@@ -182,9 +187,11 @@ async def list_convocatorias(
 ) -> list[ConvocatoriaResponse]:
     fuente_ids_por_nombre: dict[str, int] = {}
     if fuente_nombre:
-        fuente_rows = (await session.execute(
-            select(FuenteORM.id, FuenteORM.nombre).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%"))
-        )).all()
+        fuente_rows = (
+            await session.execute(
+                select(FuenteORM.id, FuenteORM.nombre).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%"))
+            )
+        ).all()
         if not fuente_rows:
             return []
         fuente_ids_por_nombre = {str(r.id): r.id for r in fuente_rows}
@@ -193,7 +200,10 @@ async def list_convocatorias(
     if estado:
         query = query.where(ConvocatoriaORM.estado == estado)
     if region:
-        query = query.where(ConvocatoriaORM.region == region)
+        from sqlalchemy import String
+        region_search = region.replace("á", "%").replace("é", "%").replace("í", "%").replace("ó", "%").replace("ú", "%")
+        region_search = region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        query = query.where(ConvocatoriaORM.regiones.cast(String).ilike(f"%{region_search}%"))
     if fuente_id:
         query = query.where(ConvocatoriaORM.fuente_id == fuente_id)
     elif fuente_ids_por_nombre:
@@ -226,7 +236,7 @@ async def list_convocatorias(
             fecha_apertura=orm.fecha_apertura,
             fecha_cierre=orm.fecha_cierre,
             monto=float(orm.monto) if orm.monto is not None else None,
-            region=orm.region,
+            regiones=orm.regiones,
             estado=orm.estado,
             actualizado_en=orm.actualizado_en,
         )
@@ -238,16 +248,16 @@ async def list_convocatorias(
 async def count_convocatorias(
     session: DbSession,
     estado: str | None = Query(None),
-    fuente_id: int | None = Query(None), # noqa: B008
+    fuente_id: int | None = Query(None),  # noqa: B008
     fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
     region: str | None = Query(None),
     search: str | None = Query(None, description="Buscar por término en título"),
 ) -> dict[str, int]:
     fuente_ids_por_nombre: list[int] = []
     if fuente_nombre:
-        fuente_rows = (await session.execute(
-            select(FuenteORM.id).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%"))
-        )).all()
+        fuente_rows = (
+            await session.execute(select(FuenteORM.id).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%")))
+        ).all()
         if not fuente_rows:
             return {"total": 0}
         fuente_ids_por_nombre = [r.id for r in fuente_rows]
@@ -260,7 +270,10 @@ async def count_convocatorias(
     elif fuente_ids_por_nombre:
         query = query.where(ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre))
     if region:
-        query = query.where(ConvocatoriaORM.region == region)
+        from sqlalchemy import String
+        region_search = region.replace("á", "%").replace("é", "%").replace("í", "%").replace("ó", "%").replace("ú", "%")
+        region_search = region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        query = query.where(ConvocatoriaORM.regiones.cast(String).ilike(f"%{region_search}%"))
     if search:
         query = query.where(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
     total = (await session.execute(query)).scalar() or 0
@@ -271,36 +284,39 @@ async def count_convocatorias(
 async def get_convocatorias_kpi(
     session: DbSession,
     estado: str | None = Query(None),
-    fuente_id: int | None = Query(None), # noqa: B008
+    fuente_id: int | None = Query(None),  # noqa: B008
     fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
     region: str | None = Query(None),
     search: str | None = Query(None, description="Buscar por término en título"),
 ) -> dict[str, int]:
     fuente_ids_por_nombre: list[int] = []
     if fuente_nombre:
-        fuente_rows = (await session.execute(
-            select(FuenteORM.id).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%"))
-        )).all()
+        fuente_rows = (
+            await session.execute(select(FuenteORM.id).where(FuenteORM.nombre.ilike(f"%{fuente_nombre}%")))
+        ).all()
         if not fuente_rows:
             return {"abiertas": 0, "vencen_30": 0, "instituciones": 0, "sin_fecha": 0}
         fuente_ids_por_nombre = [r.id for r in fuente_rows]
 
     now = datetime.now(UTC)
-    base_filter = True
+    filters = []
     if estado:
-        base_filter = ConvocatoriaORM.estado == estado
+        filters.append(ConvocatoriaORM.estado == estado)
     if fuente_id:
-        base_filter = base_filter & (ConvocatoriaORM.fuente_id == fuente_id) if base_filter is not True else ConvocatoriaORM.fuente_id == fuente_id
+        filters.append(ConvocatoriaORM.fuente_id == fuente_id)
     elif fuente_ids_por_nombre:
-        base_filter = base_filter & (ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre)) if base_filter is not True else ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre)
+        filters.append(ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre))
     if region:
-        base_filter = base_filter & (ConvocatoriaORM.region == region) if base_filter is not True else ConvocatoriaORM.region == region
+        from sqlalchemy import String
+        region_search = region.replace("á", "%").replace("é", "%").replace("í", "%").replace("ó", "%").replace("ú", "%")
+        region_search = region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        filters.append(ConvocatoriaORM.regiones.cast(String).ilike(f"%{region_search}%"))
     if search:
-        base_filter = base_filter & (ConvocatoriaORM.titulo.ilike(f"%{search}%")) if base_filter is not True else ConvocatoriaORM.titulo.ilike(f"%{search}%")
+        filters.append(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
 
     abiertas_q = select(func.count(ConvocatoriaORM.id)).where(ConvocatoriaORM.estado == "ABIERTO")
-    if base_filter is not True:
-        abiertas_q = abiertas_q.where(base_filter)
+    if filters:
+        abiertas_q = abiertas_q.where(and_(*filters))
     abiertas = (await session.execute(abiertas_q)).scalar() or 0
 
     vencen_30_q = select(func.count(ConvocatoriaORM.id)).where(
@@ -312,16 +328,16 @@ async def get_convocatorias_kpi(
     vencen_30_count = (await session.execute(vencen_30_q)).scalar() or 0
 
     inst_q = select(func.count(func.distinct(ConvocatoriaORM.fuente_id))).where(ConvocatoriaORM.estado == "ABIERTO")
-    if base_filter is not True:
-        inst_q = inst_q.where(base_filter)
+    if filters:
+        inst_q = inst_q.where(and_(*filters))
     instituciones = (await session.execute(inst_q)).scalar() or 0
 
     sin_fecha_q = select(func.count(ConvocatoriaORM.id)).where(
         ConvocatoriaORM.estado == "ABIERTO",
         ConvocatoriaORM.fecha_cierre.is_(None),
     )
-    if base_filter is not True:
-        sin_fecha_q = sin_fecha_q.where(base_filter)
+    if filters:
+        sin_fecha_q = sin_fecha_q.where(and_(*filters))
     sin_fecha = (await session.execute(sin_fecha_q)).scalar() or 0
 
     return {
@@ -341,13 +357,17 @@ async def get_convocatoria_detail(convocatoria_id: int, session: DbSession) -> C
     fuente_result = await session.execute(select(FuenteORM.nombre).where(FuenteORM.id == orm.fuente_id))
     fuente_nombre = fuente_result.scalar_one_or_none() or "Desconocido"
     historial_result = await session.execute(
-        select(HistorialCambiosORM).where(HistorialCambiosORM.convocatoria_id == convocatoria_id).order_by(HistorialCambiosORM.fecha_deteccion.desc())
+        select(HistorialCambiosORM)
+        .where(HistorialCambiosORM.convocatoria_id == convocatoria_id)
+        .order_by(HistorialCambiosORM.fecha_deteccion.desc())
     )
     historial_orms = historial_result.scalars().all()
     eventos: list[EventoCambioResponse] = []
     for h in historial_orms:
         deltas = [
-            DeltaResponse(campo=str(d.get("campo", "")), valor_anterior=d.get("valor_anterior"), valor_nuevo=d.get("valor_nuevo"))
+            DeltaResponse(
+                campo=str(d.get("campo", "")), valor_anterior=d.get("valor_anterior"), valor_nuevo=d.get("valor_nuevo")
+            )
             for d in h.delta
         ]
         eventos.append(
@@ -366,11 +386,11 @@ async def get_convocatoria_detail(convocatoria_id: int, session: DbSession) -> C
         identificador_externo=orm.identificador_externo,
         titulo=orm.titulo,
         descripcion=orm.descripcion,
-        url_detalle=orm.url_detail,
+        url_detalle=orm.url_detail,  # type: ignore[arg-type]
         fecha_apertura=orm.fecha_apertura,
         fecha_cierre=orm.fecha_cierre,
         monto=float(orm.monto) if orm.monto is not None else None,
-        region=orm.region,
+        regiones=orm.regiones,
         estado=orm.estado,
         actualizado_en=orm.actualizado_en,
         historial_cambios=eventos,
@@ -527,6 +547,7 @@ async def delete_notification_config(config_id: int, session: DbSession) -> None
 async def list_regiones_suscripcion() -> dict[str, list[str]]:
     """Retorna la lista de regiones disponibles para suscripción."""
     from src.core.domain.entities import REGIONES_CHILE  # noqa: PLC0415
+
     return {"regiones": list(REGIONES_CHILE)}
 
 
@@ -541,9 +562,7 @@ async def crear_suscripcion(data: SuscripcionCreate, session: DbSession) -> Susc
         raise HTTPException(status_code=422, detail="chat_id es requerido")
 
     # Buscar suscripción existente por chat_id
-    result = await session.execute(
-        select(SuscripcionORM).where(SuscripcionORM.chat_id == data.chat_id.strip())
-    )
+    result = await session.execute(select(SuscripcionORM).where(SuscripcionORM.chat_id == data.chat_id.strip()))
     existente = result.scalar_one_or_none()
 
     if existente:
@@ -582,9 +601,7 @@ async def crear_suscripcion(data: SuscripcionCreate, session: DbSession) -> Susc
 
 @router.get("/suscripciones/{chat_id}", response_model=SuscripcionResponse)
 async def obtener_suscripcion(chat_id: str, session: DbSession) -> SuscripcionResponse:
-    result = await session.execute(
-        select(SuscripcionORM).where(SuscripcionORM.chat_id == chat_id)
-    )
+    result = await session.execute(select(SuscripcionORM).where(SuscripcionORM.chat_id == chat_id))
     orm = result.scalar_one_or_none()
     if not orm:
         raise HTTPException(status_code=404, detail="Suscripción no encontrada")
@@ -601,7 +618,9 @@ async def obtener_suscripcion(chat_id: str, session: DbSession) -> SuscripcionRe
 
 
 @router.patch("/suscripciones/{suscripcion_id}", response_model=SuscripcionResponse)
-async def actualizar_suscripcion(suscripcion_id: int, data: SuscripcionUpdate, session: DbSession) -> SuscripcionResponse:
+async def actualizar_suscripcion(
+    suscripcion_id: int, data: SuscripcionUpdate, session: DbSession
+) -> SuscripcionResponse:
     result = await session.execute(select(SuscripcionORM).where(SuscripcionORM.id == suscripcion_id))
     orm = result.scalar_one_or_none()
     if not orm:
@@ -647,10 +666,12 @@ async def _ejecutar_scrape() -> None:
     global _scrape_en_curso  # noqa: PLW0603
     try:
         from src.infra.cli import run_all_active_sources  # noqa: PLC0415
+
         await run_all_active_sources()
     except Exception as exc:
         logger.error("Scrape manual falló", exc=exc)
         import traceback
+
         with open("data/errors.log", "a") as f:
             f.write(f"Scrape manual falló globalmente: {exc}\n{traceback.format_exc()}\n")
     finally:
@@ -673,3 +694,21 @@ async def trigger_scrape(background_tasks: BackgroundTasks) -> dict[str, str]:
 async def get_scrape_status() -> dict[str, bool]:
     """Devuelve el estado actual del scraping manual."""
     return {"en_curso": _scrape_en_curso}
+
+
+
+
+@router.delete("/debug/wipe", status_code=204)
+async def debug_wipe_data(session: DbSession) -> None:
+    """Borra todos los proyectos y datos relacionados (solo debug)."""
+    try:
+        await session.execute(delete(HistorialCambiosORM))
+        await session.execute(delete(NotificacionORM))
+        await session.execute(delete(ConvocatoriaORM))
+        await session.execute(delete(SnapshotORM))
+        await session.commit()
+        logger.warning("Debug wipe: Se borraron todos los datos de convocatorias y snapshots")
+    except Exception as e:
+        await session.rollback()
+        logger.error("Error en debug wipe", exc=e)
+        raise HTTPException(status_code=500, detail="Error al limpiar datos") from e

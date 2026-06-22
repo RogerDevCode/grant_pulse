@@ -53,7 +53,12 @@ class MonitoreoUseCase:
 
         Returns: (eventos, nuevas_convocatorias)
         """
-        logger.info("Iniciando caso de uso de monitoreo", fuente_id=str(fuente.id), fuente_nombre=fuente.nombre, run_id=get_run_id())
+        logger.info(
+            "Iniciando caso de uso de monitoreo",
+            fuente_id=str(fuente.id),
+            fuente_nombre=fuente.nombre,
+            run_id=get_run_id(),
+        )
         start = time.monotonic()
         errores_persistencia = 0
         try:
@@ -99,6 +104,9 @@ class MonitoreoUseCase:
                     descartadas=descartadas_vigencia,
                 )
 
+            if not fuente.id:
+                raise GrantPulseError("La fuente no tiene un ID asignado")
+
             antiguas_lista = await self.convocatoria_repo.get_all_by_fuente(fuente.id)
             antiguas_dict = {c.identificador_externo: c for c in antiguas_lista}
 
@@ -120,12 +128,14 @@ class MonitoreoUseCase:
             eventos_guardados = []
             for evento in eventos:
                 if not evento.convocatoria_id and evento.identificador_externo:
-                    conv_guardada = nuevas_dict_por_ext.get(evento.identificador_externo)
-                    if conv_guardada:
-                        evento.convocatoria_id = conv_guardada.id
+                    conv_match = nuevas_dict_por_ext.get(evento.identificador_externo)
+                    if conv_match:
+                        evento.convocatoria_id = conv_match.id
+                if not snapshot.id:
+                    raise GrantPulseError("El snapshot no tiene ID asignado")
                 evento_guardado = await self.convocatoria_repo.save_evento_cambio(evento, snapshot.id)
                 eventos_guardados.append(evento_guardado)
-            
+
             eventos = eventos_guardados
 
             if self.notifier:

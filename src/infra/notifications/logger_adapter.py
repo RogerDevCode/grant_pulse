@@ -16,7 +16,9 @@ class LoggerNotificationAdapter(NotificationPort):
     exclusivamente a través del logger estructurado.
     """
 
-    async def notify_event(self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente) -> NotificacionResult:
+    async def notify_event(
+        self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente
+    ) -> NotificacionResult:
         if not evento.es_relevante:
             return NotificacionResult(
                 evento_id=evento.id,

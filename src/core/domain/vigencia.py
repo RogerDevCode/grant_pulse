@@ -112,7 +112,9 @@ def filtrar_vigentes(
 
         if c.fecha_cierre is not None and c.fecha_cierre < ahora:
             descartadas_fecha += 1
-            logger.debug("Descartada por fecha de cierre pasada", titulo=c.titulo[:60], fecha_cierre=str(c.fecha_cierre))
+            logger.debug(
+                "Descartada por fecha de cierre pasada", titulo=c.titulo[:60], fecha_cierre=str(c.fecha_cierre)
+            )
             continue
 
         vigentes.append(c)

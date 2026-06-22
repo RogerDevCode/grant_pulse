@@ -92,7 +92,9 @@ def _build_profile_from_yaml(filepath: Path) -> SourceProfile | None:
     # Pasos de fallback desde YAML (opcional)
     fallback_steps: list[dict[str, str]] = data.get("fallback_steps") or []
     for fb in fallback_steps:
-        fb_fetcher, fb_extractor = _STRATEGY_MAP.get(fb.get("estrategia", "html_static"), ("html_static", "html_static"))
+        fb_fetcher, fb_extractor = _STRATEGY_MAP.get(
+            fb.get("estrategia", "html_static"), ("html_static", "html_static")
+        )
         steps.append(
             ScrapeStep(
                 fetcher=fb_fetcher,
@@ -297,8 +299,14 @@ _PROCHILE = SourceProfile(
 _HARDCODED: dict[str, SourceProfile] = {}
 
 for profile in (
-    _CORFO, _SERCOTEC, _FIA, _ANID,
-    _INDAP, _FOSIS, _SUBDERE, _PROCHILE,
+    _CORFO,
+    _SERCOTEC,
+    _FIA,
+    _ANID,
+    _INDAP,
+    _FOSIS,
+    _SUBDERE,
+    _PROCHILE,
 ):
     _HARDCODED[_normalize_name(profile.key)] = profile
     for alias in profile.aliases:
@@ -380,7 +388,7 @@ def register_yaml_profile(filepath: str | Path) -> SourceProfile | None:
     _yaml_cache[key] = profile
     for alias in profile.aliases:
         _yaml_cache[_normalize_name(alias)] = profile
-    logger.info("Perfil registrado dinámicamente desde %s", path.name)
+    logger.info("Perfil registrado dinámicamente", path=path.name)
     return profile
 
 

@@ -37,7 +37,9 @@ class EmailNotificationAdapter(NotificationPort):
         self.target_emails = target_emails
         self.use_tls = use_tls
 
-    async def notify_event(self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente) -> NotificacionResult:
+    async def notify_event(
+        self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente
+    ) -> NotificacionResult:
         dest = ", ".join(self.target_emails) if self.target_emails else "no_configurado"
 
         if not self.host or not self.target_emails:

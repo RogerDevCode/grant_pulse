@@ -28,7 +28,9 @@ async def clean_expired_convocatorias(dias_vencida: int = 7) -> int:
     """
     run_id = new_run_id()
     limite = datetime.now(UTC) - timedelta(days=dias_vencida)
-    logger.info("Iniciando purga de convocatorias vencidas", run_id=run_id, dias_vencida=dias_vencida, limite=str(limite.date()))
+    logger.info(
+        "Iniciando purga de convocatorias vencidas", run_id=run_id, dias_vencida=dias_vencida, limite=str(limite.date())
+    )
 
     async with AsyncSessionLocal() as session:
         try:
@@ -50,9 +52,7 @@ async def clean_expired_convocatorias(dias_vencida: int = 7) -> int:
                 delete(HistorialCambiosORM).where(HistorialCambiosORM.convocatoria_id.in_(ids_to_delete))
             )
             # Eliminar convocatorias
-            await session.execute(
-                delete(ConvocatoriaORM).where(ConvocatoriaORM.id.in_(ids_to_delete))
-            )
+            await session.execute(delete(ConvocatoriaORM).where(ConvocatoriaORM.id.in_(ids_to_delete)))
 
             await session.commit()
             logger.info("Purga completada", eliminadas=len(ids_to_delete), run_id=run_id)
@@ -73,7 +73,9 @@ async def run_backfill_regions(limit: int | None = None) -> int:
 
     async with AsyncSessionLocal() as session:
         try:
-            query = select(ConvocatoriaORM).where(ConvocatoriaORM.region.is_(None))
+            from sqlalchemy import String
+
+            query = select(ConvocatoriaORM).where(ConvocatoriaORM.regiones.cast(String) == "[]")
             if limit is not None:
                 query = query.limit(limit)
 
@@ -106,9 +108,11 @@ async def run_backfill_regions(limit: int | None = None) -> int:
                     )
                     continue
 
-                region = _infer_region_with_llm(convocatoria.titulo, convocatoria.descripcion, convocatoria.url_detail, fuente)
-                if region:
-                    convocatoria.region = region
+                regiones = _infer_region_with_llm(
+                    convocatoria.titulo, convocatoria.descripcion, convocatoria.url_detail, fuente
+                )
+                if regiones:
+                    convocatoria.regiones = regiones
                     updated += 1
 
             await session.commit()
@@ -141,7 +145,9 @@ async def run_clean_db() -> None:
                 logger.info("No hay registros antiguos inactivos que borrar.", run_id=run_id)
                 return
 
-            await session.execute(delete(HistorialCambiosORM).where(HistorialCambiosORM.convocatoria_id.in_(ids_to_delete)))
+            await session.execute(
+                delete(HistorialCambiosORM).where(HistorialCambiosORM.convocatoria_id.in_(ids_to_delete))
+            )
 
             await session.execute(delete(ConvocatoriaORM).where(ConvocatoriaORM.id.in_(ids_to_delete)))
 

@@ -8,10 +8,13 @@ services:
       - .env
     environment:
       - TZ=America/Santiago
+      - DATABASE_URL=postgresql+asyncpg://grantpulse:grantpulse@db:5432/grantpulse
     ports:
       - "${APP_PORT:-8002}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
-      # Persiste la BD SQLite entre reinicios locales
       - grantpulse_data:/app/data
     healthcheck:
       test: ["CMD-SHELL", "/app/.venv/bin/python -c \"from urllib.request import urlopen; urlopen('http://localhost:8000/health')\" || exit 1"]
@@ -26,5 +29,23 @@ services:
         max-file: "3"
         tag: "grantpulse.api"
 
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: grantpulse
+      POSTGRES_PASSWORD: grantpulse
+      POSTGRES_DB: grantpulse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grantpulse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   grantpulse_data:
+  postgres_data:

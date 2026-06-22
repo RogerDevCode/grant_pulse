@@ -147,7 +147,9 @@ class HtmlStaticScraper(ScraperPort):
 
         for index, nodo in enumerate(items_nodos):
             try:
-                item_data: dict[str, str | None] = {}
+                from typing import Any
+
+                item_data: dict[str, Any] = {}
 
                 titulo_nodo = _resolve_node(nodo, selectores.titulo)
                 titulo_text = _extract_text_or_attr(titulo_nodo, selectores.titulo)
@@ -165,7 +167,9 @@ class HtmlStaticScraper(ScraperPort):
                 item_data["identificador"] = identificador_raw
 
                 if not item_data["identificador"]:
-                    logger.warning(f"Item #{index} no tiene identificador ni título para fallback. Saltando.", fuente=fuente.nombre)
+                    logger.warning(
+                        f"Item #{index} no tiene identificador ni título para fallback. Saltando.", fuente=fuente.nombre
+                    )
                     continue
 
                 if not item_data["titulo"]:

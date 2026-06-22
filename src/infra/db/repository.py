@@ -1,5 +1,6 @@
 """Repositorios SQLAlchemy — mapeo entidad↔ORM con auto-increment integer IDs."""
 
+from uuid import UUID
 
 from pydantic import HttpUrl
 from sqlalchemy import select
@@ -16,6 +17,7 @@ logger = get_logger(__name__)
 
 
 # ─── helpers ────────────────────────────────────────────────────────────
+
 
 def _fuente_orm_to_entity(orm: FuenteORM) -> Fuente:
     try:
@@ -46,7 +48,7 @@ def _convocatoria_orm_to_entity(orm: ConvocatoriaORM) -> Convocatoria:
         fecha_apertura=orm.fecha_apertura,
         fecha_cierre=orm.fecha_cierre,
         monto=orm.monto,
-        region=orm.region,
+        regiones=list(orm.regiones) if orm.regiones else [],
         estado=orm.estado,
         metadatos=orm.metadatos,
         creado_en=orm.creado_en,
@@ -67,6 +69,7 @@ def _snapshot_orm_to_entity(orm: SnapshotORM) -> Snapshot:
 
 
 # ─── SQLFuenteRepository ────────────────────────────────────────────────
+
 
 class SQLFuenteRepository(FuenteRepository):
     def __init__(self, session: AsyncSession) -> None:
@@ -148,6 +151,7 @@ class SQLFuenteRepository(FuenteRepository):
 
 # ─── SQLSnapshotRepository ──────────────────────────────────────────────
 
+
 class SQLSnapshotRepository(SnapshotRepository):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -177,7 +181,7 @@ class SQLSnapshotRepository(SnapshotRepository):
             logger.error(msg, fuente_id=snapshot.fuente_id, exc=e)
             raise PersistenceError(msg) from e
 
-    async def get_latest_by_fuente(self, fuente_id: int) -> Snapshot | None:
+    async def get_latest_by_fuente(self, fuente_id: int | str | UUID) -> Snapshot | None:
         try:
             result = await self._session.execute(
                 select(SnapshotORM)
@@ -195,11 +199,14 @@ class SQLSnapshotRepository(SnapshotRepository):
 
 # ─── SQLConvocatoriaRepository ─────────────────────────────────────────
 
+
 class SQLConvocatoriaRepository(ConvocatoriaRepository):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_by_fuente_and_externo(self, fuente_id: int, identificador_externo: str) -> Convocatoria | None:
+    async def get_by_fuente_and_externo(
+        self, fuente_id: int | str | UUID, identificador_externo: str
+    ) -> Convocatoria | None:
         try:
             result = await self._session.execute(
                 select(ConvocatoriaORM).where(
@@ -214,11 +221,9 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
             logger.error(msg, ext_id=identificador_externo, exc=e)
             raise PersistenceError(msg) from e
 
-    async def get_all_by_fuente(self, fuente_id: int) -> list[Convocatoria]:
+    async def get_all_by_fuente(self, fuente_id: int | str | UUID) -> list[Convocatoria]:
         try:
-            result = await self._session.execute(
-                select(ConvocatoriaORM).where(ConvocatoriaORM.fuente_id == fuente_id)
-            )
+            result = await self._session.execute(select(ConvocatoriaORM).where(ConvocatoriaORM.fuente_id == fuente_id))
             return [_convocatoria_orm_to_entity(orm) for orm in result.scalars().all()]
         except SQLAlchemyError as e:
             msg = f"Error al consultar convocatorias por fuente {fuente_id}: {e}"
@@ -248,7 +253,7 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
                     fecha_apertura=convocatoria.fecha_apertura,
                     fecha_cierre=convocatoria.fecha_cierre,
                     monto=convocatoria.monto,
-                    region=convocatoria.region,
+                    regiones=convocatoria.regiones,
                     estado=convocatoria.estado,
                     metadatos=convocatoria.metadatos,
                     creado_en=convocatoria.creado_en,
@@ -262,7 +267,7 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
                 orm.fecha_apertura = convocatoria.fecha_apertura
                 orm.fecha_cierre = convocatoria.fecha_cierre
                 orm.monto = convocatoria.monto
-                orm.region = convocatoria.region
+                orm.regiones = convocatoria.regiones
                 orm.estado = convocatoria.estado
                 orm.metadatos = convocatoria.metadatos
                 orm.actualizado_en = convocatoria.actualizado_en
@@ -290,9 +295,7 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
             )
             return
         try:
-            result = await self._session.execute(
-                select(ConvocatoriaORM).where(ConvocatoriaORM.id == convocatoria.id)
-            )
+            result = await self._session.execute(select(ConvocatoriaORM).where(ConvocatoriaORM.id == convocatoria.id))
             orm = result.scalars().first()
             if not orm:
                 logger.warning("save_metadatos: convocatoria no encontrada en BD", conv_id=convocatoria.id)
@@ -304,7 +307,7 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
             logger.error(msg, conv_id=convocatoria.id, exc=e)
             raise PersistenceError(msg) from e
 
-    async def save_evento_cambio(self, evento: EventoCambio, snapshot_id: int) -> EventoCambio:
+    async def save_evento_cambio(self, evento: EventoCambio, snapshot_id: int | str | UUID) -> EventoCambio:
         try:
             delta_json = [d.model_dump() for d in evento.deltas]
             orm = HistorialCambiosORM(
@@ -334,6 +337,7 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
 
 
 # ─── SQLNotificacionRepository ──────────────────────────────────────────
+
 
 class SQLNotificacionRepository(NotificacionRepository):
     def __init__(self, session: AsyncSession) -> None:

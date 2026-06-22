@@ -53,12 +53,12 @@ class ConsensusScraper(ScraperPort):
             return_exceptions=True,
         )
 
-        res_primary = results[0] if not isinstance(results[0], Exception) else []
-        res_secondary = results[1] if not isinstance(results[1], Exception) else []
+        res_primary = results[0] if not isinstance(results[0], BaseException) else []
+        res_secondary = results[1] if not isinstance(results[1], BaseException) else []
 
-        if isinstance(results[0], Exception):
+        if isinstance(results[0], BaseException):
             logger.warning("Consensus: Error en scraper primario", exc=results[0])
-        if isinstance(results[1], Exception):
+        if isinstance(results[1], BaseException):
             logger.warning("Consensus: Error en scraper secundario", exc=results[1])
 
         # Lógica de consenso simple: si coinciden en cantidad y títulos, alta confianza.

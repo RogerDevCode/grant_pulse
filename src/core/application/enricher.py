@@ -16,8 +16,7 @@ logger = get_logger(__name__)
 class PageFetcherPort(Protocol):
     """Protocolo simple para aislar la descarga del HTML del detalle."""
 
-    async def fetch_html(self, url: str) -> str:
-        ...
+    async def fetch_html(self, url: str) -> str: ...
 
 
 class StructuredLLMClientPort(Protocol):
@@ -30,8 +29,7 @@ class StructuredLLMClientPort(Protocol):
         institution_name: str = "",
         max_content_chars: int | None = None,
         institution_hint: str | None = None,
-    ) -> dict[str, Any] | None:
-        ...
+    ) -> dict[str, Any] | None: ...
 
 
 class EnriquecerConvocatoriaUseCase:

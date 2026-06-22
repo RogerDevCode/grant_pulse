@@ -94,7 +94,7 @@ def create_app() -> FastAPI:
     _register_exception_handlers(app)
 
     @app.get("/health", tags=["Health"])
-    async def healthcheck() -> JSONResponse: # pyright: ignore[reportUnusedFunction]
+    async def healthcheck() -> JSONResponse:  # pyright: ignore[reportUnusedFunction]
         checks: dict[str, str] = {"status": "ok", "env": settings.ENV}
         db_ok = False
         try:

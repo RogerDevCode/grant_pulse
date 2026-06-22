@@ -23,7 +23,9 @@ class CompositeNotificationAdapter(NotificationPort):
         self.adapters = adapters
         self.canal_names = canal_names or [type(a).__name__ for a in adapters]
 
-    async def notify_event(self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente) -> NotificacionResult:
+    async def notify_event(
+        self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente
+    ) -> NotificacionResult:
         last_result: NotificacionResult | None = None
         any_sent = False
         any_failed = False

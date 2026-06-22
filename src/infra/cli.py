@@ -128,6 +128,7 @@ async def _notify_subscribers(
         return
 
     from src.infra.config import settings
+
     bot_token = settings.TELEGRAM_BOT_TOKEN
     if not bot_token:
         logger.warning("TELEGRAM_BOT_TOKEN no configurado; no se enviarán notificaciones a suscriptores")
@@ -140,24 +141,31 @@ async def _notify_subscribers(
         if not conv:
             continue
 
-        region_conv = (conv.region or "").strip().lower()
+        regiones_conv = [r.strip().lower() for r in (conv.regiones or [])]
+        if not regiones_conv:
+            regiones_conv = ["nacional"]
+
         for sub in suscripciones:
             regiones_sub = [r.strip().lower() for r in (sub.regiones or [])]
+            match = False
             if not regiones_sub or "todas" in regiones_sub or "nacional" in regiones_sub:
-                # Envía si la región es Nacional o si tiene 'todas'
-                if region_conv == "nacional":
-                    pass  # enviar
-                else:
-                    continue
-            elif region_conv not in regiones_sub:
+                match = True
+            else:
+                for rc in regiones_conv:
+                    if rc in regiones_sub or rc == "nacional":
+                        match = True
+                        break
+
+            if not match:
                 continue
 
             # Enviar mensaje
+            regiones_str = ", ".join(conv.regiones) if conv.regiones else "Nacional"
             mensaje = (
                 f"<b>🆕 Nueva Convocatoria</b>\n"
                 f"🏛 <i>{fuente.nombre}</i>\n\n"
                 f"<b>{conv.titulo}</b>\n"
-                f"📍 <b>Región:</b> {conv.region or 'Nacional'}\n"
+                f"📍 <b>Región:</b> {regiones_str}\n"
             )
             if conv.monto:
                 mensaje += f"💰 <b>Monto:</b> ${conv.monto:,.0f}\n"
@@ -170,7 +178,12 @@ async def _notify_subscribers(
                 async with httpx.AsyncClient(timeout=10) as client:
                     resp = await client.post(
                         f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                        json={"chat_id": sub.chat_id, "text": mensaje, "parse_mode": "HTML", "disable_web_page_preview": False},
+                        json={
+                            "chat_id": sub.chat_id,
+                            "text": mensaje,
+                            "parse_mode": "HTML",
+                            "disable_web_page_preview": False,
+                        },
                     )
                     resp.raise_for_status()
                 logger.info("Notificación enviada a suscriptor", chat_id=sub.chat_id, convocatoria=conv.titulo[:60])
@@ -187,6 +200,7 @@ async def run_single_source(filepath: Path) -> None:
     source_profile = source_profile_for_name(rules_config.nombre)
     if source_profile:
         from pydantic import HttpUrl, TypeAdapter
+
         list_url_obj = TypeAdapter(HttpUrl).validate_python(source_profile.list_url)
         rules_config = rules_config.model_copy(update={"url_busqueda": list_url_obj})
         logger.info(
@@ -223,7 +237,10 @@ async def run_single_source(filepath: Path) -> None:
             notificacion_repo = SQLNotificacionRepository(session)
 
             use_case = MonitoreoUseCase(
-                scraper=scraper, snapshot_repo=snapshot_repo, convocatoria_repo=convocatoria_repo, notifier=notifier,
+                scraper=scraper,
+                snapshot_repo=snapshot_repo,
+                convocatoria_repo=convocatoria_repo,
+                notifier=notifier,
                 notificacion_repo=notificacion_repo,
             )
 
@@ -243,6 +260,7 @@ async def run_single_source(filepath: Path) -> None:
     # Purga automática de convocatorias vencidas después de cada ciclo
     try:
         from src.infra.maintenance import clean_expired_convocatorias  # noqa: PLC0415
+
         purgadas = await clean_expired_convocatorias(dias_vencida=7)
         if purgadas > 0:
             logger.info("Limpieza automática de vencidas completada", eliminadas=purgadas)
@@ -284,7 +302,10 @@ async def run_all_active_sources() -> None:
                 notifier = await _get_notifier(session)
 
                 use_case = MonitoreoUseCase(
-                    scraper=scraper, snapshot_repo=snapshot_repo, convocatoria_repo=convocatoria_repo, notifier=notifier,
+                    scraper=scraper,
+                    snapshot_repo=snapshot_repo,
+                    convocatoria_repo=convocatoria_repo,
+                    notifier=notifier,
                     notificacion_repo=notificacion_repo,
                 )
 
@@ -292,16 +313,23 @@ async def run_all_active_sources() -> None:
                 await session.commit()
             except Exception as e:
                 await session.rollback()
-                logger.error(f"Worker falló para fuente {fuente.nombre}: {e}", exc=e, fuente_id=str(fuente.id), run_id=fuente_run_id)
+                logger.error(
+                    f"Worker falló para fuente {fuente.nombre}: {e}",
+                    exc=e,
+                    fuente_id=str(fuente.id),
+                    run_id=fuente_run_id,
+                )
                 failed_fuentes.append(fuente.nombre)
                 # Save error to file for remote debugging
                 import traceback
+
                 with open("data/errors.log", "a") as f:
                     f.write(f"[{datetime.now()}] ERROR en {fuente.nombre}: {e}\n{traceback.format_exc()}\n")
 
     # Generar reporte de calidad
     async with AsyncSessionLocal() as session:
         from src.infra.quality_report import generar_reporte_calidad
+
         report_path = Path("reports") / f"quality_report_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.md"
         try:
             await generar_reporte_calidad(session, report_path)
@@ -321,6 +349,7 @@ async def sync_single_source_config(filepath: Path) -> None:
     source_profile = source_profile_for_name(rules_config.nombre)
     if source_profile:
         from pydantic import HttpUrl, TypeAdapter
+
         list_url_obj = TypeAdapter(HttpUrl).validate_python(source_profile.list_url)
         rules_config = rules_config.model_copy(update={"url_busqueda": list_url_obj})
         logger.info(
@@ -348,6 +377,7 @@ async def sync_single_source_config(filepath: Path) -> None:
                 fuente_db.activa = rules_config.activa
 
             fuente_db = _apply_source_profile(fuente_db)
+            print(f"DEBUG fuente_db.id: {repr(fuente_db.id)} ({type(fuente_db.id)})")
             await fuente_repo.save(fuente_db)
             await session.commit()
             logger.info("Configuración de fuente sincronizada exitosamente", fuente=rules_config.nombre)
@@ -402,11 +432,19 @@ def main() -> None:
     subparsers.add_parser("clean-db", help="Elimina convocatorias antiguas e inactivas (>6 meses)")
 
     # Comando para purgar convocatorias vencidas
-    purge_parser = subparsers.add_parser("purge-expired", help="Elimina convocatorias con fecha de cierre vencida > N días")
-    purge_parser.add_argument("--dias", type=int, default=7, help="Días desde el cierre para considerar vencida (default: 7)")
-    subparsers.add_parser("backfill-regions", help="Completa la región en convocatorias existentes usando inferencia LLM")
+    purge_parser = subparsers.add_parser(
+        "purge-expired", help="Elimina convocatorias con fecha de cierre vencida > N días"
+    )
+    purge_parser.add_argument(
+        "--dias", type=int, default=7, help="Días desde el cierre para considerar vencida (default: 7)"
+    )
+    subparsers.add_parser(
+        "backfill-regions", help="Completa la región en convocatorias existentes usando inferencia LLM"
+    )
 
-    enrich_parser = subparsers.add_parser("enrich-details", help="Ejecuta el deep scraping para enriquecer convocatorias usando LLM")
+    enrich_parser = subparsers.add_parser(
+        "enrich-details", help="Ejecuta el deep scraping para enriquecer convocatorias usando LLM"
+    )
     enrich_parser.add_argument("--batch-size", type=int, default=5, help="Tamaño del lote a procesar (default: 5)")
 
     args = parser.parse_args()
@@ -420,16 +458,20 @@ def main() -> None:
             asyncio.run(sync_all_rules())
         elif args.command == "clean-db":
             from src.infra.maintenance import run_clean_db
+
             asyncio.run(run_clean_db())
         elif args.command == "backfill-regions":
             from src.infra.maintenance import run_backfill_regions
+
             asyncio.run(run_backfill_regions())
         elif args.command == "purge-expired":
             from src.infra.maintenance import clean_expired_convocatorias
+
             eliminadas = asyncio.run(clean_expired_convocatorias(args.dias))
             print(f"Purga completada: {eliminadas} convocatorias eliminadas.")
         elif args.command == "enrich-details":
             from src.infra.workers.enrichment_worker import run_enrichment_worker
+
             asyncio.run(run_enrichment_worker(batch_size=args.batch_size))
     except GrantPulseError as e:
         logger.error("Error de dominio finalizando el worker", exc=e)

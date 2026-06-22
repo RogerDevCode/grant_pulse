@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
-from sqlalchemy import func, select
+from sqlalchemy import String, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infra.db.models import ConvocatoriaORM, FuenteORM
@@ -41,7 +41,7 @@ async def generar_reporte_calidad(session: AsyncSession, output_path: Path) -> N
             func.count(ConvocatoriaORM.id).label("total"),
             func.count(ConvocatoriaORM.fecha_cierre).label("con_cierre"),
             func.count(ConvocatoriaORM.monto).label("con_monto"),
-            func.count(ConvocatoriaORM.region).label("con_region"),
+            func.sum(case((ConvocatoriaORM.regiones.cast(String) != "[]", 1), else_=0)).label("con_region"),
             func.count(ConvocatoriaORM.descripcion).label("con_desc"),
         ).where(ConvocatoriaORM.fuente_id == fuente.id)
 

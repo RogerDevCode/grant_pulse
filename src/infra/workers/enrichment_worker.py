@@ -5,7 +5,6 @@ los endpoints ni el presupuesto de LLM.
 """
 
 import asyncio
-from typing import Any
 
 import httpx
 from sqlalchemy import select
@@ -55,36 +54,36 @@ async def run_enrichment_worker(batch_size: int = 5) -> None:
         # Usamos json param filter o simplemente sacamos PENDIENTE / Null
         # JSONB query: metadatos->>'estado_enriquecimiento' IS NULL OR == 'PENDIENTE'
         # Y solo estado ABIERTO para no gastar en históricas
-        
+
         # Filtramos a nivel de BD para eficiencia
         query = (
             select(ConvocatoriaORM)
             .where(ConvocatoriaORM.estado == "ABIERTO")
-            .where(ConvocatoriaORM.url_detalle.is_not(None))
+            .where(ConvocatoriaORM.url_detail.is_not(None))
         )
-        
+
         result = await session.execute(query)
         todas_abiertas = result.scalars().all()
-        
+
         # Filtramos en memoria para evitar compatibilidad de dialectos SQL con JSON
         pendientes = []
         for c in todas_abiertas:
             estado_enr = c.metadatos.get("estado_enriquecimiento")
             if not estado_enr or estado_enr == "PENDIENTE":
                 pendientes.append(c)
-                
+
         if not pendientes:
             logger.info("No hay convocatorias pendientes de enriquecer")
             return
-            
+
         lote = pendientes[:batch_size]
         logger.info("Procesando lote de convocatorias", size=len(lote), total_pendientes=len(pendientes))
-        
+
         conv_repo = SQLConvocatoriaRepository(session)
         fuente_repo = SQLFuenteRepository(session)
         fetcher = HttpxPageFetcher()
         llm_client = build_llm_client()
-        
+
         use_case = EnriquecerConvocatoriaUseCase(
             convocatoria_repo=conv_repo,
             fuente_repo=fuente_repo,
@@ -100,22 +99,22 @@ async def run_enrichment_worker(batch_size: int = 5) -> None:
                 identificador_externo=orm_record.identificador_externo,
                 titulo=orm_record.titulo,
                 descripcion=orm_record.descripcion,
-                url_detalle=orm_record.url_detalle,
+                url_detalle=orm_record.url_detail,  # type: ignore[arg-type]
                 fecha_apertura=orm_record.fecha_apertura,
                 fecha_cierre=orm_record.fecha_cierre,
                 monto=orm_record.monto,
-                region=orm_record.region,
+                regiones=orm_record.regiones,
                 estado=orm_record.estado,
                 metadatos=orm_record.metadatos,
                 creado_en=orm_record.creado_en,
                 actualizado_en=orm_record.actualizado_en,
             )
-            
+
             # Ejecutamos caso de uso
             await use_case.execute(conv_ent)
             await session.commit()
-            
+
             # Rate limit básico entre requests (3 segundos)
             await asyncio.sleep(3)
-            
+
     logger.info("Lote de enriquecimiento procesado con éxito")

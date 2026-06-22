@@ -295,10 +295,10 @@ function buildConvCard(c) {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
         <strong>${escHtml(c.fuente_nombre || '—')}</strong>
       </div>
-      ${c.region ? `
+      ${c.regiones && c.regiones.length ? `
       <div class="meta-item" title="Región">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        <span>${escHtml(c.region)}</span>
+        <span>${escHtml(c.regiones.join(', '))}</span>
       </div>` : ''}
       ${c.monto != null ? `
       <div class="meta-item" title="Monto">
@@ -579,7 +579,7 @@ async function loadBriefing() {
                 const dias = diasHastaCierre(c.fecha_cierre);
                 return `<tr>
                   <td class="briefing-title-cell">${escHtml(c.titulo)}</td>
-                  <td><span style="font-size:0.78rem;color:var(--text-2)">${escHtml(c.region || 'Nacional')}</span></td>
+                  <td><span style="font-size:0.78rem;color:var(--text-2)">${escHtml(c.regiones && c.regiones.length ? c.regiones.join(', ') : 'Nacional')}</span></td>
                   <td><span style="font-weight:600;color:var(--green)">${c.monto != null ? fmt(c.monto) : '—'}</span></td>
                   <td><span style="font-size:0.82rem;color:var(--text-1)">${fmtDate(c.fecha_cierre)}</span></td>
                   <td>${urgencyChip(dias)}</td>
@@ -631,7 +631,7 @@ window.viewDetail = async function(id) {
       <div class="detail-hero">
         <div class="detail-hero-meta">
           ${urgencyChip(dias)}
-          ${data.region ? `<span style="font-size:0.78rem;color:var(--text-3)">📍 ${escHtml(data.region)}</span>` : ''}
+          ${data.regiones && data.regiones.length ? `<span style="font-size:0.78rem;color:var(--text-3)">📍 ${escHtml(data.regiones.join(', '))}</span>` : ''}
         </div>
         <h2 style="margin-top:8px">${escHtml(data.titulo)}</h2>
       </div>
@@ -1403,6 +1403,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadPage(state.page);
     setTimeout(() => btn.classList.remove('spinning'), 1200);
   });
+
+  // ── DEBUG WIPE ──
+  const wipeBtn = $('#debugWipeBtn');
+  if (wipeBtn) {
+    wipeBtn.addEventListener('click', async () => {
+      if (confirm("¡CUIDADO! Esto borrará TODA la base de datos (Convocatorias, Historial, Snapshots). ¿Continuar?")) {
+        try {
+          const res = await apiFetch('/debug/wipe', { method: 'DELETE' });
+          if (res) {
+            alert("Base de datos borrada con éxito.");
+            window.location.reload();
+          }
+        } catch (e) {
+          alert("Error al borrar BD: " + e.message);
+        }
+      }
+    });
+  }
 
   // ── SCRAPE MANUAL ──
   let scrapeEnCurso = false;

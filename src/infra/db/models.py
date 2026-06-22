@@ -26,8 +26,12 @@ class FuenteORM(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     actualizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
-    snapshots: Mapped[list["SnapshotORM"]] = relationship("SnapshotORM", back_populates="fuente", cascade="all, delete-orphan")
-    convocatorias: Mapped[list["ConvocatoriaORM"]] = relationship("ConvocatoriaORM", back_populates="fuente", cascade="all, delete-orphan")
+    snapshots: Mapped[list["SnapshotORM"]] = relationship(
+        "SnapshotORM", back_populates="fuente", cascade="all, delete-orphan"
+    )
+    convocatorias: Mapped[list["ConvocatoriaORM"]] = relationship(
+        "ConvocatoriaORM", back_populates="fuente", cascade="all, delete-orphan"
+    )
 
 
 class SnapshotORM(Base):
@@ -43,7 +47,9 @@ class SnapshotORM(Base):
     metadatos: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
     fuente: Mapped[FuenteORM] = relationship("FuenteORM", back_populates="snapshots")
-    cambios_detectados: Mapped[list["HistorialCambiosORM"]] = relationship("HistorialCambiosORM", back_populates="snapshot")
+    cambios_detectados: Mapped[list["HistorialCambiosORM"]] = relationship(
+        "HistorialCambiosORM", back_populates="snapshot"
+    )
 
 
 class AuditLogORM(Base):
@@ -70,21 +76,25 @@ class ConvocatoriaORM(Base):
     fecha_apertura: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     fecha_cierre: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     monto: Mapped[float | None] = mapped_column(Float, nullable=True)
-    region: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    regiones: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]", nullable=False)
     estado: Mapped[str] = mapped_column(String(100), nullable=False)
     metadatos: Mapped[dict[str, int | float | str | bool | None]] = mapped_column(JSON, nullable=False, default=dict)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     actualizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     fuente: Mapped[FuenteORM] = relationship("FuenteORM", back_populates="convocatorias")
-    historial_cambios: Mapped[list["HistorialCambiosORM"]] = relationship("HistorialCambiosORM", back_populates="convocatoria", cascade="all, delete-orphan")
+    historial_cambios: Mapped[list["HistorialCambiosORM"]] = relationship(
+        "HistorialCambiosORM", back_populates="convocatoria", cascade="all, delete-orphan"
+    )
 
 
 class HistorialCambiosORM(Base):
     __tablename__ = "historial_cambios"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    convocatoria_id: Mapped[int] = mapped_column(Integer, ForeignKey("convocatorias.id", ondelete="CASCADE"), nullable=False)
+    convocatoria_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("convocatorias.id", ondelete="CASCADE"), nullable=False
+    )
     snapshot_id: Mapped[int] = mapped_column(Integer, ForeignKey("snapshots.id", ondelete="RESTRICT"), nullable=False)
     fecha_deteccion: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     es_apertura: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -93,21 +103,27 @@ class HistorialCambiosORM(Base):
 
     convocatoria: Mapped[ConvocatoriaORM] = relationship("ConvocatoriaORM", back_populates="historial_cambios")
     snapshot: Mapped[SnapshotORM] = relationship("SnapshotORM", back_populates="cambios_detectados")
-    notificaciones: Mapped[list["NotificacionORM"]] = relationship("NotificacionORM", back_populates="historial_cambio", cascade="all, delete-orphan")
+    notificaciones: Mapped[list["NotificacionORM"]] = relationship(
+        "NotificacionORM", back_populates="historial_cambio", cascade="all, delete-orphan"
+    )
 
 
 class NotificacionORM(Base):
     __tablename__ = "notificaciones"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    historial_cambios_id: Mapped[int] = mapped_column(Integer, ForeignKey("historial_cambios.id", ondelete="CASCADE"), nullable=False)
+    historial_cambios_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("historial_cambios.id", ondelete="CASCADE"), nullable=False
+    )
     canal: Mapped[str] = mapped_column(String(50), nullable=False)
     destinatario: Mapped[str] = mapped_column(String(255), nullable=False)
     enviado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     estado: Mapped[str] = mapped_column(String(50), nullable=False)
     error_log: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    historial_cambio: Mapped["HistorialCambiosORM"] = relationship("HistorialCambiosORM", back_populates="notificaciones")
+    historial_cambio: Mapped["HistorialCambiosORM"] = relationship(
+        "HistorialCambiosORM", back_populates="notificaciones"
+    )
 
 
 class NotificacionConfigORM(Base):
