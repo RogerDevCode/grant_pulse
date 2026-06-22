@@ -8,6 +8,7 @@ Funciona en dos fases:
    y extrae items del HTML embebido usando selectolax.
 """
 
+import asyncio
 import hashlib
 import json
 import re
@@ -139,6 +140,8 @@ class WpAjaxScraper(ScraperPort):
                     "post_type": post_type,
                     "nonce": nonce,
                 }
+                if page_num > 1:
+                    await asyncio.sleep(2.0)
 
                 headers = {
                     **_BROWSER_HEADERS,

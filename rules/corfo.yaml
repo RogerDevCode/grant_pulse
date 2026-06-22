@@ -10,7 +10,7 @@ selectores:
   link_detalle: ".foot-caja_result a"
   estado: "h6"
   fecha_cierre: ".cierre span"
-  region: "h4"
+  region: ".contenido-caja_prog"
 
 normalizadores:
   fecha_cierre:
