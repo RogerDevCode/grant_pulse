@@ -389,6 +389,7 @@ function buildInstOption(id, nombre, abiertas) {
 }
 
 window.selectInstOption = function(id, nombre) {
+  if (id === 'null' || id === '') id = null;
   state.selectedFuenteId     = id || null;
   state.selectedFuenteNombre = id ? nombre : null;
   state.convOffset = 0;
