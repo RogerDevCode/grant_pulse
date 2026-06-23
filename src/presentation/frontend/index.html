@@ -499,6 +499,16 @@
   <div class="modal modal-lg">
     <header class="modal-header">
       <div class="modal-inst-badge" id="detailInstBadge"></div>
+      <!-- Navegación prev/next sincronizada con la vista activa -->
+      <div class="detail-nav" id="detailNav" style="display:none">
+        <button class="detail-nav-btn" id="detailNavPrev" onclick="navigateDetail(-1)" aria-label="Anterior" title="Anterior (←)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="detail-nav-counter" id="detailNavCounter">— / —</span>
+        <button class="detail-nav-btn" id="detailNavNext" onclick="navigateDetail(+1)" aria-label="Siguiente" title="Siguiente (→)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
       <button class="modal-close" id="detailModalClose" aria-label="Cerrar">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>

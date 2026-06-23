@@ -128,6 +128,10 @@ const state = {
   convTotal:    0,
   searchTimeout: null,
   confirmCb:    null,
+  // ── navegación modal detalle ──
+  navList:   [],    // IDs en el orden actual de la vista activa
+  navIndex:  -1,   // posición del ítem visible en navList
+  navSource: null, // 'radar' | 'briefing'
 };
 
 /* ─── API ────────────────────────────────────────────────────── */
@@ -252,11 +256,19 @@ function renderConvGrid(items) {
   if (!items.length) {
     grid.innerHTML = '';
     showRadarEmpty(true);
+    // Limpiar navList para que las flechas no queden con datos obsoletos
+    state.navList   = [];
+    state.navIndex  = -1;
+    state.navSource = 'radar';
     return;
   }
 
   showRadarEmpty(false);
   grid.innerHTML = items.map(c => buildConvCard(c)).join('');
+
+  // Sincronizar navList con el orden exacto de las tarjetas visibles
+  state.navList   = items.map(c => String(c.id));
+  state.navSource = 'radar';
 }
 
 function buildConvCard(c) {
@@ -573,6 +585,7 @@ async function loadBriefing() {
                 <th style="width:100px">Cierre</th>
                 <th style="width:90px">Urgencia</th>
                 <th style="width:120px">URL directa</th>
+                <th style="width:70px">Detalle</th>
               </tr>
             </thead>
             <tbody>
@@ -592,6 +605,11 @@ async function loadBriefing() {
                         </a>`
                       : '<span style="color:var(--text-3);font-size:0.75rem">Sin URL</span>'}
                   </td>
+                  <td>
+                    <button class="briefing-detail-btn" onclick="viewDetail('${c.id}')" title="Ver detalle">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                  </td>
                 </tr>`;
               }).join('')}
             </tbody>
@@ -600,6 +618,10 @@ async function loadBriefing() {
     }
 
     content.innerHTML = html;
+
+    // Sincronizar navList con el orden exacto del briefing (aplanado)
+    state.navList   = data.map(c => String(c.id));
+    state.navSource = 'briefing';
   } catch (e) {
     toast('Error al generar briefing', 'error');
     content.innerHTML = '<div class="empty-state"><p>Error al cargar datos para el briefing.</p></div>';
@@ -612,6 +634,44 @@ async function loadBriefing() {
    CONVOCATORIA DETAIL MODAL
 ═══════════════════════════════════════════════════════════════ */
 
+/**
+ * Actualiza los controles de navegación (flechas + contador) del modal.
+ * Se llama cada vez que viewDetail abre un ítem.
+ */
+function _updateDetailNav(currentId) {
+  const sid    = String(currentId);
+  const idx    = state.navList.indexOf(sid);
+  state.navIndex = idx;
+
+  const prev    = $('#detailNavPrev');
+  const next    = $('#detailNavNext');
+  const counter = $('#detailNavCounter');
+
+  if (!prev || !next || !counter) return;
+
+  const total = state.navList.length;
+
+  if (total <= 1) {
+    // Sin vecinos: ocultar todo el bloque de navegación
+    $('#detailNav').style.display = 'none';
+    return;
+  }
+
+  $('#detailNav').style.display = 'flex';
+  prev.disabled    = idx <= 0;
+  next.disabled    = idx < 0 || idx >= total - 1;
+  counter.textContent = idx >= 0 ? `${idx + 1} / ${total}` : `— / ${total}`;
+}
+
+/**
+ * Navega al ítem anterior (-1) o siguiente (+1) dentro de navList.
+ */
+window.navigateDetail = function(dir) {
+  const newIdx = state.navIndex + dir;
+  if (newIdx < 0 || newIdx >= state.navList.length) return;
+  viewDetail(state.navList[newIdx]);
+};
+
 window.viewDetail = async function(id) {
   const modal = $('#detailModal');
   const body  = $('#detailModalBody');
@@ -619,6 +679,9 @@ window.viewDetail = async function(id) {
   $('#detailInstBadge').textContent = 'Cargando...';
   body.innerHTML = '<div class="page-loader"><div class="spinner"></div><span>Cargando detalle...</span></div>';
   modal.classList.add('active');
+
+  // Actualizar navegación inmediatamente (antes del fetch) para no bloquear UX
+  _updateDetailNav(id);
 
   try {
     const data = await apiFetch(`/convocatorias/${id}`);
@@ -1549,6 +1612,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       closeInstDropdown();
       state.confirmCb = null;
     }
+    // Navegación con flechas dentro del modal de detalle
+    const modalActive = $('#detailModal').classList.contains('active');
+    if (modalActive && e.key === 'ArrowLeft'  && !e.target.matches('input,textarea')) { e.preventDefault(); navigateDetail(-1); }
+    if (modalActive && e.key === 'ArrowRight' && !e.target.matches('input,textarea')) { e.preventDefault(); navigateDetail(+1); }
   });
 
   // ── SUSCRIPCIONES: Enter en Chat ID busca automáticamente ──
