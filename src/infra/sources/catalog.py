@@ -62,6 +62,7 @@ _STRATEGY_MAP: dict[str, tuple[str, str]] = {
     "llm": ("html_static", "llm"),
     "fosis_multipage": ("fosis_multipage", "fosis_multipage"),
     "subdere_homepage": ("subdere_homepage", "subdere_homepage"),
+    "cloudflare": ("cloudflare", "html_static"),
 }
 
 
@@ -153,6 +154,12 @@ _CORFO = SourceProfile(
             extractor="wp_ajax",
             url="https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/",
             note="admin-ajax.php con nonce dinámico.",
+        ),
+        ScrapeStep(
+            fetcher="cloudflare",
+            extractor="html_static",
+            url="https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/",
+            note="Cloudflare Browser Rendering (Workers Browser Run)",
         ),
         ScrapeStep(
             fetcher="curl_cffi",

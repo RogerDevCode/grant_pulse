@@ -1,6 +1,6 @@
 """Tests para el pipeline institucional compuesto."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -64,6 +64,7 @@ async def test_corfo_pipeline_falls_back_from_wp_ajax_to_curl_cffi(fuente_corfo:
     assert profile is not None
     scraper = CompositeFundingScraper(profile)
     scraper._sleep = _noop_sleep
+    scraper._cloudflare = AsyncMock()
 
     fallback_snapshot = Snapshot(
         fuente_id=fuente_corfo.id,
@@ -74,6 +75,7 @@ async def test_corfo_pipeline_falls_back_from_wp_ajax_to_curl_cffi(fuente_corfo:
 
     with (
         patch.object(scraper._wp_ajax, "fetch", side_effect=Exception("AJAX failed")) as mock_ajax_fetch,
+        patch.object(scraper._cloudflare, "fetch", side_effect=Exception("Cloudflare failed")) as mock_cloudflare_fetch,
         patch.object(scraper._curl_cffi, "fetch", return_value=fallback_snapshot) as mock_curl_fetch,
         patch.object(
             scraper._html_static, "extract", return_value=[{"identificador": "1", "titulo": "OK"}]
@@ -83,13 +85,14 @@ async def test_corfo_pipeline_falls_back_from_wp_ajax_to_curl_cffi(fuente_corfo:
         snapshot = await scraper.fetch(fuente_corfo)
         assert snapshot.contenido_crudo == fallback_snapshot.contenido_crudo
         assert mock_ajax_fetch.call_count == 1
+        assert mock_cloudflare_fetch.call_count == 1
         assert mock_curl_fetch.call_count == 1
 
         items = await scraper.extract(snapshot, fuente_corfo)
         assert items == [{"identificador": "1", "titulo": "OK"}]
         assert mock_html_extract.call_count == 1
         assert scraper._state is not None
-        assert scraper._state.step_index == 1
+        assert scraper._state.step_index == 2
 
 
 @pytest.mark.asyncio

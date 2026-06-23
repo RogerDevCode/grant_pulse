@@ -2,6 +2,10 @@ nombre: "CORFO"
 url_busqueda: "https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/"
 estrategia: "wp_ajax"
 
+fallback_steps:
+  - estrategia: "cloudflare"
+    url: "https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/"
+    nota: "Fallback via Cloudflare Browser Rendering"
 selectores:
   contenedor_items: ".caja-resultados_uno"
   identificador: "h4"

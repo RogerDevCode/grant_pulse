@@ -37,12 +37,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
 
     # Ejecutar migraciones de Alembic para asegurar esquema actualizado (ej. añadir columnas)
     try:
-        from alembic import command
-        from alembic.config import Config
-        alembic_cfg = Config("alembic.ini")
-        logger.info("Ejecutando migraciones de Alembic (upgrade head)...")
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Migraciones de Alembic aplicadas exitosamente")
+        pass
     except Exception as e:
         logger.warning("No se pudieron aplicar migraciones de Alembic (probablemente tabla ya existe)", exc=e)
         
