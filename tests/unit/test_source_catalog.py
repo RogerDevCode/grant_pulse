@@ -52,8 +52,10 @@ def test_corfo_secondary_step_is_curl_cffi() -> None:
     profile = resolve_source_profile("CORFO")
     assert profile is not None
     assert len(profile.steps) >= 2
-    assert profile.steps[1].fetcher == "curl_cffi"
+    assert profile.steps[1].fetcher == "cloudflare"
     assert profile.steps[1].extractor == "html_static"
+    assert profile.steps[2].fetcher == "curl_cffi"
+    assert profile.steps[2].extractor == "html_static"
 
 
 def test_sercotec_primary_step_is_json_api() -> None:

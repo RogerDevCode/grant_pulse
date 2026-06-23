@@ -40,11 +40,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
         pass
     except Exception as e:
         logger.warning("No se pudieron aplicar migraciones de Alembic (probablemente tabla ya existe)", exc=e)
-        
+
     # FORZAR ADD COLUMN EN PRODUCCION
     try:
-        from src.infra.db.connection import engine
         from sqlalchemy import text
+
+        from src.infra.db.connection import engine
         async with engine.connect() as conn:
             try:
                 await conn.execute(text("ALTER TABLE convocatorias ADD COLUMN estado_enriquecimiento VARCHAR DEFAULT 'PENDIENTE'"))

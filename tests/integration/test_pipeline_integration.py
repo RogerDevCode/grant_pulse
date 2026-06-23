@@ -54,7 +54,8 @@ class TestPipelineFallback:
         assert profile is not None
         assert len(profile.steps) >= 2
         assert profile.steps[0].fetcher == "wp_ajax"
-        assert profile.steps[1].fetcher == "curl_cffi"
+        assert profile.steps[1].fetcher == "cloudflare"
+        assert profile.steps[2].fetcher == "curl_cffi"
 
     @pytest.mark.asyncio
     async def test_anid_primary_is_rss(self) -> None:
@@ -174,6 +175,8 @@ class TestPipelineFallbackExecution:
         assert profile is not None
         scraper = CompositeFundingScraper(profile)
         scraper._sleep = _noop_sleep
+        from unittest.mock import AsyncMock
+        scraper._cloudflare = AsyncMock()
 
         fuente = Fuente(
             id=uuid4(),
@@ -194,6 +197,7 @@ class TestPipelineFallbackExecution:
 
         with (
             patch.object(scraper._wp_ajax, "fetch", side_effect=Exception("AJAX failed")),
+            patch.object(scraper._cloudflare, "fetch", side_effect=Exception("Cloudflare failed")),
             patch.object(scraper._curl_cffi, "fetch", return_value=fallback_snapshot),
             patch.object(scraper._html_static, "extract", return_value=[{"identificador": "1", "titulo": "OK"}]),
             patch.object(scraper._trafilatura, "extract", return_value=[]),
@@ -204,7 +208,7 @@ class TestPipelineFallbackExecution:
             items = await scraper.extract(snapshot, fuente)
             assert len(items) == 1
             assert scraper._state is not None
-            assert scraper._state.step_index == 1
+            assert scraper._state.step_index == 2
 
     @pytest.mark.asyncio
     async def test_all_steps_fail_raises_last_error(self) -> None:

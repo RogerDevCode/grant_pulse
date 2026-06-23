@@ -213,7 +213,7 @@ async def list_convocatorias(
         query = query.where(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
 
     if orden == "por_vencer":
-        # Ordenar primero las que vencen en el futuro (ascendente), 
+        # Ordenar primero las que vencen en el futuro (ascendente),
         # luego las vencidas, y al final las sin fecha (nullslast).
         now = datetime.now(UTC)
         query = query.order_by(

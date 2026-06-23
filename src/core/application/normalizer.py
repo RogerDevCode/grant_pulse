@@ -447,7 +447,7 @@ class DataNormalizer:
                         fecha_cierre=fecha_cierre_val.isoformat(),
                     )
                     estado = "CERRADO"
-                    
+
             except NormalizationError as e:
                 logger.warning("Campo fecha_cierre omitido por error de normalización", item_id=identificador, exc=e)
 

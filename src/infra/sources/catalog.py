@@ -363,15 +363,17 @@ def iter_source_profiles() -> tuple[SourceProfile, ...]:
     seen: set[str] = set()
     ordered: list[SourceProfile] = []
 
-    # YAML primero
-    for profile in _get_yaml_profiles().values():
+    # Hardcoded primero (precedencia 1)
+    for profile in _HARDCODED.values():
         if profile.key in seen:
             continue
         seen.add(profile.key)
         ordered.append(profile)
 
-    # Hardcoded después (solo los que no estén ya cubiertos por YAML)
-    for profile in _HARDCODED.values():
+    # YAML después (precedencia 2)
+    for profile in _get_yaml_profiles().values():
+        if _normalize_name(profile.key) in _HARDCODED:
+            continue
         if profile.key in seen:
             continue
         seen.add(profile.key)

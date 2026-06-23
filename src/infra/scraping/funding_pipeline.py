@@ -66,6 +66,7 @@ class CompositeFundingScraper(ScraperPort):
         subdere_homepage: ScraperPort | None = None,
         fosis_multipage: ScraperPort | None = None,
         trafilatura: ScraperPort | None = None,
+        cloudflare: ScraperPort | None = None,
         sleep_fn: Any = asyncio.sleep,
     ) -> None:
         self._profile = profile
@@ -79,6 +80,7 @@ class CompositeFundingScraper(ScraperPort):
         self._subdere_homepage = subdere_homepage or SubdereHomepageScraper()
         self._fosis_multipage = fosis_multipage or FosisMultiPageScraper()
         self._trafilatura = trafilatura or TrafilaturaScraper()
+        self._cloudflare: ScraperPort | None = cloudflare
         self._sleep = sleep_fn
         self._metrics = PipelineMetrics(step_metrics=[])
         self._state: _AttemptState | None = None
@@ -117,6 +119,11 @@ class CompositeFundingScraper(ScraperPort):
             return await self._subdere_homepage.fetch(fuente)
         if kind == "fosis_multipage":
             return await self._fosis_multipage.fetch(fuente)
+        if kind == "cloudflare":
+            if self._cloudflare is None:
+                from src.infra.scraping.cloudflare_scraper import CloudflareBrowserScraper
+                self._cloudflare = CloudflareBrowserScraper()
+            return await self._cloudflare.fetch(fuente)
         raise ScrapingError(f"Fetch kind no soportado: {kind}")
 
     def _fusionar_resultados(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -234,6 +241,11 @@ class CompositeFundingScraper(ScraperPort):
             return await self._subdere_homepage.extract(snapshot, fuente, **kwargs)
         if kind == "fosis_multipage":
             return await self._fosis_multipage.extract(snapshot, fuente, **kwargs)
+        if kind == "cloudflare":
+            if self._cloudflare is None:
+                from src.infra.scraping.cloudflare_scraper import CloudflareBrowserScraper
+                self._cloudflare = CloudflareBrowserScraper()
+            return await self._cloudflare.extract(snapshot, fuente, **kwargs)
         raise ScrapingError(f"Extract kind no soportado: {kind}")
 
     def _explicit_empty(self, content: str) -> bool:
@@ -465,6 +477,9 @@ def build_scraper_for_source(fuente: Fuente, fallback_strategy: str | None = Non
         return SubdereHomepageScraper()
     if estrategia == "fosis_multipage":
         return FosisMultiPageScraper()
+    if estrategia == "cloudflare":
+        from src.infra.scraping.cloudflare_scraper import CloudflareBrowserScraper
+        return CloudflareBrowserScraper()
     return HtmlStaticScraper(timeout=15)
 
 

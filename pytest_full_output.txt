@@ -1,0 +1,1255 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.12, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/manager/Sync/python_proyects/grant_pulse
+configfile: pyproject.toml
+testpaths: tests
+plugins: asyncio-1.4.0, respx-0.23.1, anyio-4.13.0, cov-7.1.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 406 items
+
+tests/frontend/test_detail_nav_e2e.py ........                           [  1%]
+tests/integration/test_pipeline_integration.py ..F...................... [  8%]
+.................FFFFFFFF...........FF                                   [ 17%]
+tests/integration/test_use_case_integration.py FFFFFFFF                  [ 19%]
+tests/unit/test_api.py .                                                 [ 19%]
+tests/unit/test_change_detector.py .......                               [ 21%]
+tests/unit/test_change_detector_edge_cases.py ......                     [ 22%]
+tests/unit/test_cli_concurrency.py FF                                    [ 23%]
+tests/unit/test_config.py .                                              [ 23%]
+tests/unit/test_curl_cffi.py ..FFFF                                      [ 25%]
+tests/unit/test_estado_permanente.py ......                              [ 26%]
+tests/unit/test_exceptions.py ..                                         [ 27%]
+tests/unit/test_fecha_utils.py ...........                               [ 29%]
+tests/unit/test_fosis_multipage.py ..FFFF                                [ 31%]
+tests/unit/test_funding_pipeline.py ..FFFF...                            [ 33%]
+tests/unit/test_healthcheck.py FF                                        [ 33%]
+tests/unit/test_html_static.py FFFF                                      [ 34%]
+tests/unit/test_json_api.py F...FFFFF                                    [ 37%]
+tests/unit/test_llm_client.py ...................FFF                     [ 42%]
+tests/unit/test_llm_factory.py .....F                                    [ 44%]
+tests/unit/test_llm_features.py FFFF                                     [ 45%]
+tests/unit/test_llm_scraper.py FF                                        [ 45%]
+tests/unit/test_new_rules.py .....                                       [ 46%]
+tests/unit/test_normalizer.py ..............                             [ 50%]
+tests/unit/test_notifications.py FFFFFFFF                                [ 52%]
+tests/unit/test_observability.py .........                               [ 54%]
+tests/unit/test_pipeline_fallback.py FFFFFF                              [ 55%]
+tests/unit/test_region_inference.py .                                    [ 56%]
+tests/unit/test_region_inferrer.py ...................                   [ 60%]
+tests/unit/test_relevancia.py .........................................  [ 70%]
+tests/unit/test_repository.py FFFF                                       [ 71%]
+tests/unit/test_rss_feed.py FFFFFFF..                                    [ 74%]
+tests/unit/test_rules_config.py .....                                    [ 75%]
+tests/unit/test_rules_edge_cases.py .......                              [ 77%]
+tests/unit/test_scraper_network_errors.py FFFFFFFFFFFF                   [ 80%]
+tests/unit/test_scraping_advanced.py FFF                                 [ 80%]
+tests/unit/test_selector_failures.py FFFFFFF                             [ 82%]
+tests/unit/test_sercotec_scraper.py ....FFFFF..                          [ 85%]
+tests/unit/test_source_catalog.py .....F.......                          [ 88%]
+tests/unit/test_subdere_homepage.py FFFFFFFFFFF                          [ 91%]
+tests/unit/test_use_cases.py FFF                                         [ 91%]
+tests/unit/test_vigencia.py ...........................                  [ 98%]
+tests/unit/test_wp_ajax.py FFFFFF                                        [100%]
+
+=================================== FAILURES ===================================
+_____________ TestCatalogProfiles.test_profile_resolves[ANID_LLM] ______________
+tests/integration/test_pipeline_integration.py:30: in test_profile_resolves
+    assert profile.key == profile_key
+E   AssertionError: assert 'ANID' == 'ANID_LLM'
+E     
+E     - ANID_LLM
+E     + ANID
+_____ TestPipelineFallback.test_corfo_falls_back_from_wp_ajax_to_curl_cffi _____
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________________ TestPipelineFallback.test_anid_primary_is_rss _________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______ TestPipelineFallback.test_fia_primary_is_json_api_with_pagination _______
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________ TestPipelineFallback.test_prochile_primary_is_curl_cffi ____________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________ TestPipelineFallback.test_indap_primary_is_html_static ____________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________ TestPipelineFallback.test_sercotec_primary_is_json_api ____________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________ TestPipelineFallback.test_fosis_uses_multipage_strategy ____________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________ TestPipelineFallback.test_subdere_uses_homepage_strategy ___________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___ TestPipelineFallbackExecution.test_first_step_failure_triggers_fallback ____
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____ TestPipelineFallbackExecution.test_all_steps_fail_raises_last_error ______
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________________ test_full_pipeline_with_notifications _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________ test_notification_error_creates_fallback_result ________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________ test_notificacion_persistence_error_tracked __________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_no_notifier_means_no_notifications ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________ test_deduplication_by_identificador_externo __________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________________ test_only_relevant_events_get_notified ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________________ test_zero_eventos_no_notification_loop ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______________ test_network_error_propagates_as_grant_pulse_error ______________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_run_all_active_sources_concurrency ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________________ test_run_all_active_sources_handles_exceptions ________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____________________ test_fetch_raises_on_empty_response ______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________________ test_fetch_raises_on_http_error ________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______________________________ test_fetch_success ______________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________________ test_extract_delegates_to_html_static _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+__________ TestExtractPrograms.test_extracts_programs_with_h2_and_btn __________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________ TestExtractPrograms.test_deduplicates_by_url _________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________ TestExtractAlianzas.test_extracts_alianzas_links _______________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____ TestFetchWithMockedHttpx.test_fetch_raises_network_error_on_http_error ____
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________ test_corfo_pipeline_falls_back_from_wp_ajax_to_curl_cffi ___________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________ test_sercotec_pipeline_uses_json_api_as_primary ________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________ test_anid_pipeline_uses_rss_feed_as_primary __________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+__________________ test_fia_pipeline_uses_json_api_as_primary __________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______________ TestHealthcheck.test_healthcheck_db_ok_returns_200 ______________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________ TestHealthcheck.test_healthcheck_db_unavailable_returns_503 __________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________________________ test_html_static_fetch_success ________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____________________ test_html_static_fetch_network_error _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________________ test_html_static_extract_success _______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______________________ test_html_static_with_normalizers _______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________ test_json_api_root_path_invalid_raises_extraction_error ____________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________ test_fetch_paginated_consolidates_all_pages __________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_fetch_no_pagination_single_request ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_fetch_paginated_respects_max_pages ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________ test_fetch_paginated_empty_page_stops_early __________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____________________ test_extract_from_paginated_snapshot _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+__________________ test_chat_completion_cascada_modelo_falla ___________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________ test_chat_completion_todos_modelos_fallan_lanza_scraping_error ________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________ test_chat_completion_sin_api_key_lanza_scraping_error _____________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________________ test_groq_client_headers ___________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________________ test_discovery_navigation_brain ________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______________________ test_high_density_context_cleaning ______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________________ test_context_budget_is_respected _______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________________ test_resilient_failthru_cascada ________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________________ test_llm_scraper_extract_success _______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________________________ test_llm_scraper_fetch_success ________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________________ test_logger_adapter_apertura _________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________________ test_logger_adapter_modificacion _______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_logger_adapter_skips_no_relevantes ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_composite_adapter_collects_results ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_composite_adapter_isolates_failures ___________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________________ test_composite_adapter_all_fail ________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________ test_telegram_adapter_skipped_when_unconfigured ________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________________ test_notificacion_result_entity ________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________________ test_fetch_all_steps_fail_raises_network_error ________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________________ test_fetch_first_fails_second_succeeds ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____________ test_extract_all_steps_fail_raises_extraction_error ______________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______________ test_extract_fallback_re_fetch_and_extract_success ______________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________________ test_extract_empty_state_marker_returns_empty _________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____________________ test_fetch_metrics_recorded_per_step _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_fuente_repository_get_by_id_success ___________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+__________________ test_fuente_repository_get_by_id_db_error ___________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_convocatoria_repository_save_insert ___________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_convocatoria_repository_save_update ___________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________ test_rss_feed_extract_filters_convocatorias __________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+__________________ test_rss_feed_extract_detects_fecha_cierre __________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____________________ test_rss_feed_extract_detects_monto ______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_rss_feed_extract_handles_atom_feed ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________ test_rss_feed_extract_raises_on_invalid_xml __________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________ test_rss_feed_extract_raises_on_non_feed_xml _________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_rss_feed_extract_respects_max_items ___________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_html_static_fetch_connection_error ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____________________ test_html_static_fetch_timeout_error _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________________ test_html_static_fetch_http_403 ________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____________________ test_json_api_fetch_connection_error _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______________________ test_json_api_fetch_timeout_error _______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________________ test_json_api_fetch_http_500 _________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____________________ test_rss_feed_fetch_connection_error _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______________________ test_rss_feed_fetch_timeout_error _______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________________ test_rss_feed_fetch_http_404 _________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_llm_scraper_fetch_connection_error ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____________________ test_llm_scraper_fetch_timeout_error _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________________ test_llm_scraper_fetch_http_502 ________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________________________ test_consensus_scraper_success ________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________ test_consensus_scraper_discrepancy_with_referee ________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+__________________________ test_pipeline_auto_healing __________________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_extract_no_containers_returns_empty ___________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________ test_extract_containers_but_no_identificador_nor_titulo ____________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________________ test_extract_attr_selector_missing_attribute _________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______________________ test_extract_attr_selector_present ______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________________ test_extract_malformed_html_still_parses ___________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________________ test_extract_estado_normalizes_values _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____________ test_extract_no_estado_selector_defaults_desconocido _____________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____ TestExtractSinAgrupacion.test_extrae_multiples_items_mismo_instrumento ____
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+___________ TestExtractSinAgrupacion.test_extrae_76_items_realistas ____________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________ TestExtractSinAgrupacion.test_cada_item_tiene_region_correcta _________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_ TestFetchParamPagination.test_fetch_una_sola_pagina_si_items_menor_cantidad __
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_ TestFetchParamPagination.test_fetch_pagina_siguiente_si_items_igual_cantidad _
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________________ test_corfo_secondary_step_is_curl_cffi ____________________
+tests/unit/test_source_catalog.py:55: in test_corfo_secondary_step_is_curl_cffi
+    assert profile.steps[1].fetcher == "curl_cffi"
+E   AssertionError: assert 'cloudflare' == 'curl_cffi'
+E     
+E     - curl_cffi
+E     + cloudflare
+_____ TestSubdereHomepageScraperExtract.test_extracts_relevant_news_items ______
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________ TestSubdereHomepageScraperExtract.test_filters_irrelevant_news ________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______ TestSubdereHomepageScraperExtract.test_extracts_featured_programs _______
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________ TestSubdereHomepageScraperExtract.test_skips_division_links __________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______ TestSubdereHomepageScraperExtract.test_news_items_have_valid_urls _______
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____ TestSubdereHomepageScraperExtract.test_all_items_have_required_fields _____
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_____ TestSubdereHomepageScraperExtract.test_empty_html_returns_empty_list _____
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________ TestSubdereHomepageScraperExtract.test_deduplicates_by_href __________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______ TestSubdereHomepageScraperFetch.test_fetch_returns_snapshot_on_200 ______
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____ TestSubdereHomepageScraperFetch.test_fetch_raises_network_error_on_403 ____
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_ TestSubdereHomepageScraperFetch.test_fetch_raises_network_error_on_connection_error _
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________________ test_monitoreo_flujo_feliz_con_cambios ____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+______________________ test_monitoreo_falla_rapido_en_red ______________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________________ test_vigencia_filter_discards_cerrado _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+____________________ test_wp_ajax_extracts_nonce_from_page _____________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________________ test_wp_ajax_extract_parses_json_html_response ________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________ test_wp_ajax_extract_handles_plain_html_fallback _______________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_______________ test_wp_ajax_extract_returns_empty_when_no_items _______________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+_________ test_wp_ajax_extract_raises_when_containers_found_but_empty __________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+________________ test_wp_ajax_extract_raises_when_no_selectors _________________
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:569: in runtest
+    super().runtest()
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:905: in inner
+    runner.run(coro, context=context)
+../../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:93: in run
+    raise RuntimeError(
+E   RuntimeError: Runner.run() cannot be called from a running event loop
+=============================== warnings summary ===============================
+tests/integration/test_pipeline_integration.py: 10 warnings
+tests/integration/test_use_case_integration.py: 8 warnings
+tests/unit/test_cli_concurrency.py: 2 warnings
+tests/unit/test_curl_cffi.py: 4 warnings
+tests/unit/test_fosis_multipage.py: 4 warnings
+tests/unit/test_funding_pipeline.py: 4 warnings
+tests/unit/test_healthcheck.py: 2 warnings
+tests/unit/test_html_static.py: 4 warnings
+tests/unit/test_json_api.py: 6 warnings
+tests/unit/test_llm_client.py: 3 warnings
+tests/unit/test_llm_factory.py: 1 warning
+tests/unit/test_llm_features.py: 4 warnings
+tests/unit/test_llm_scraper.py: 2 warnings
+tests/unit/test_notifications.py: 8 warnings
+tests/unit/test_pipeline_fallback.py: 6 warnings
+tests/unit/test_repository.py: 4 warnings
+tests/unit/test_rss_feed.py: 7 warnings
+tests/unit/test_scraper_network_errors.py: 12 warnings
+tests/unit/test_scraping_advanced.py: 3 warnings
+tests/unit/test_selector_failures.py: 7 warnings
+tests/unit/test_sercotec_scraper.py: 5 warnings
+tests/unit/test_subdere_homepage.py: 11 warnings
+tests/unit/test_use_cases.py: 3 warnings
+tests/unit/test_wp_ajax.py: 6 warnings
+  /home/manager/Sync/python_proyects/grant_pulse/.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1054: RuntimeWarning: An exception occurred during teardown of an asyncio.Runner. The reason is likely that you closed the underlying event loop in a test, which prevents the cleanup of asynchronous generators by the runner.
+  This warning will become an error in future versions of pytest-asyncio. Please ensure that your tests don't close the event loop. Here is the traceback of the exception triggered during teardown:
+  Traceback (most recent call last):
+    File "/home/manager/Sync/python_proyects/grant_pulse/.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py", line 1052, in _scoped_runner
+      runner.__exit__(None, None, None)
+      ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+    File "/home/manager/.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py", line 62, in __exit__
+      self.close()
+      ~~~~~~~~~~^^
+    File "/home/manager/.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py", line 71, in close
+      loop.run_until_complete(loop.shutdown_asyncgens())
+      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/home/manager/.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/base_events.py", line 701, in run_until_complete
+      self._check_running()
+      ~~~~~~~~~~~~~~~~~~~^^
+    File "/home/manager/.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/base_events.py", line 639, in _check_running
+      raise RuntimeError(
+          'Cannot run the event loop while another loop is running')
+  RuntimeError: Cannot run the event loop while another loop is running
+  
+  
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integration/test_pipeline_integration.py::TestCatalogProfiles::test_profile_resolves[ANID_LLM]
+FAILED tests/integration/test_pipeline_integration.py::TestPipelineFallback::test_corfo_falls_back_from_wp_ajax_to_curl_cffi
+FAILED tests/integration/test_pipeline_integration.py::TestPipelineFallback::test_anid_primary_is_rss
+FAILED tests/integration/test_pipeline_integration.py::TestPipelineFallback::test_fia_primary_is_json_api_with_pagination
+FAILED tests/integration/test_pipeline_integration.py::TestPipelineFallback::test_prochile_primary_is_curl_cffi
+FAILED tests/integration/test_pipeline_integration.py::TestPipelineFallback::test_indap_primary_is_html_static
+FAILED tests/integration/test_pipeline_integration.py::TestPipelineFallback::test_sercotec_primary_is_json_api
+FAILED tests/integration/test_pipeline_integration.py::TestPipelineFallback::test_fosis_uses_multipage_strategy
+FAILED tests/integration/test_pipeline_integration.py::TestPipelineFallback::test_subdere_uses_homepage_strategy
+FAILED tests/integration/test_pipeline_integration.py::TestPipelineFallbackExecution::test_first_step_failure_triggers_fallback
+FAILED tests/integration/test_pipeline_integration.py::TestPipelineFallbackExecution::test_all_steps_fail_raises_last_error
+FAILED tests/integration/test_use_case_integration.py::test_full_pipeline_with_notifications
+FAILED tests/integration/test_use_case_integration.py::test_notification_error_creates_fallback_result
+FAILED tests/integration/test_use_case_integration.py::test_notificacion_persistence_error_tracked
+FAILED tests/integration/test_use_case_integration.py::test_no_notifier_means_no_notifications
+FAILED tests/integration/test_use_case_integration.py::test_deduplication_by_identificador_externo
+FAILED tests/integration/test_use_case_integration.py::test_only_relevant_events_get_notified
+FAILED tests/integration/test_use_case_integration.py::test_zero_eventos_no_notification_loop
+FAILED tests/integration/test_use_case_integration.py::test_network_error_propagates_as_grant_pulse_error
+FAILED tests/unit/test_cli_concurrency.py::test_run_all_active_sources_concurrency
+FAILED tests/unit/test_cli_concurrency.py::test_run_all_active_sources_handles_exceptions
+FAILED tests/unit/test_curl_cffi.py::test_fetch_raises_on_empty_response - Ru...
+FAILED tests/unit/test_curl_cffi.py::test_fetch_raises_on_http_error - Runtim...
+FAILED tests/unit/test_curl_cffi.py::test_fetch_success - RuntimeError: Runne...
+FAILED tests/unit/test_curl_cffi.py::test_extract_delegates_to_html_static - ...
+FAILED tests/unit/test_fosis_multipage.py::TestExtractPrograms::test_extracts_programs_with_h2_and_btn
+FAILED tests/unit/test_fosis_multipage.py::TestExtractPrograms::test_deduplicates_by_url
+FAILED tests/unit/test_fosis_multipage.py::TestExtractAlianzas::test_extracts_alianzas_links
+FAILED tests/unit/test_fosis_multipage.py::TestFetchWithMockedHttpx::test_fetch_raises_network_error_on_http_error
+FAILED tests/unit/test_funding_pipeline.py::test_corfo_pipeline_falls_back_from_wp_ajax_to_curl_cffi
+FAILED tests/unit/test_funding_pipeline.py::test_sercotec_pipeline_uses_json_api_as_primary
+FAILED tests/unit/test_funding_pipeline.py::test_anid_pipeline_uses_rss_feed_as_primary
+FAILED tests/unit/test_funding_pipeline.py::test_fia_pipeline_uses_json_api_as_primary
+FAILED tests/unit/test_healthcheck.py::TestHealthcheck::test_healthcheck_db_ok_returns_200
+FAILED tests/unit/test_healthcheck.py::TestHealthcheck::test_healthcheck_db_unavailable_returns_503
+FAILED tests/unit/test_html_static.py::test_html_static_fetch_success - Runti...
+FAILED tests/unit/test_html_static.py::test_html_static_fetch_network_error
+FAILED tests/unit/test_html_static.py::test_html_static_extract_success - Run...
+FAILED tests/unit/test_html_static.py::test_html_static_with_normalizers - Ru...
+FAILED tests/unit/test_json_api.py::test_json_api_root_path_invalid_raises_extraction_error
+FAILED tests/unit/test_json_api.py::test_fetch_paginated_consolidates_all_pages
+FAILED tests/unit/test_json_api.py::test_fetch_no_pagination_single_request
+FAILED tests/unit/test_json_api.py::test_fetch_paginated_respects_max_pages
+FAILED tests/unit/test_json_api.py::test_fetch_paginated_empty_page_stops_early
+FAILED tests/unit/test_json_api.py::test_extract_from_paginated_snapshot - Ru...
+FAILED tests/unit/test_llm_client.py::test_chat_completion_cascada_modelo_falla
+FAILED tests/unit/test_llm_client.py::test_chat_completion_todos_modelos_fallan_lanza_scraping_error
+FAILED tests/unit/test_llm_client.py::test_chat_completion_sin_api_key_lanza_scraping_error
+FAILED tests/unit/test_llm_factory.py::test_groq_client_headers - RuntimeErro...
+FAILED tests/unit/test_llm_features.py::test_discovery_navigation_brain - Run...
+FAILED tests/unit/test_llm_features.py::test_high_density_context_cleaning - ...
+FAILED tests/unit/test_llm_features.py::test_context_budget_is_respected - Ru...
+FAILED tests/unit/test_llm_features.py::test_resilient_failthru_cascada - Run...
+FAILED tests/unit/test_llm_scraper.py::test_llm_scraper_extract_success - Run...
+FAILED tests/unit/test_llm_scraper.py::test_llm_scraper_fetch_success - Runti...
+FAILED tests/unit/test_notifications.py::test_logger_adapter_apertura - Runti...
+FAILED tests/unit/test_notifications.py::test_logger_adapter_modificacion - R...
+FAILED tests/unit/test_notifications.py::test_logger_adapter_skips_no_relevantes
+FAILED tests/unit/test_notifications.py::test_composite_adapter_collects_results
+FAILED tests/unit/test_notifications.py::test_composite_adapter_isolates_failures
+FAILED tests/unit/test_notifications.py::test_composite_adapter_all_fail - Ru...
+FAILED tests/unit/test_notifications.py::test_telegram_adapter_skipped_when_unconfigured
+FAILED tests/unit/test_notifications.py::test_notificacion_result_entity - Ru...
+FAILED tests/unit/test_pipeline_fallback.py::test_fetch_all_steps_fail_raises_network_error
+FAILED tests/unit/test_pipeline_fallback.py::test_fetch_first_fails_second_succeeds
+FAILED tests/unit/test_pipeline_fallback.py::test_extract_all_steps_fail_raises_extraction_error
+FAILED tests/unit/test_pipeline_fallback.py::test_extract_fallback_re_fetch_and_extract_success
+FAILED tests/unit/test_pipeline_fallback.py::test_extract_empty_state_marker_returns_empty
+FAILED tests/unit/test_pipeline_fallback.py::test_fetch_metrics_recorded_per_step
+FAILED tests/unit/test_repository.py::test_fuente_repository_get_by_id_success
+FAILED tests/unit/test_repository.py::test_fuente_repository_get_by_id_db_error
+FAILED tests/unit/test_repository.py::test_convocatoria_repository_save_insert
+FAILED tests/unit/test_repository.py::test_convocatoria_repository_save_update
+FAILED tests/unit/test_rss_feed.py::test_rss_feed_extract_filters_convocatorias
+FAILED tests/unit/test_rss_feed.py::test_rss_feed_extract_detects_fecha_cierre
+FAILED tests/unit/test_rss_feed.py::test_rss_feed_extract_detects_monto - Run...
+FAILED tests/unit/test_rss_feed.py::test_rss_feed_extract_handles_atom_feed
+FAILED tests/unit/test_rss_feed.py::test_rss_feed_extract_raises_on_invalid_xml
+FAILED tests/unit/test_rss_feed.py::test_rss_feed_extract_raises_on_non_feed_xml
+FAILED tests/unit/test_rss_feed.py::test_rss_feed_extract_respects_max_items
+FAILED tests/unit/test_scraper_network_errors.py::test_html_static_fetch_connection_error
+FAILED tests/unit/test_scraper_network_errors.py::test_html_static_fetch_timeout_error
+FAILED tests/unit/test_scraper_network_errors.py::test_html_static_fetch_http_403
+FAILED tests/unit/test_scraper_network_errors.py::test_json_api_fetch_connection_error
+FAILED tests/unit/test_scraper_network_errors.py::test_json_api_fetch_timeout_error
+FAILED tests/unit/test_scraper_network_errors.py::test_json_api_fetch_http_500
+FAILED tests/unit/test_scraper_network_errors.py::test_rss_feed_fetch_connection_error
+FAILED tests/unit/test_scraper_network_errors.py::test_rss_feed_fetch_timeout_error
+FAILED tests/unit/test_scraper_network_errors.py::test_rss_feed_fetch_http_404
+FAILED tests/unit/test_scraper_network_errors.py::test_llm_scraper_fetch_connection_error
+FAILED tests/unit/test_scraper_network_errors.py::test_llm_scraper_fetch_timeout_error
+FAILED tests/unit/test_scraper_network_errors.py::test_llm_scraper_fetch_http_502
+FAILED tests/unit/test_scraping_advanced.py::test_consensus_scraper_success
+FAILED tests/unit/test_scraping_advanced.py::test_consensus_scraper_discrepancy_with_referee
+FAILED tests/unit/test_scraping_advanced.py::test_pipeline_auto_healing - Run...
+FAILED tests/unit/test_selector_failures.py::test_extract_no_containers_returns_empty
+FAILED tests/unit/test_selector_failures.py::test_extract_containers_but_no_identificador_nor_titulo
+FAILED tests/unit/test_selector_failures.py::test_extract_attr_selector_missing_attribute
+FAILED tests/unit/test_selector_failures.py::test_extract_attr_selector_present
+FAILED tests/unit/test_selector_failures.py::test_extract_malformed_html_still_parses
+FAILED tests/unit/test_selector_failures.py::test_extract_estado_normalizes_values
+FAILED tests/unit/test_selector_failures.py::test_extract_no_estado_selector_defaults_desconocido
+FAILED tests/unit/test_sercotec_scraper.py::TestExtractSinAgrupacion::test_extrae_multiples_items_mismo_instrumento
+FAILED tests/unit/test_sercotec_scraper.py::TestExtractSinAgrupacion::test_extrae_76_items_realistas
+FAILED tests/unit/test_sercotec_scraper.py::TestExtractSinAgrupacion::test_cada_item_tiene_region_correcta
+FAILED tests/unit/test_sercotec_scraper.py::TestFetchParamPagination::test_fetch_una_sola_pagina_si_items_menor_cantidad
+FAILED tests/unit/test_sercotec_scraper.py::TestFetchParamPagination::test_fetch_pagina_siguiente_si_items_igual_cantidad
+FAILED tests/unit/test_source_catalog.py::test_corfo_secondary_step_is_curl_cffi
+FAILED tests/unit/test_subdere_homepage.py::TestSubdereHomepageScraperExtract::test_extracts_relevant_news_items
+FAILED tests/unit/test_subdere_homepage.py::TestSubdereHomepageScraperExtract::test_filters_irrelevant_news
+FAILED tests/unit/test_subdere_homepage.py::TestSubdereHomepageScraperExtract::test_extracts_featured_programs
+FAILED tests/unit/test_subdere_homepage.py::TestSubdereHomepageScraperExtract::test_skips_division_links
+FAILED tests/unit/test_subdere_homepage.py::TestSubdereHomepageScraperExtract::test_news_items_have_valid_urls
+FAILED tests/unit/test_subdere_homepage.py::TestSubdereHomepageScraperExtract::test_all_items_have_required_fields
+FAILED tests/unit/test_subdere_homepage.py::TestSubdereHomepageScraperExtract::test_empty_html_returns_empty_list
+FAILED tests/unit/test_subdere_homepage.py::TestSubdereHomepageScraperExtract::test_deduplicates_by_href
+FAILED tests/unit/test_subdere_homepage.py::TestSubdereHomepageScraperFetch::test_fetch_returns_snapshot_on_200
+FAILED tests/unit/test_subdere_homepage.py::TestSubdereHomepageScraperFetch::test_fetch_raises_network_error_on_403
+FAILED tests/unit/test_subdere_homepage.py::TestSubdereHomepageScraperFetch::test_fetch_raises_network_error_on_connection_error
+FAILED tests/unit/test_use_cases.py::test_monitoreo_flujo_feliz_con_cambios
+FAILED tests/unit/test_use_cases.py::test_monitoreo_falla_rapido_en_red - Run...
+FAILED tests/unit/test_use_cases.py::test_vigencia_filter_discards_cerrado - ...
+FAILED tests/unit/test_wp_ajax.py::test_wp_ajax_extracts_nonce_from_page - Ru...
+FAILED tests/unit/test_wp_ajax.py::test_wp_ajax_extract_parses_json_html_response
+FAILED tests/unit/test_wp_ajax.py::test_wp_ajax_extract_handles_plain_html_fallback
+FAILED tests/unit/test_wp_ajax.py::test_wp_ajax_extract_returns_empty_when_no_items
+FAILED tests/unit/test_wp_ajax.py::test_wp_ajax_extract_raises_when_containers_found_but_empty
+FAILED tests/unit/test_wp_ajax.py::test_wp_ajax_extract_raises_when_no_selectors
+========== 128 failed, 278 passed, 126 warnings in 178.53s (0:02:58) ===========

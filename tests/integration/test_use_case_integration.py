@@ -10,12 +10,6 @@ from uuid import UUID, uuid4
 
 import pytest
 
-
-@pytest.fixture(autouse=True)
-def mock_llm_inference():
-    with patch("src.core.application.normalizer._infer_region_with_llm", return_value=[]) as m:
-        yield m
-
 from src.core.application.use_cases import MonitoreoUseCase
 from src.core.domain.entities import (
     AlertsConfig,
@@ -35,6 +29,12 @@ from src.core.domain.ports import (
     ScraperPort,
     SnapshotRepository,
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_llm_inference():
+    with patch("src.core.application.normalizer._infer_region_with_llm", return_value=[]) as m:
+        yield m
 
 
 class MockScraper(ScraperPort):

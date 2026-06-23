@@ -13,16 +13,16 @@ Reglas AGENTS.md §6b:
 """
 
 import pytest
-from playwright.sync_api import sync_playwright, Page
+from playwright.sync_api import Page, sync_playwright
 
 BASE_URL = "https://grantpulse-production.up.railway.app"
 TIMEOUT   = 20_000   # ms
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def browser():
     with sync_playwright() as p:
-        b = p.chromium.launch(headless=True)
+        b = p.chromium.launch(headless=True, executable_path="/usr/bin/google-chrome")
         yield b
         b.close()
 
@@ -169,7 +169,7 @@ def test_radar_filter_updates_navlist(page: Page):
 
     toggle = page.locator("#soloActivasToggle")
     was_checked = toggle.is_checked()
-    toggle.click()
+    page.locator("#soloActivasLabel").click()
     page.wait_for_selector(".conv-card", timeout=TIMEOUT)
 
     nav_source = page.evaluate("() => typeof state !== 'undefined' ? state.navSource : null")
@@ -191,7 +191,7 @@ def test_radar_filter_updates_navlist(page: Page):
     # Restaurar
     page.keyboard.press("Escape")
     if not was_checked:
-        toggle.click()
+        page.locator("#soloActivasLabel").click()
 
 
 # ──────────────────────────────────────────────────────────────
