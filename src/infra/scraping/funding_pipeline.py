@@ -367,7 +367,7 @@ class CompositeFundingScraper(ScraperPort):
                     if healed:
                         logger.info("Selectores sanados, reintentando extracción", fuente=fuente.nombre)
                         from pydantic import ValidationError
-                        
+
                         try:
                             if fuente.configuracion_reglas.selectores:
                                 healed_selectors = fuente.configuracion_reglas.selectores.model_copy(update=healed)
@@ -381,6 +381,14 @@ class CompositeFundingScraper(ScraperPort):
                             resultados = await self._html_static.extract(current_snapshot, healed_fuente, **kwargs)
                             if resultados:
                                 logger.info("Auto-healing exitoso", fuente=fuente.nombre, items=len(resultados))
+
+                                # Auto-guardar los selectores sanados en el YAML de la fuente
+                                from src.infra.rules_loader import update_selectors_in_yaml
+                                try:
+                                    update_selectors_in_yaml(fuente.nombre, healed)
+                                except Exception as save_exc:
+                                    logger.warning("No se pudo auto-guardar el YAML con selectores sanados", exc=save_exc)
+
                                 return resultados
                         except ValidationError as ve:
                             logger.warning("Auto-healing devolvió selectores inválidos, omitiendo", fuente=fuente.nombre, exc=ve)

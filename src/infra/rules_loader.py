@@ -55,3 +55,32 @@ def load_rules_from_yaml(filepath: Path) -> RulesConfig:
         msg = f"Fallo de validación de esquema en {filepath.name}: {exc.errors()}"
         logger.error(msg, filepath=str(filepath), errors=exc.errors())
         raise ConfigurationError(f"Esquema de reglas inválido en {filepath.name}: {exc}") from exc
+
+def update_selectors_in_yaml(fuente_nombre: str, healed_selectors: dict[str, str]) -> None:
+    """Busca el archivo YAML de la fuente y actualiza sus selectores permanentemente."""
+    from pathlib import Path
+
+    import yaml
+
+    rules_dir = Path(__file__).parent.parent.parent / "rules"
+    for filepath in rules_dir.glob("*.yaml"):
+        try:
+            with open(filepath, encoding="utf-8") as f:
+                raw_data = yaml.safe_load(f)
+
+            if raw_data and isinstance(raw_data, dict) and raw_data.get("nombre") == fuente_nombre:
+                if "selectores" not in raw_data:
+                    raw_data["selectores"] = {}
+
+                # Actualizar los selectores
+                for k, v in healed_selectors.items():
+                    raw_data["selectores"][k] = v
+
+                with open(filepath, "w", encoding="utf-8") as f:
+                    yaml.safe_dump(raw_data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+                logger.info("Selectores sanados auto-guardados en YAML", filepath=str(filepath))
+                return
+        except Exception as exc:
+            logger.warning("Fallo al intentar actualizar YAML con auto-healing", filepath=str(filepath), exc=exc)
+
