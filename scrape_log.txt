@@ -1,0 +1,121 @@
+[2026-06-21 22:40:41] INFO    __main__: Iniciando worker para fuente específica | filepath=rules/corfo.yaml run_id=1274d0bd755b
+[2026-06-21 22:40:41] INFO    src.infra.rules_loader: Configuración cargada y validada exitosamente: CORFO | source=CORFO run_id=1274d0bd755b
+[2026-06-21 22:40:41] INFO    __main__: Aplicando URL canónica desde registry duro | fuente=CORFO url_busqueda=https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/ profile=CORFO run_id=1274d0bd755b
+[2026-06-21 22:40:50] INFO    src.core.application.use_cases: Iniciando caso de uso de monitoreo | fuente_id=11 fuente_nombre=CORFO run_id=1274d0bd755b
+[2026-06-21 22:40:50] INFO    src.infra.scraping.wp_ajax: WpAjaxScraper: iniciando fetch | url=https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/ fuente=CORFO run_id=1274d0bd755b
+[2026-06-21 22:40:56] ERROR   src.infra.scraping.wp_ajax: Error de red curl_cffi al obtener nonce desde https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/: Failed to perform, curl: (7) Failed to connect to 127.0.0.1 port 443 after 0 ms: Could not connect to server. See https://curl.se/libcurl/c/libcurl-errors.html first for more details. | run_id=1274d0bd755b
+Traceback (most recent call last):
+  File "/home/manager/Sync/python_proyects/grant_pulse/.venv/lib/python3.13/site-packages/curl_cffi/requests/session.py", line 1337, in _request_once
+    await task
+curl_cffi.curl.CurlError: Failed to perform, curl: (7) Failed to connect to 127.0.0.1 port 443 after 0 ms: Could not connect to server. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/wp_ajax.py", line 87, in _resolve_nonce_and_ajax_url
+    response = await client.get(page_url)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/.venv/lib/python3.13/site-packages/curl_cffi/requests/session.py", line 1447, in get
+    return await self.request(method="GET", url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/.venv/lib/python3.13/site-packages/curl_cffi/requests/session.py", line 1400, in request
+    return await self._request_once(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<34 lines>...
+    )
+    ^
+  File "/home/manager/Sync/python_proyects/grant_pulse/.venv/lib/python3.13/site-packages/curl_cffi/requests/session.py", line 1344, in _request_once
+    raise error(str(e), e.code, rsp) from e
+curl_cffi.requests.exceptions.ConnectionError: Failed to perform, curl: (7) Failed to connect to 127.0.0.1 port 443 after 0 ms: Could not connect to server. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.
+[2026-06-21 22:40:56] WARNING src.infra.scraping.funding_pipeline: Paso de fetch falló | fuente=CORFO fetcher=wp_ajax url=https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/ exc=Error de red curl_cffi al obtener nonce desde https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/: Failed to perform, curl: (7) Failed to connect to 127.0.0.1 port 443 after 0 ms: Could not connect to server. See https://curl.se/libcurl/c/libcurl-errors.html first for more details. run_id=1274d0bd755b
+[2026-06-21 22:40:56] INFO    src.infra.scraping.funding_pipeline: Pausa polida entre requests | fuente=CORFO step_index=1 reason=fallback-fetch sleep_seconds=2.24 run_id=1274d0bd755b
+[2026-06-21 22:40:58] INFO    src.infra.scraping.curl_cffi: CurlCffiScraper: iniciando fetch | url=https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/ fuente=CORFO impersonate=chrome120 run_id=1274d0bd755b
+[2026-06-21 22:41:04] INFO    src.infra.scraping.curl_cffi: CurlCffiScraper: fetch exitoso | url=https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/ fuente=CORFO content_length=74152 run_id=1274d0bd755b
+[2026-06-21 22:41:04] INFO    src.infra.scraping.html_static: Iniciando extracción | snapshot_id=None fuente_id=11 run_id=1274d0bd755b
+[2026-06-21 22:41:04] WARNING src.infra.scraping.html_static: No se encontraron items con el selector provisto | selector=.caja-resultados_uno fuente_id=11 run_id=1274d0bd755b
+[2026-06-21 22:41:04] INFO    src.infra.scraping.funding_pipeline: Intentando auto-healing de selectores con LLM | fuente=CORFO run_id=1274d0bd755b
+[2026-06-21 22:42:11] INFO    src.infra.scraping.funding_pipeline: Selectores sanados, reintentando extracción | fuente=CORFO run_id=1274d0bd755b
+[2026-06-21 22:42:11] INFO    src.infra.scraping.html_static: Iniciando extracción | snapshot_id=None fuente_id=11 run_id=1274d0bd755b
+[2026-06-21 22:42:11] WARNING src.infra.scraping.html_static: Item #0 no tiene identificador ni título para fallback. Saltando. | fuente=CORFO run_id=1274d0bd755b
+[2026-06-21 22:42:11] ERROR   src.infra.scraping.html_static: Se encontraron contenedores pero ningún item pudo ser extraído. | fuente_id=11 run_id=1274d0bd755b
+[2026-06-21 22:42:11] WARNING src.infra.scraping.funding_pipeline: Paso de fallback falló al extraer | fuente=CORFO profile=CORFO step_index=1 extractor=html_static url=https://www.corfo.gob.cl/sites/cpp/programasyconvocatorias/ exc=Se encontraron contenedores pero ningún item pudo ser extraído. run_id=1274d0bd755b
+[2026-06-21 22:42:11] ERROR   src.infra.scraping.funding_pipeline: No se pudieron extraer datos de CORFO tras agotar el pipeline | fuente=CORFO profile=CORFO run_id=1274d0bd755b
+Traceback (most recent call last):
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/funding_pipeline.py", line 289, in extract
+    resultados = await self._html_static.extract(current_snapshot, healed_fuente, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/html_static.py", line 259, in extract
+    raise ExtractionError(msg)
+src.core.domain.exceptions.ExtractionError: Se encontraron contenedores pero ningún item pudo ser extraído.
+[2026-06-21 22:42:11] ERROR   src.core.application.use_cases: Fallo controlado en monitoreo de fuente | fuente_id=11 run_id=1274d0bd755b
+Traceback (most recent call last):
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/funding_pipeline.py", line 289, in extract
+    resultados = await self._html_static.extract(current_snapshot, healed_fuente, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/html_static.py", line 259, in extract
+    raise ExtractionError(msg)
+src.core.domain.exceptions.ExtractionError: Se encontraron contenedores pero ningún item pudo ser extraído.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/core/application/use_cases.py", line 67, in ejecutar_monitoreo
+    raw_items = await self.scraper.extract(snapshot, fuente)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/funding_pipeline.py", line 330, in extract
+    raise ExtractionError(msg) from last_error
+src.core.domain.exceptions.ExtractionError: No se pudieron extraer datos de CORFO tras agotar el pipeline
+[2026-06-21 22:42:12] ERROR   __main__: Error en monitoreo de fuente, session rollback ejecutado | run_id=1274d0bd755b
+Traceback (most recent call last):
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/funding_pipeline.py", line 289, in extract
+    resultados = await self._html_static.extract(current_snapshot, healed_fuente, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/html_static.py", line 259, in extract
+    raise ExtractionError(msg)
+src.core.domain.exceptions.ExtractionError: Se encontraron contenedores pero ningún item pudo ser extraído.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/cli.py", line 247, in run_single_source
+    eventos, nuevas_convocatorias = await use_case.ejecutar_monitoreo(fuente_db)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/core/application/use_cases.py", line 67, in ejecutar_monitoreo
+    raw_items = await self.scraper.extract(snapshot, fuente)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/funding_pipeline.py", line 330, in extract
+    raise ExtractionError(msg) from last_error
+src.core.domain.exceptions.ExtractionError: No se pudieron extraer datos de CORFO tras agotar el pipeline
+[2026-06-21 22:42:12] ERROR   __main__: Error de dominio finalizando el worker | run_id=9d6797c0bcb4
+Traceback (most recent call last):
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/funding_pipeline.py", line 289, in extract
+    resultados = await self._html_static.extract(current_snapshot, healed_fuente, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/html_static.py", line 259, in extract
+    raise ExtractionError(msg)
+src.core.domain.exceptions.ExtractionError: Se encontraron contenedores pero ningún item pudo ser extraído.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/cli.py", line 454, in main
+    asyncio.run(run_single_source(args.filepath))
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/home/manager/.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/manager/.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/cli.py", line 247, in run_single_source
+    eventos, nuevas_convocatorias = await use_case.ejecutar_monitoreo(fuente_db)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/core/application/use_cases.py", line 67, in ejecutar_monitoreo
+    raw_items = await self.scraper.extract(snapshot, fuente)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/manager/Sync/python_proyects/grant_pulse/src/infra/scraping/funding_pipeline.py", line 330, in extract
+    raise ExtractionError(msg) from last_error
+src.core.domain.exceptions.ExtractionError: No se pudieron extraer datos de CORFO tras agotar el pipeline

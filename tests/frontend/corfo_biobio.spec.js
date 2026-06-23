@@ -59,5 +59,6 @@ test('Verifica que CORFO en Biobío tenga 3 convocatorias en producción', async
 
   // Haremos la aserción sobre el conteo de todas las convocatorias (sin el filtro de solo activas)
   // o según corresponda. Imprimiremos ambas para que el usuario tenga toda la visibilidad.
-  expect(count, `Se esperaban 1 convocatorias para CORFO en Biobío, pero se encontraron ${count}`).toBe(1);
+  expect(count, `Se esperaban 3 convocatorias históricas para CORFO en Biobío, pero se encontraron ${count}`).toBe(3);
+  expect(countActivas, `Se esperaba 1 convocatoria activa para CORFO en Biobío, pero se encontraron ${countActivas}`).toBe(1);
 });

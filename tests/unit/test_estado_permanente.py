@@ -92,9 +92,10 @@ def test_normalizer_descarta_con_fecha_pasada(fuente_test):
     ]
 
     result = DataNormalizer.normalize_and_map(raw_items, fuente_test)
-
-    # Las convocatorias con fecha pasada y estado DESCONOCIDO se descartan
-    assert len(result) == 0
+    
+    # Las convocatorias con fecha pasada se mantienen pero se fuerzan a estado CERRADO
+    assert len(result) == 1
+    assert result[0].estado == "CERRADO"
 
 
 def test_normalizer_preserva_estado_abierto_sin_fecha(fuente_test):
