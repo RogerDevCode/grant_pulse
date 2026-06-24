@@ -11,6 +11,7 @@ from collections.abc import Coroutine
 from datetime import UTC, datetime
 from typing import Any
 
+from src.core.application.run_context import get_run_id
 from src.core.domain.entities import Convocatoria, Fuente
 from src.core.domain.estado_normalizer import normalize_estado
 from src.core.domain.exceptions import NormalizationError
@@ -21,8 +22,6 @@ from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
 
-_URL_CACHE: dict[str, bool] = {}
-
 def _is_valid_url(url: str) -> bool:
     if not url:
         return False
@@ -31,48 +30,18 @@ def _is_valid_url(url: str) -> bool:
         return False
     if lower_url.startswith("javascript:"):
         return False
-    
-    if url in _URL_CACHE:
-        return _URL_CACHE[url]
         
     try:
         from urllib.parse import urlparse
         parsed = urlparse(url)
         if not parsed.scheme or not parsed.netloc:
-            _URL_CACHE[url] = False
             return False
         if parsed.scheme not in ("http", "https"):
-            _URL_CACHE[url] = False
             return False
     except Exception:
-        _URL_CACHE[url] = False
         return False
 
-    try:
-        import httpx
-        with httpx.Client(timeout=3.0, verify=False, follow_redirects=True) as client:
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-            resp = client.head(url, headers=headers)
-            if resp.status_code >= 400:
-                if resp.status_code in (403, 404, 405):
-                    resp_get = client.get(url, headers=headers)
-                    if resp_get.status_code >= 400:
-                        _URL_CACHE[url] = False
-                        return False
-                else:
-                    _URL_CACHE[url] = False
-                    return False
-        _URL_CACHE[url] = True
-        return True
-    except httpx.TimeoutException:
-        _URL_CACHE[url] = True
-        return True
-    except httpx.RequestError:
-        _URL_CACHE[url] = False
-        return False
-    except Exception:
-        _URL_CACHE[url] = False
-        return False
+    return True
 
 REGIONES_CHILE: tuple[str, ...] = (
     "Arica y Parinacota",
@@ -428,14 +397,26 @@ class DataNormalizer:
             estado = normalize_estado(estado)
 
             url_final: str | None = None
-            if url_detalle:
-                url_temp = (
-                    str(fuente.url_base).rstrip("/") + "/" + url_detalle.lstrip("/")
-                    if url_detalle.startswith("/")
-                    else url_detalle
-                )
-                if _is_valid_url(url_temp):
+            try:
+                if url_detalle:
+                    url_temp = (
+                        str(fuente.url_base).rstrip("/") + "/" + url_detalle.lstrip("/")
+                        if url_detalle.startswith("/")
+                        else url_detalle
+                    )
+                    if not _is_valid_url(url_temp):
+                        raise NormalizationError("URL sintácticamente inválida", code="URL_INVALIDA")
                     url_final = url_temp
+            except NormalizationError as e:
+                logger.warning(
+                    "Convocatoria descartada por URL inválida",
+                    fuente_id=str(fuente.id),
+                    run_id=get_run_id(),
+                    identificador_externo=identificador,
+                    motivo=e.code
+                )
+                skipped += 1
+                continue
 
             fecha_apertura_val: datetime | None = None
             fecha_cierre_val: datetime | None = None

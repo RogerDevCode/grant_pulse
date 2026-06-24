@@ -21,7 +21,7 @@ def mock_fuente_normalizador() -> Fuente:
         configuracion_reglas=RulesConfig(
             nombre="Test",
             url_busqueda="https://ejemplo.com/fondos",  # type: ignore
-            region_defecto="Nacional",
+            regiones_defecto=["Nacional"],
             selectores=SelectorConfig(
                 contenedor_items="div", identificador="id", titulo="t", descripcion="d", link_detalle="l", estado="e"
             ),
@@ -222,8 +222,8 @@ def test_canonico_mapping_tipo_beneficiario(mock_fuente_normalizador: Fuente) ->
 
 def test_estado_nuevos_patrones(mock_fuente_normalizador: Fuente) -> None:
     raw_items = [
-        {"identificador": "1", "titulo": "A", "estado": "EN POSTULACIÓN"},
-        {"identificador": "2", "titulo": "B", "estado": "INSCRIPCIONES ABIERTAS"},
+        {"identificador": "1", "titulo": "A", "url_detalle": "/fondos/1", "estado": "EN POSTULACIÓN"},
+        {"identificador": "2", "titulo": "B", "url_detalle": "/fondos/2", "estado": "INSCRIPCIONES ABIERTAS"},
     ]
     convs = DataNormalizer.normalize_and_map(raw_items, mock_fuente_normalizador)
     assert convs[0].estado == "ABIERTO"

@@ -51,7 +51,10 @@ class ExtractionError(ScrapingError):
 class NormalizationError(ScrapingError):
     """Se lanza cuando falla la conversión de formatos de fecha, moneda u otros campos."""
 
-    pass
+    def __init__(self, message: str, code: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+
 
 
 class RuleEngineError(GrantPulseError):
