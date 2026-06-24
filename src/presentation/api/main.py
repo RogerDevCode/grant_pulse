@@ -4,19 +4,8 @@ Instancia principal de la aplicación FastAPI.
 # ruff: noqa: E402
 
 import os
+import asyncio
 from copy import deepcopy
-
-# Desactivar variables de entorno de proxy que rompen curl_cffi en Railway
-os.environ.pop("HTTP_PROXY", None)
-os.environ.pop("HTTPS_PROXY", None)
-os.environ.pop("http_proxy", None)
-os.environ.pop("https_proxy", None)
-
-# Asegurar que el directorio de datos existe
-os.makedirs("data", exist_ok=True)
-
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -30,9 +19,6 @@ from src.infra.logging import get_logger
 from src.presentation.api.routes import router
 
 logger = get_logger(__name__)
-
-
-
 
 
 def _build_uvicorn_log_config() -> dict[str, object]:
@@ -64,25 +50,75 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
             await session.commit()
 
         logger.info("Verificando y aplicando migraciones de base de datos...")
-        subprocess.run([sys.executable, "scripts/fix_alembic_drift.py"], check=False) # Check=False to ignore errors
-        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=False) # Check=False to ignore if it fails due to the columns already existing
+        # Ejecutar migraciones con timeout para evitar bloqueos en startup
+        try:
+            await asyncio.wait_for(
+                asyncio.create_subprocess_exec(
+                    sys.executable, "scripts/fix_alembic_drift.py",
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                ),
+                timeout=30.0
+            )
+        except TimeoutError:
+            logger.warning("Timeout ejecutando fix_alembic_drift.py - continuando de todos modos")
+        except Exception as e:
+            logger.warning("Error ejecutando fix_alembic_drift.py: %s - continuando de todos modos", e)
+
+        try:
+            await asyncio.wait_for(
+                asyncio.create_subprocess_exec(
+                    sys.executable, "-m", "alembic", "upgrade", "head",
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                ),
+                timeout=60.0
+            )
+        except TimeoutError:
+            logger.warning("Timeout ejecutando alembic upgrade head - continuando de todos modos")
+        except Exception as e:
+            logger.warning("Error ejecutando alembic upgrade head: %s - continuando de todos modos", e)
+
         logger.info("Migraciones aplicadas exitosamente")
     except Exception as e:
         logger.error("Error al aplicar parche de esquema o migraciones en el startup", exc=e)
+        # No levantamos la excepción para permitir que la aplicación continúe iniciando
+        # aunque las migraciones fallen, ya que podrían ser problemas temporales
 
-    # Sincronizar reglas YAML → BD de forma síncrona antes de aceptar requests
-    try:
-        from src.infra.cli import sync_all_rules
-        from src.infra.maintenance import normalize_existing_urls
+    # Sincronizar reglas YAML → BD y normalizar URLs en segundo plano después de iniciar
+    # Para evitar bloqueos en startup que puedan causar timeouts en health checks
+    async def _background_initialization():
+        try:
+            # Normalizar URLs existentes con timeout
+            try:
+                from src.infra.maintenance import normalize_existing_urls
+                await asyncio.wait_for(normalize_existing_urls(), timeout=60.0)
+                logger.info("URLs normalizadas en background")
+            except TimeoutError:
+                logger.warning("Timeout normalizando URLs - se continuará en segundo plano")
+                # Reintentar en segundo plano
+                asyncio.create_task(normalize_existing_urls())
+            except Exception as e:
+                logger.error("Error en normalización inicial: %s", e)
+                # Reintentar en segundo plano
+                asyncio.create_task(normalize_existing_urls())
 
-        await normalize_existing_urls()
-        logger.info("URLs normalizadas en startup")
+            # Sincronizar reglas con timeout
+            try:
+                from src.infra.cli import sync_all_rules
+                await asyncio.wait_for(sync_all_rules(), timeout=60.0)
+                logger.info("Reglas sincronizadas en background")
+            except TimeoutError:
+                logger.warning("Timeout sincronizando reglas - se continuará en segundo plano")
+                # Reintentar en segundo plano
+                asyncio.create_task(sync_all_rules())
+            except Exception as e:
+                logger.error("Error en sincronización inicial: %s", e)
+                # Reintentar en segundo plano
+                asyncio.create_task(sync_all_rules())
+        except Exception as e:
+            logger.error("Error inesperado en inicialización en background: %s", e)
 
-        await sync_all_rules()
-        logger.info("Reglas sincronizadas exitosamente")
-    except Exception as e:
-        logger.error("Error en sync o normalización inicial", exc=e)
-        raise
+    # Iniciar inicialización en background para no bloquear el startup
+    asyncio.create_task(_background_initialization())
 
     yield
     logger.info("Cerrando aplicación API GrantPulse")
