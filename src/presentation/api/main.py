@@ -36,58 +36,13 @@ def _build_uvicorn_log_config() -> dict[str, object]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
+    """Lifespan de FastAPI.
+
+    Las migraciones de BD corren ANTES de este punto, en el startCommand
+    de Railway (fix_alembic_drift.py + alembic upgrade head). No se
+    repiten aquí para evitar race conditions y errores silenciosos.
+    """
     logger.info("Iniciando aplicación API GrantPulse")
-
-    # Forzar ejecución de migraciones en caso de que startCommand sea ignorado en Railway
-    try:
-        import subprocess
-        import sys
-
-        from sqlalchemy import text
-
-        from src.infra.db.connection import AsyncSessionLocal
-
-        logger.info("Aplicando parche de esquema idempotente...")
-        async with AsyncSessionLocal() as session:
-            await session.execute(text("ALTER TABLE convocatorias ADD COLUMN IF NOT EXISTS url_check_failures INTEGER NOT NULL DEFAULT 0"))
-            await session.execute(text("ALTER TABLE convocatorias ADD COLUMN IF NOT EXISTS ultimo_check_url TIMESTAMP WITH TIME ZONE"))
-            await session.commit()
-
-        logger.info("Verificando y aplicando migraciones de base de datos...")
-        # Ejecutar migraciones con timeout para evitar bloqueos en startup
-        try:
-            proc = await asyncio.wait_for(
-                asyncio.create_subprocess_exec(
-                    sys.executable, "scripts/fix_alembic_drift.py",
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                ),
-                timeout=30.0
-            )
-            await asyncio.wait_for(proc.communicate(), timeout=30.0)
-        except TimeoutError:
-            logger.warning("Timeout ejecutando fix_alembic_drift.py - continuando de todos modos")
-        except Exception as e:
-            logger.warning("Error ejecutando fix_alembic_drift.py: %s - continuando de todos modos", e)
-
-        try:
-            proc = await asyncio.wait_for(
-                asyncio.create_subprocess_exec(
-                    sys.executable, "-m", "alembic", "upgrade", "head",
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                ),
-                timeout=60.0
-            )
-            await asyncio.wait_for(proc.communicate(), timeout=60.0)
-        except TimeoutError:
-            logger.warning("Timeout ejecutando alembic upgrade head - continuando de todos modos")
-        except Exception as e:
-            logger.warning("Error ejecutando alembic upgrade head: %s - continuando de todos modos", e)
-
-        logger.info("Migraciones aplicadas exitosamente")
-    except Exception as e:
-        logger.error("Error al aplicar parche de esquema o migraciones en el startup", exc=e)
-        # No levantamos la excepción para permitir que la aplicación continúe iniciando
-        # aunque las migraciones fallen, ya que podrían ser problemas temporales
 
     # Sincronizar reglas YAML → BD y normalizar URLs en segundo plano después de iniciar
     # Para evitar bloqueos en startup que puedan causar timeouts en health checks
