@@ -1,6 +1,7 @@
 import pytest
 import respx
 
+
 @pytest.mark.asyncio
 @respx.mock
 async def test_one():

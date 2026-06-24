@@ -1,7 +1,10 @@
 import asyncio
 import json
-from src.infra.db.connection import engine
+
 from sqlalchemy import text
+
+from src.infra.db.connection import engine
+
 
 async def main():
     async with engine.connect() as conn:

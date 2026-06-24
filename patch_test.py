@@ -1,7 +1,6 @@
-import re
 
 file_path = "/home/manager/Sync/python_proyects/grant_pulse/tests/unit/test_normalizer.py"
-with open(file_path, "r") as f:
+with open(file_path) as f:
     content = f.read()
 
 # Añadir import de patch

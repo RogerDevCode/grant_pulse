@@ -1,19 +1,20 @@
 import asyncio
-from src.infra.db.connection import engine
-from sqlalchemy import text
-from src.infra.workers.enrichment_worker import run_enrichment_worker
-from src.infra.db.connection import AsyncSessionLocal
+
+from sqlalchemy import select, text
+
+from src.infra.db.connection import AsyncSessionLocal, engine
 from src.infra.db.models import ConvocatoriaORM
-from sqlalchemy import select
+from src.infra.workers.enrichment_worker import run_enrichment_worker
+
 
 async def main():
     print("Resetting enrichment status for CORFO ABIERTO records...")
     async with engine.begin() as conn:
         await conn.execute(text("UPDATE convocatorias SET estado_enriquecimiento = 'PENDIENTE', detalles_llm = NULL WHERE fuente_id = 2 AND estado = 'ABIERTO' AND regiones::text LIKE '%Biobío%'"))
-        
+
     print("Running enrichment worker for 3 records...")
     await run_enrichment_worker(batch_size=3)
-    
+
     print("Verifying results in DB...")
     async with AsyncSessionLocal() as session:
         result = await session.execute(

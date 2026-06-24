@@ -136,6 +136,49 @@ async def run_backfill_regions(limit: int | None = None) -> int:
             clear_run_id()
 
 
+async def clean_unavailable_convocatorias(dias_gracia: int = 30) -> int:
+    """
+    Elimina convocatorias que fueron marcadas como no disponibles (url_check_failed=True)
+    y cuyo último check fallido fue hace más de `dias_gracia`.
+    """
+    run_id = new_run_id()
+    limite = datetime.now(UTC) - timedelta(days=dias_gracia)
+    logger.info(
+        "Iniciando purga de convocatorias no disponibles", run_id=run_id, dias_gracia=dias_gracia, limite=str(limite.date())
+    )
+
+    async with AsyncSessionLocal() as session:
+        try:
+            from sqlalchemy import String, cast
+
+            query = select(ConvocatoriaORM.id).where(
+                ConvocatoriaORM.ultimo_check_url.is_not(None),
+                ConvocatoriaORM.ultimo_check_url < limite,
+                cast(ConvocatoriaORM.metadatos["url_check_failed"], String) == "true"
+            )
+            result = await session.execute(query)
+            ids_to_delete = list(result.scalars().all())
+
+            if not ids_to_delete:
+                logger.info("No hay convocatorias no disponibles para purgar", run_id=run_id)
+                return 0
+
+            await session.execute(
+                delete(HistorialCambiosORM).where(HistorialCambiosORM.convocatoria_id.in_(ids_to_delete))
+            )
+            await session.execute(delete(ConvocatoriaORM).where(ConvocatoriaORM.id.in_(ids_to_delete)))
+
+            await session.commit()
+            logger.info("Purga de no disponibles completada", eliminadas=len(ids_to_delete), run_id=run_id)
+            return len(ids_to_delete)
+        except Exception as e:
+            await session.rollback()
+            logger.error("Error en purga de convocatorias no disponibles", exc=e, run_id=run_id)
+            raise
+        finally:
+            clear_run_id()
+
+
 async def run_clean_db() -> None:
     """Borra registros con más de 6 meses de creados y que no estén activos/vigentes."""
     run_id = new_run_id()

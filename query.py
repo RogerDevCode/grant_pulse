@@ -1,7 +1,8 @@
 import asyncio
-from src.infra.db.session import async_session
-from sqlalchemy import text
 import os
+
+from sqlalchemy import text
+from src.infra.db.session import async_session
 
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://grantpulse:grantpulse@localhost:5432/grantpulse"
 

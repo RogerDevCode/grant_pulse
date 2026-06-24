@@ -53,6 +53,7 @@ logger = get_logger(__name__)
 def _apply_source_profile(fuente: Fuente) -> Fuente:
     """Normaliza una fuente usando el registry duro si existe."""
     from pydantic import HttpUrl, TypeAdapter
+
     from src.infra.sources.catalog import source_profile_for_name
 
     source_profile = source_profile_for_name(fuente.nombre)
@@ -276,13 +277,17 @@ async def run_single_source(filepath: Path) -> None:
 
     # Purga automática de convocatorias vencidas después de cada ciclo
     try:
-        from src.infra.maintenance import clean_expired_convocatorias  # noqa: PLC0415
+        from src.infra.maintenance import clean_expired_convocatorias, clean_unavailable_convocatorias  # noqa: PLC0415
 
         purgadas = await clean_expired_convocatorias(dias_vencida=7)
         if purgadas > 0:
             logger.info("Limpieza automática de vencidas completada", eliminadas=purgadas)
+
+        purgadas_unav = await clean_unavailable_convocatorias(dias_gracia=30)
+        if purgadas_unav > 0:
+            logger.info("Limpieza automática de no disponibles completada", eliminadas=purgadas_unav)
     except Exception as e:
-        logger.warning("Limpieza automática de vencidas falló (no crítica)", exc=e)
+        logger.warning("Limpieza automática falló (no crítica)", exc=e)
 
 
 async def run_all_active_sources() -> None:
@@ -381,6 +386,20 @@ async def run_all_active_sources() -> None:
         logger.info("Batch completado sin errores", total_fuentes=len(fuentes_activas))
     finally:
         clear_run_id()
+
+    # Purga automática de convocatorias vencidas/no disponibles
+    try:
+        from src.infra.maintenance import clean_expired_convocatorias, clean_unavailable_convocatorias
+
+        purgadas = await clean_expired_convocatorias(dias_vencida=7)
+        if purgadas > 0:
+            logger.info("Limpieza automática de vencidas completada", eliminadas=purgadas)
+
+        purgadas_unav = await clean_unavailable_convocatorias(dias_gracia=30)
+        if purgadas_unav > 0:
+            logger.info("Limpieza automática de no disponibles completada", eliminadas=purgadas_unav)
+    except Exception as e:
+        logger.warning("Limpieza automática falló (no crítica)", exc=e)
 
 
 async def sync_single_source_config(filepath: Path) -> None:
@@ -485,6 +504,14 @@ def main() -> None:
     purge_parser.add_argument(
         "--dias", type=int, default=7, help="Días desde el cierre para considerar vencida (default: 7)"
     )
+
+    purge_unav_parser = subparsers.add_parser(
+        "purge-unavailable", help="Elimina convocatorias marcadas como no disponibles > N días"
+    )
+    purge_unav_parser.add_argument(
+        "--dias", type=int, default=30, help="Días desde el fallo para considerar purga (default: 30)"
+    )
+
     subparsers.add_parser(
         "backfill-regions", help="Completa la región en convocatorias existentes usando inferencia LLM"
     )
@@ -515,7 +542,12 @@ def main() -> None:
             from src.infra.maintenance import clean_expired_convocatorias
 
             eliminadas = asyncio.run(clean_expired_convocatorias(args.dias))
-            print(f"Purga completada: {eliminadas} convocatorias eliminadas.")
+            print(f"Purga completada: {eliminadas} convocatorias vencidas eliminadas.")
+        elif args.command == "purge-unavailable":
+            from src.infra.maintenance import clean_unavailable_convocatorias
+
+            eliminadas = asyncio.run(clean_unavailable_convocatorias(args.dias))
+            print(f"Purga completada: {eliminadas} convocatorias no disponibles eliminadas.")
         elif args.command == "enrich-details":
             from src.infra.workers.enrichment_worker import run_enrichment_worker
 

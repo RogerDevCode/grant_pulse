@@ -111,8 +111,8 @@ class GrantPulseLogger:
 
     def _write_to_errors_log(self, level: str, msg: str, context: dict[str, Any], exc: Exception | None = None) -> None:
         try:
-            from datetime import UTC, datetime
             import traceback
+            from datetime import UTC, datetime
 
             errors_path = Path("data/errors.log")
             errors_path.parent.mkdir(parents=True, exist_ok=True)

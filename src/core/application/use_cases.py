@@ -112,10 +112,11 @@ class MonitoreoUseCase:
 
             eventos = ChangeDetectorService.detect_changes(nuevas_convocatorias, antiguas_dict, fuente)
 
-            from src.core.domain.url_checker import UrlChecker
             import asyncio
-            from datetime import datetime, UTC
+            from datetime import UTC, datetime
+
             from src.core.domain.entities import Delta
+            from src.core.domain.url_checker import UrlChecker
 
             # BLOQUE 2: Verificación de URLs
             sem = asyncio.Semaphore(5)
@@ -124,10 +125,10 @@ class MonitoreoUseCase:
             async def _check_url_for_old(conv: Convocatoria) -> None:
                 if conv.estado == "CERRADO" or not conv.url_detalle:
                     return
-                
+
                 async with sem:
                     status = await UrlChecker.check_url(str(conv.url_detalle))
-                
+
                 conv.ultimo_check_url = ahora
                 # hasattr check since the domain model might not have been updated yet
                 if not hasattr(conv, "url_check_failures"):
@@ -148,12 +149,12 @@ class MonitoreoUseCase:
                             fecha_deteccion=ahora
                         )
                         eventos.append(evento_cierre)
-                        
+
                         conv.estado = "CERRADO"
                         if not isinstance(conv.metadatos, dict):
                             conv.metadatos = {}
                         conv.metadatos["url_check_failed"] = True
-                        
+
                         logger.info(
                             "Convocatoria cerrada por URL permanentemente caída",
                             convocatoria_id=str(conv.id),

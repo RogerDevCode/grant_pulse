@@ -3,10 +3,10 @@ Tests unitarios para el caso de uso central de monitoreo.
 """
 
 from typing import Any
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import pytest
-from unittest.mock import patch
 
 from src.core.application.use_cases import MonitoreoUseCase
 from src.core.domain.entities import (
@@ -205,7 +205,7 @@ async def test_monitoreo_url_check_failures(mock_fuente_uc: Fuente) -> None:
     )
     repo_convs = MockConvocatoriaRepository(existing=[antigua])
     repo_snaps = MockSnapshotRepository()
-    
+
     scraper = MockScraper([]) # No devuelve nada, así que antigua no está en el barrido nuevo
     uc = MonitoreoUseCase(scraper, repo_snaps, repo_convs)
 
@@ -220,7 +220,7 @@ async def test_monitoreo_url_check_failures(mock_fuente_uc: Fuente) -> None:
     # Como no venía en nuevas, debe haberse agregado a las guardadas porque fue modificada
     assert len(repo_convs.saved_convocatorias) == 1
     assert repo_convs.saved_convocatorias[0].identificador_externo == "EXT_MISSING"
-    
+
     assert len(eventos) == 1
     assert eventos[0].tipo == "MODIFICACION"
     assert eventos[0].deltas[0].campo == "estado"

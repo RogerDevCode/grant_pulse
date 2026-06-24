@@ -1,8 +1,8 @@
 import asyncio
 import os
 import sys
-import yaml
 
+import yaml
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,14 +12,15 @@ sys.path.append(os.path.dirname(__file__))
 from src.core.domain.entities import Fuente, RulesConfig
 from src.infra.scraping.cloudflare_scraper import CloudflareBrowserScraper
 
+
 async def main():
     # Cargar las reglas de CORFO
     rules_path = os.path.join(os.path.dirname(__file__), "rules", "corfo.yaml")
-    with open(rules_path, "r", encoding="utf-8") as f:
+    with open(rules_path, encoding="utf-8") as f:
         rules_dict = yaml.safe_load(f)
-        
+
     config = RulesConfig(**rules_dict)
-    
+
     fuente = Fuente(
         id=1,
         nombre="CORFO Test Cloudflare",
@@ -27,9 +28,9 @@ async def main():
         activa=True,
         configuracion_reglas=config
     )
-    
+
     scraper = CloudflareBrowserScraper()
-    
+
     print("Iniciando fetch con CloudflareBrowserScraper...")
     try:
         snapshot = await scraper.fetch(fuente)
@@ -37,7 +38,7 @@ async def main():
     except Exception as e:
         print(f"Error en fetch: {e}")
         return
-        
+
     print("Iniciando extracción delegada a HtmlStaticScraper...")
     try:
         items = await scraper.extract(snapshot, fuente)

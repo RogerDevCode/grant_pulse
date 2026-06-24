@@ -30,7 +30,7 @@ def _is_valid_url(url: str) -> bool:
         return False
     if lower_url.startswith("javascript:"):
         return False
-        
+
     try:
         from urllib.parse import urlparse
         parsed = urlparse(url)
@@ -558,11 +558,11 @@ class DataNormalizer:
                 texto_completo = f"{titulo} {descripcion}".lower() if descripcion else titulo.lower()
                 indicios_offline = ["@", "correo", "presencial", "oficina de partes", "postulación en papel", "oficina de fomento", "oficina municipal"]
                 es_offline = any(ind in texto_completo for ind in indicios_offline)
-                
+
                 if not es_offline:
                     logger.info(
-                        "Forzando estado CERRADO por URL inválida sin indicios de postulación offline", 
-                        titulo=titulo, 
+                        "Forzando estado CERRADO por URL inválida sin indicios de postulación offline",
+                        titulo=titulo,
                         identificador=identificador
                     )
                     estado = "CERRADO"

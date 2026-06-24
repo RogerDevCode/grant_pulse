@@ -1,4 +1,5 @@
 from unittest.mock import patch
+
 """
 Tests unitarios para el normalizador de datos.
 """
