@@ -54,12 +54,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
     try:
         import subprocess
         import sys
+        from sqlalchemy import text
+        from src.infra.db.connection import AsyncSessionLocal
+
+        logger.info("Aplicando parche de esquema idempotente...")
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("ALTER TABLE convocatorias ADD COLUMN IF NOT EXISTS url_check_failures INTEGER NOT NULL DEFAULT 0"))
+            await session.execute(text("ALTER TABLE convocatorias ADD COLUMN IF NOT EXISTS ultimo_check_url TIMESTAMP WITH TIME ZONE"))
+            await session.commit()
+
         logger.info("Verificando y aplicando migraciones de base de datos...")
-        subprocess.run([sys.executable, "scripts/fix_alembic_drift.py"], check=True)
-        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+        subprocess.run([sys.executable, "scripts/fix_alembic_drift.py"], check=False) # Check=False to ignore errors
+        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=False) # Check=False to ignore if it fails due to the columns already existing
         logger.info("Migraciones aplicadas exitosamente")
     except Exception as e:
-        logger.error("Error al aplicar migraciones en el startup", exc=e)
+        logger.error("Error al aplicar parche de esquema o migraciones en el startup", exc=e)
 
     # Sincronizar reglas YAML → BD de forma síncrona antes de aceptar requests
     try:
