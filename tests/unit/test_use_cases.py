@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from unittest.mock import patch
 
 from src.core.application.use_cases import MonitoreoUseCase
 from src.core.domain.entities import (
@@ -105,6 +106,12 @@ def mock_fuente_uc() -> Fuente:
     )
 
 
+@pytest.fixture(autouse=True)
+def mock_url_checker():
+    with patch("src.core.domain.url_checker.UrlChecker.check_url", return_value="VALID"):
+        yield
+
+
 @pytest.mark.asyncio
 async def test_monitoreo_flujo_feliz_con_cambios(mock_fuente_uc: Fuente) -> None:
     # Preparar estado anterior
@@ -184,3 +191,37 @@ async def test_vigencia_filter_discards_cerrado(mock_fuente_uc: Fuente) -> None:
     saved_ids = {c.identificador_externo for c in repo_convs.saved_convocatorias}
     assert "EXT02" in saved_ids
     assert "EXT01" not in saved_ids
+
+
+@pytest.mark.asyncio
+async def test_monitoreo_url_check_failures(mock_fuente_uc: Fuente) -> None:
+    antigua = Convocatoria(
+        fuente_id=mock_fuente_uc.id,
+        identificador_externo="EXT_MISSING",
+        titulo="Fondo Desaparecido",
+        url_detalle="https://test.com/404",  # type: ignore
+        estado="ABIERTO",
+        url_check_failures=2  # Ya falló 2 veces antes
+    )
+    repo_convs = MockConvocatoriaRepository(existing=[antigua])
+    repo_snaps = MockSnapshotRepository()
+    
+    scraper = MockScraper([]) # No devuelve nada, así que antigua no está en el barrido nuevo
+    uc = MonitoreoUseCase(scraper, repo_snaps, repo_convs)
+
+    with patch("src.core.domain.url_checker.UrlChecker.check_url", return_value="PERMANENT_GONE"):
+        eventos, convs = await uc.ejecutar_monitoreo(mock_fuente_uc)
+
+    # El contador debe subir a 3, forzar a CERRADO, emitir evento
+    assert antigua.url_check_failures == 3
+    assert antigua.estado == "CERRADO"
+    assert antigua.metadatos.get("url_check_failed") is True
+
+    # Como no venía en nuevas, debe haberse agregado a las guardadas porque fue modificada
+    assert len(repo_convs.saved_convocatorias) == 1
+    assert repo_convs.saved_convocatorias[0].identificador_externo == "EXT_MISSING"
+    
+    assert len(eventos) == 1
+    assert eventos[0].tipo == "MODIFICACION"
+    assert eventos[0].deltas[0].campo == "estado"
+    assert eventos[0].deltas[0].valor_nuevo == "CERRADO"

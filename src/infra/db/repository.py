@@ -56,6 +56,8 @@ def _convocatoria_orm_to_entity(orm: ConvocatoriaORM) -> Convocatoria:
         metadatos=orm.metadatos,
         estado_enriquecimiento=orm.estado_enriquecimiento,
         detalles_llm=orm.detalles_llm,
+        url_check_failures=orm.url_check_failures,
+        ultimo_check_url=orm.ultimo_check_url,
         creado_en=orm.creado_en,
         actualizado_en=orm.actualizado_en,
     )
@@ -277,6 +279,8 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
                     metadatos=convocatoria.metadatos,
                     estado_enriquecimiento=convocatoria.estado_enriquecimiento,
                     detalles_llm=convocatoria.detalles_llm,
+                    url_check_failures=convocatoria.url_check_failures,
+                    ultimo_check_url=convocatoria.ultimo_check_url,
                     creado_en=convocatoria.creado_en,
                     actualizado_en=convocatoria.actualizado_en,
                 )
@@ -293,6 +297,8 @@ class SQLConvocatoriaRepository(ConvocatoriaRepository):
                 orm.metadatos = convocatoria.metadatos
                 orm.estado_enriquecimiento = convocatoria.estado_enriquecimiento
                 orm.detalles_llm = convocatoria.detalles_llm
+                orm.url_check_failures = convocatoria.url_check_failures
+                orm.ultimo_check_url = convocatoria.ultimo_check_url
                 orm.actualizado_en = convocatoria.actualizado_en
 
             await self._session.flush()

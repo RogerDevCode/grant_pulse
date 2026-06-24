@@ -112,6 +112,67 @@ class MonitoreoUseCase:
 
             eventos = ChangeDetectorService.detect_changes(nuevas_convocatorias, antiguas_dict, fuente)
 
+            from src.core.domain.url_checker import UrlChecker
+            import asyncio
+            from datetime import datetime, UTC
+            from src.core.domain.entities import Delta
+
+            # BLOQUE 2: Verificación de URLs
+            sem = asyncio.Semaphore(5)
+            ahora = datetime.now(UTC)
+
+            async def _check_url_for_old(conv: Convocatoria) -> None:
+                if conv.estado == "CERRADO" or not conv.url_detalle:
+                    return
+                
+                async with sem:
+                    status = await UrlChecker.check_url(str(conv.url_detalle))
+                
+                conv.ultimo_check_url = ahora
+                # hasattr check since the domain model might not have been updated yet
+                if not hasattr(conv, "url_check_failures"):
+                    conv.url_check_failures = 0
+
+                es_nueva = conv.identificador_externo in [c.identificador_externo for c in nuevas_convocatorias]
+
+                if status == "PERMANENT_GONE" and not es_nueva:
+                    conv.url_check_failures += 1
+                    if conv.url_check_failures >= 3:
+                        # Generar evento de cierre
+                        evento_cierre = EventoCambio(
+                            convocatoria_id=conv.id,
+                            identificador_externo=conv.identificador_externo,
+                            tipo="MODIFICACION",
+                            es_relevante=True,
+                            deltas=[Delta(campo="estado", valor_anterior=conv.estado, valor_nuevo="CERRADO")],
+                            fecha_deteccion=ahora
+                        )
+                        eventos.append(evento_cierre)
+                        
+                        conv.estado = "CERRADO"
+                        if not isinstance(conv.metadatos, dict):
+                            conv.metadatos = {}
+                        conv.metadatos["url_check_failed"] = True
+                        
+                        logger.info(
+                            "Convocatoria cerrada por URL permanentemente caída",
+                            convocatoria_id=str(conv.id),
+                            identificador=conv.identificador_externo,
+                            url=str(conv.url_detalle)
+                        )
+                        # Ensure it gets saved
+                        if conv.identificador_externo not in [c.identificador_externo for c in nuevas_convocatorias]:
+                            nuevas_convocatorias.append(conv)
+                else:
+                    conv.url_check_failures = 0
+                    # If it was updated (ultimo_check_url) and isn't in nuevas_convocatorias, we should save it anyway
+                    if conv.identificador_externo not in [c.identificador_externo for c in nuevas_convocatorias]:
+                        nuevas_convocatorias.append(conv)
+
+            check_tasks = [_check_url_for_old(c) for c in antiguas_lista]
+            if check_tasks:
+                await asyncio.gather(*check_tasks)
+
             snapshot = await self.snapshot_repo.save(snapshot)
 
             convocatorias_guardadas = []

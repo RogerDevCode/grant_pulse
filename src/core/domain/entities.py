@@ -181,6 +181,8 @@ class Convocatoria(BaseModel):
     metadatos: dict[str, Any] = Field(default_factory=dict)
     estado_enriquecimiento: str = "PENDIENTE"
     detalles_llm: dict[str, Any] | None = None
+    url_check_failures: int = 0
+    ultimo_check_url: datetime | None = None
     creado_en: datetime = Field(default_factory=lambda: datetime.now(UTC))
     actualizado_en: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
