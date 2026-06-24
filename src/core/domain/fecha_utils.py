@@ -40,15 +40,15 @@ _MESES_ES: dict[str, int] = {
 }
 
 _PATRON_DIA_MES_ANIO = re.compile(
-    r"(\d{1,2})\s+de\s+(\w+)\s+de\s*(\d{4})",
+    r"(\d{1,2})\s+de\s+(\w+)(?:[\s,]+(?:de\s+|del\s+)?)?(\d{4})",
     re.IGNORECASE,
 )
 
-_PATRON_SLASH = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
+_PATRON_SLASH = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})")
 
-_PATRON_DASH = re.compile(r"^(\d{1,2})-(\d{1,2})-(\d{4})$")
+_PATRON_DASH = re.compile(r"(\d{1,2})-(\d{1,2})-(\d{4})")
 
-_PATRON_ISO = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
+_PATRON_ISO = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 
 
 def parse_fecha_chilena(texto: str) -> datetime | None:
@@ -76,7 +76,7 @@ def parse_fecha_chilena(texto: str) -> datetime | None:
                 return None
 
     # "15/08/2026"
-    match = _PATRON_SLASH.match(texto)
+    match = _PATRON_SLASH.search(texto)
     if match:
         dia_str, mes_str, anio_str = match.group(1), match.group(2), match.group(3)
         try:
@@ -85,7 +85,7 @@ def parse_fecha_chilena(texto: str) -> datetime | None:
             return None
 
     # "15-08-2026"
-    match = _PATRON_DASH.match(texto)
+    match = _PATRON_DASH.search(texto)
     if match:
         dia_str, mes_str, anio_str = match.group(1), match.group(2), match.group(3)
         try:
@@ -94,7 +94,7 @@ def parse_fecha_chilena(texto: str) -> datetime | None:
             return None
 
     # "2026-08-15" (ISO)
-    match = _PATRON_ISO.match(texto)
+    match = _PATRON_ISO.search(texto)
     if match:
         anio_str, mes_str, dia_str = match.group(1), match.group(2), match.group(3)
         try:

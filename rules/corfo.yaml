@@ -18,8 +18,7 @@ selectores:
 
 normalizadores:
   fecha_cierre:
-    regex_extraction: "(\\d{2}/\\d{2}/\\d{4})"
-    formato_salida: "%d/%m/%Y"
+    regex_extraction: "(?:Cierre:?\\s*)?(\\d{1,2}\\s+de\\s+[A-Za-z]+(?:[\\s,]+(?:de\\s+|del\\s+)?)?\\d{4}|\\d{1,2}[/\\-\\.]\\d{1,2}[/\\-\\.]\\d{2,4})"
   cupo:
     regex_extraction: "[Cc]upo[s]?:\\s*(\\d+)"
     tipo_dato: "int"

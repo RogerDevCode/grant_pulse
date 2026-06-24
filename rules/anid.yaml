@@ -12,9 +12,7 @@ selectores:
   fecha_cierre: ".elementor-element-d4cfb2b .jet-listing-dynamic-field__content"
 normalizadores:
   fecha_cierre:
-    regex_extraction: "Cierre: (\\d{1,2} de [a-zA-Z]+, \\d{4})"
-    formato_salida: "%d de %B, %Y"
-    idioma: "es"
+    regex_extraction: "(?:Cierre:?\\s*)?(\\d{1,2}\\s+de\\s+[A-Za-z]+(?:[\\s,]+(?:de\\s+|del\\s+)?)?\\d{4}|\\d{1,2}[/\\-\\.]\\d{1,2}[/\\-\\.]\\d{2,4})"
 alertas:
   campos_sensibles:
     - "estado"

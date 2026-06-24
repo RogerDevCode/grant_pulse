@@ -11,8 +11,7 @@ selectores: # Requerido por el esquema de validación actual
   estado: "span"
 normalizadores:
   fecha_cierre:
-    regex_extraction: "(\\d{1,2} de [a-zA-Z]+, \\d{4})"
-    formato_salida: "%d de %B, %Y"
+    regex_extraction: "(?:Cierre:?\\s*)?(\\d{1,2}\\s+de\\s+[A-Za-z]+(?:[\\s,]+(?:de\\s+|del\\s+)?)?\\d{4}|\\d{1,2}[/\\-\\.]\\d{1,2}[/\\-\\.]\\d{2,4})"
 alertas:
   campos_sensibles: ["estado", "fecha_cierre"]
 region_defecto: "Nacional"

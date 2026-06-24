@@ -24,11 +24,9 @@ selectores:
 region_defecto: "Nacional"
 normalizadores:
   fecha_cierre:
-    regex_extraction: "Fin:\\s*(\\d{2}-\\d{2}-\\d{4})"
-    formato_salida: "%d-%m-%Y"
+    regex_extraction: "(?:Fin:\\s*)?(\\d{1,2}\\s+de\\s+[A-Za-z]+(?:[\\s,]+(?:de\\s+|del\\s+)?)?\\d{4}|\\d{1,2}[/\\-\\.]\\d{1,2}[/\\-\\.]\\d{2,4})"
   fecha_apertura:
-    regex_extraction: "Inicio:\\s*(\\d{2}-\\d{2}-\\d{4})"
-    formato_salida: "%d-%m-%Y"
+    regex_extraction: "(?:Inicio:\\s*)?(\\d{1,2}\\s+de\\s+[A-Za-z]+(?:[\\s,]+(?:de\\s+|del\\s+)?)?\\d{4}|\\d{1,2}[/\\-\\.]\\d{1,2}[/\\-\\.]\\d{2,4})"
   monto:
     regex_extraction: "Montos:[^\\n]*?([\\$\\d\\.]+(?:\\s+(?:a|hasta)\\s+[\\$\\d\\.]+)?)"
   cupo:
