@@ -84,6 +84,36 @@ async def get_logs_report() -> dict[str, str]:
         return {"content": f.read()}
 
 
+@router.get("/debug/test")
+async def debug_query(session: DbSession) -> dict[str, Any]:
+    import traceback
+    try:
+        from sqlalchemy import cast, String, func
+        query = select(ConvocatoriaORM, FuenteORM.nombre).join(FuenteORM, ConvocatoriaORM.fuente_id == FuenteORM.id)
+        query = query.where(
+            func.coalesce(cast(ConvocatoriaORM.metadatos["url_check_failed"], String), "false") != "true"
+        )
+        query = query.order_by(ConvocatoriaORM.actualizado_en.desc())
+        query = query.limit(10).offset(0)
+        
+        # Test just the execution
+        result = await session.execute(query)
+        rows = result.all()
+        
+        # Test just the dict comprehension
+        data = []
+        for orm, fuente_nombre in rows:
+            data.append({
+                "id": orm.id,
+                "url_detalle": str(orm.url_detail),
+                "monto": float(orm.monto) if orm.monto is not None else None,
+                "regiones": orm.regiones
+            })
+        return {"status": "success", "count": len(rows), "data": data}
+    except Exception as e:
+        return {"status": "error", "traceback": traceback.format_exc()}
+
+
 @router.get("/debug/errors")
 async def get_errors_log() -> dict[str, str]:
     """Retorna el contenido de data/errors.log"""
