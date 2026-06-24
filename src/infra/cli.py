@@ -521,6 +521,10 @@ def main() -> None:
     )
     enrich_parser.add_argument("--batch-size", type=int, default=5, help="Tamaño del lote a procesar (default: 5)")
 
+    subparsers.add_parser(
+        "normalize-urls", help="Normaliza las URLs guardadas en BD y resetea su estado de error"
+    )
+
     args = parser.parse_args()
 
     try:
@@ -552,6 +556,11 @@ def main() -> None:
             from src.infra.workers.enrichment_worker import run_enrichment_worker
 
             asyncio.run(run_enrichment_worker(batch_size=args.batch_size))
+        elif args.command == "normalize-urls":
+            from src.infra.maintenance import normalize_existing_urls
+            
+            actualizados = asyncio.run(normalize_existing_urls())
+            print(f"Normalización completada: {actualizados} convocatorias actualizadas.")
     except GrantPulseError as e:
         logger.error("Error de dominio finalizando el worker", exc=e)
         sys.exit(1)

@@ -213,6 +213,64 @@ async def run_clean_db() -> None:
         finally:
             clear_run_id()
 
+async def normalize_existing_urls() -> int:
+    """Normaliza las URLs guardadas en BD y resetea su estado de error."""
+    from sqlalchemy.orm.attributes import flag_modified
+    from src.core.application.normalizer import _is_valid_url
 
+    run_id = new_run_id()
+    logger.info("Iniciando normalización de URLs existentes", run_id=run_id)
+
+    async with AsyncSessionLocal() as session:
+        try:
+            query = select(ConvocatoriaORM, FuenteORM).join(FuenteORM, ConvocatoriaORM.fuente_id == FuenteORM.id)
+            result = await session.execute(query)
+            rows = result.all()
+
+            updated_count = 0
+            reset_count = 0
+
+            for conv_orm, fuente_orm in rows:
+                changed = False
+                
+                # 1. Normalizar url_detail
+                if conv_orm.url_detail:
+                    url_temp = conv_orm.url_detail
+                    if url_temp.startswith("/") or not url_temp.startswith("http"):
+                        if url_temp.startswith("/"):
+                            url_temp = str(fuente_orm.url_base).rstrip("/") + "/" + url_temp.lstrip("/")
+                        else:
+                            url_temp = str(fuente_orm.url_base).rstrip("/") + "/" + url_temp
+
+                    if _is_valid_url(url_temp) and url_temp != conv_orm.url_detail:
+                        logger.info("Normalizando URL", identificador=conv_orm.identificador_externo, original=conv_orm.url_detail, nueva=url_temp)
+                        conv_orm.url_detail = url_temp
+                        changed = True
+
+                # 2. Reiniciar el estado de url_check_failed
+                metadatos = dict(conv_orm.metadatos or {})
+                if "url_check_failed" in metadatos:
+                    logger.info("Reiniciando flag de fallo de URL", identificador=conv_orm.identificador_externo)
+                    del metadatos["url_check_failed"]
+                    conv_orm.metadatos = metadatos
+                    flag_modified(conv_orm, "metadatos")
+                    changed = True
+                    reset_count += 1
+                    
+                if changed:
+                    updated_count += 1
+                    
+            if updated_count > 0:
+                await session.commit()
+                logger.info("Normalización completada", actualizados=updated_count, resets_error_url=reset_count, run_id=run_id)
+            else:
+                logger.info("No se requirió ninguna normalización en base de datos", run_id=run_id)
+            return updated_count
+        except Exception as e:
+            await session.rollback()
+            logger.error("Error en normalización de URLs", exc=e, run_id=run_id)
+            raise
+        finally:
+            clear_run_id()
 if __name__ == "__main__":
     asyncio.run(run_clean_db())
