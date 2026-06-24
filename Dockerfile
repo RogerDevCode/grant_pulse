@@ -55,8 +55,11 @@ RUN mkdir -p /app/data \
 COPY pyproject.toml ./
 COPY src ./src
 COPY rules ./rules
+COPY scripts ./scripts
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
+
+RUN chmod +x /app/scripts/startup.sh
 
 EXPOSE 8000
 
