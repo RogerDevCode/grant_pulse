@@ -3,8 +3,10 @@ Instancia principal de la aplicación FastAPI.
 """
 # ruff: noqa: E402
 
-import os
 import asyncio
+import os
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from copy import deepcopy
 from pathlib import Path
 
@@ -40,7 +42,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
     try:
         import subprocess
         import sys
+
         from sqlalchemy import text
+
         from src.infra.db.connection import AsyncSessionLocal
 
         logger.info("Aplicando parche de esquema idempotente...")
@@ -52,26 +56,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
         logger.info("Verificando y aplicando migraciones de base de datos...")
         # Ejecutar migraciones con timeout para evitar bloqueos en startup
         try:
-            await asyncio.wait_for(
+            proc = await asyncio.wait_for(
                 asyncio.create_subprocess_exec(
                     sys.executable, "scripts/fix_alembic_drift.py",
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 ),
                 timeout=30.0
             )
+            await asyncio.wait_for(proc.communicate(), timeout=30.0)
         except TimeoutError:
             logger.warning("Timeout ejecutando fix_alembic_drift.py - continuando de todos modos")
         except Exception as e:
             logger.warning("Error ejecutando fix_alembic_drift.py: %s - continuando de todos modos", e)
 
         try:
-            await asyncio.wait_for(
+            proc = await asyncio.wait_for(
                 asyncio.create_subprocess_exec(
                     sys.executable, "-m", "alembic", "upgrade", "head",
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 ),
                 timeout=60.0
             )
+            await asyncio.wait_for(proc.communicate(), timeout=60.0)
         except TimeoutError:
             logger.warning("Timeout ejecutando alembic upgrade head - continuando de todos modos")
         except Exception as e:
@@ -171,8 +177,12 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["Health"])
     async def healthcheck() -> JSONResponse:  # pyright: ignore[reportUnusedFunction]
+        """Healthcheck liviano: responde 200 siempre que el proceso esté en pie.
+
+        La disponibilidad de la DB se reporta como campo informativo, pero no
+        bloquea el check. Railway solo necesita saber que Uvicorn levantó.
+        """
         checks: dict[str, str] = {"status": "ok", "env": settings.ENV}
-        db_ok = False
         try:
             from sqlalchemy import text
 
@@ -180,16 +190,13 @@ def create_app() -> FastAPI:
 
             async with AsyncSessionLocal() as session:
                 await session.execute(text("SELECT 1"))
-            db_ok = True
+            checks["db"] = "ok"
         except Exception as exc:
-            logger.error("Healthcheck: DB no disponible", exc=exc)
+            logger.warning("Healthcheck: DB no disponible", exc=exc)
             checks["db"] = "unavailable"
 
-        if db_ok:
-            checks["db"] = "ok"
-        else:
-            return JSONResponse(status_code=503, content=checks)
-
+        # Siempre 200: Railway no debe reiniciar el contenedor por latencia de DB.
+        # Si la DB cae, el error aparece en los endpoints reales, no aquí.
         return JSONResponse(status_code=200, content=checks)
 
     app.include_router(router)
