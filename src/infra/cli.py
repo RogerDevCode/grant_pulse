@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.application.run_context import clear_run_id, new_run_id
 from src.core.application.use_cases import MonitoreoUseCase
 from src.core.domain.entities import Fuente
-from src.core.domain.exceptions import GrantPulseError
+from src.core.domain.exceptions import ConfigurationError, GrantPulseError, ScrapingError
 from src.core.domain.ports import (
     NotificationPort,
     ScraperPort,
@@ -46,7 +46,6 @@ from src.infra.notifications.email_adapter import EmailNotificationAdapter
 from src.infra.notifications.logger_adapter import LoggerNotificationAdapter
 from src.infra.notifications.telegram_adapter import TelegramNotificationAdapter
 from src.infra.rules_loader import load_rules_from_yaml
-from src.infra.scraping.funding_pipeline import build_scraper_for_source, source_profile_for_name
 
 logger = get_logger(__name__)
 
@@ -54,6 +53,7 @@ logger = get_logger(__name__)
 def _apply_source_profile(fuente: Fuente) -> Fuente:
     """Normaliza una fuente usando el registry duro si existe."""
     from pydantic import HttpUrl, TypeAdapter
+    from src.infra.sources.catalog import source_profile_for_name
 
     source_profile = source_profile_for_name(fuente.nombre)
     if not source_profile:
@@ -68,6 +68,8 @@ def _apply_source_profile(fuente: Fuente) -> Fuente:
 
 def _get_scraper(fuente: Fuente) -> ScraperPort:
     """Retorna la implementación del scraper según la estrategia definida."""
+    from src.infra.scraping.funding_pipeline import build_scraper_for_source
+
     return build_scraper_for_source(fuente)
 
 
@@ -208,22 +210,24 @@ async def run_single_source(filepath: Path) -> None:
     run_id = new_run_id()
     logger.info("Iniciando worker para fuente específica", filepath=str(filepath), run_id=run_id)
 
-    rules_config = load_rules_from_yaml(filepath)
-    source_profile = source_profile_for_name(rules_config.nombre)
-    if source_profile:
-        from pydantic import HttpUrl, TypeAdapter
+    try:
+        rules_config = load_rules_from_yaml(filepath)
+        from src.infra.sources.catalog import source_profile_for_name
 
-        list_url_obj = TypeAdapter(HttpUrl).validate_python(source_profile.list_url)
-        rules_config = rules_config.model_copy(update={"url_busqueda": list_url_obj})
-        logger.info(
-            "Aplicando URL canónica desde registry duro",
-            fuente=rules_config.nombre,
-            url_busqueda=str(rules_config.url_busqueda),
-            profile=source_profile.key,
-        )
+        source_profile = source_profile_for_name(rules_config.nombre)
+        if source_profile:
+            from pydantic import HttpUrl, TypeAdapter
 
-    async with AsyncSessionLocal() as session:
-        try:
+            list_url_obj = TypeAdapter(HttpUrl).validate_python(source_profile.list_url)
+            rules_config = rules_config.model_copy(update={"url_busqueda": list_url_obj})
+            logger.info(
+                "Aplicando URL canónica desde registry duro",
+                fuente=rules_config.nombre,
+                url_busqueda=str(rules_config.url_busqueda),
+                profile=source_profile.key,
+            )
+
+        async with AsyncSessionLocal() as session:
             fuente_repo = SQLFuenteRepository(session)
             snapshot_repo = SQLSnapshotRepository(session)
             convocatoria_repo = SQLConvocatoriaRepository(session)
@@ -264,10 +268,11 @@ async def run_single_source(filepath: Path) -> None:
             await _notify_subscribers(session, eventos, nuevas_dict, fuente_db)
 
             logger.info(f"Proceso finalizado. Eventos generados: {len(eventos)}")
-        except Exception as e:
-            await session.rollback()
-            logger.error("Error en monitoreo de fuente, session rollback ejecutado", exc=e)
-            raise
+    except Exception as e:
+        logger.error("Error en monitoreo de fuente", filepath=str(filepath), exc=e, run_id=run_id)
+        raise
+    finally:
+        clear_run_id()
 
     # Purga automática de convocatorias vencidas después de cada ciclo
     try:
@@ -285,104 +290,104 @@ async def run_all_active_sources() -> None:
     run_id = new_run_id()
     logger.info("Iniciando worker para todas las fuentes activas", run_id=run_id)
 
-    fuentes_activas: list[Fuente] = []
-    async with AsyncSessionLocal() as session:
-        try:
+    try:
+        fuentes_activas: list[Fuente] = []
+        async with AsyncSessionLocal() as session:
             fuente_repo = SQLFuenteRepository(session)
             fuentes_activas = await fuente_repo.get_all_active()
             await session.commit()
-        except Exception as e:
-            await session.rollback()
-            logger.error(f"Error consultando fuentes activas al iniciar: {e}", exc=e)
-            raise
+        if not fuentes_activas:
+            logger.warning("No hay fuentes activas configuradas en la base de datos.")
+            return
 
-    if not fuentes_activas:
-        logger.warning("No hay fuentes activas configuradas en la base de datos.")
-        return
+        failed_fuentes: list[str] = []
 
-    failed_fuentes: list[str] = []
+        # Fase 1: Limitar la concurrencia a maximo 3 tareas simultaneas en el event loop
+        sem = asyncio.Semaphore(3)
 
-    # Fase 1: Limitar la concurrencia a maximo 3 tareas simultaneas en el event loop
-    sem = asyncio.Semaphore(3)
-
-    async def procesar_fuente(fuente_inst: Fuente) -> None:
-        async with sem:
-            fuente_run_id = new_run_id()
-            async with AsyncSessionLocal() as session:
-                try:
-                    snapshot_repo = SQLSnapshotRepository(session)
-                    convocatoria_repo = SQLConvocatoriaRepository(session)
-                    notificacion_repo = SQLNotificacionRepository(session)
-                    fuente_normalizada = _apply_source_profile(fuente_inst)
-                    scraper = _get_scraper(fuente_normalizada)
-                    notifier = await _get_notifier(session)
-
-                    use_case = MonitoreoUseCase(
-                        scraper=scraper,
-                        snapshot_repo=snapshot_repo,
-                        convocatoria_repo=convocatoria_repo,
-                        notifier=notifier,
-                        notificacion_repo=notificacion_repo,
-                    )
-
-                    await use_case.ejecutar_monitoreo(fuente_normalizada)
-                    await session.commit()
-                except Exception as e:
-                    await session.rollback()
-                    logger.error(
-                        f"Worker falló para fuente {fuente_inst.nombre}: {e}",
-                        exc=e,
-                        fuente_id=str(fuente_inst.id),
-                        run_id=fuente_run_id,
-                    )
-                    failed_fuentes.append(fuente_inst.nombre)
-
-                    # Guardar error estructurado en base de datos para observabilidad
-                    import traceback
-
-                    from src.infra.db.models import AuditLogORM
-
+        async def procesar_fuente(fuente_inst: Fuente) -> None:
+            async with sem:
+                fuente_run_id = new_run_id()
+                async with AsyncSessionLocal() as session:
                     try:
-                        audit = AuditLogORM(
-                            fuente_id=int(fuente_inst.id) if str(fuente_inst.id).isdigit() else None,
-                            nivel="ERROR",
-                            modulo="cli.run_all_active_sources",
-                            mensaje=f"Worker falló para fuente {fuente_inst.nombre}: {e}",
-                            detalles={
-                                "run_id": fuente_run_id,
-                                "error": str(e),
-                                "traceback": traceback.format_exc()
-                            }
+                        snapshot_repo = SQLSnapshotRepository(session)
+                        convocatoria_repo = SQLConvocatoriaRepository(session)
+                        notificacion_repo = SQLNotificacionRepository(session)
+                        fuente_normalizada = _apply_source_profile(fuente_inst)
+                        scraper = _get_scraper(fuente_normalizada)
+                        notifier = await _get_notifier(session)
+
+                        use_case = MonitoreoUseCase(
+                            scraper=scraper,
+                            snapshot_repo=snapshot_repo,
+                            convocatoria_repo=convocatoria_repo,
+                            notifier=notifier,
+                            notificacion_repo=notificacion_repo,
                         )
-                        session.add(audit)
+
+                        await use_case.ejecutar_monitoreo(fuente_normalizada)
                         await session.commit()
-                    except Exception as inner_e:
-                        logger.error("No se pudo guardar el audit log en base de datos", exc=inner_e)
+                    except Exception as e:
+                        await session.rollback()
+                        logger.error(
+                            f"Worker falló para fuente {fuente_inst.nombre}: {e}",
+                            exc=e,
+                            fuente_id=str(fuente_inst.id),
+                            run_id=fuente_run_id,
+                        )
+                        failed_fuentes.append(fuente_inst.nombre)
 
-    # Ejecutar concurrentemente todas las tareas con control de concurrencia
-    tareas = [procesar_fuente(fuente) for fuente in fuentes_activas]
-    await asyncio.gather(*tareas, return_exceptions=True)
+                        # Guardar error estructurado en base de datos para observabilidad
+                        import traceback
 
-    # Generar reporte de calidad
-    async with AsyncSessionLocal() as session:
-        from src.infra.quality_report import generar_reporte_calidad
+                        from src.infra.db.models import AuditLogORM
 
-        report_path = Path("reports") / f"quality_report_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.md"
-        try:
-            await generar_reporte_calidad(session, report_path)
-        except Exception as e:
-            logger.error("Error generando reporte de calidad", exc=e, run_id=run_id)
+                        try:
+                            audit = AuditLogORM(
+                                fuente_id=int(fuente_inst.id) if str(fuente_inst.id).isdigit() else None,
+                                nivel="ERROR",
+                                modulo="cli.run_all_active_sources",
+                                mensaje=f"Worker falló para fuente {fuente_inst.nombre}: {e}",
+                                detalles={
+                                    "run_id": fuente_run_id,
+                                    "error": str(e),
+                                    "traceback": traceback.format_exc(),
+                                },
+                            )
+                            session.add(audit)
+                            await session.commit()
+                        except Exception as inner_e:
+                            logger.error("No se pudo guardar el audit log en base de datos", exc=inner_e)
 
-    if failed_fuentes:
-        logger.error("Fuentes con error en batch", count=len(failed_fuentes), fuentes=failed_fuentes)
-    else:
+        # Ejecutar concurrentemente todas las tareas con control de concurrencia
+        tareas = [procesar_fuente(fuente) for fuente in fuentes_activas]
+        await asyncio.gather(*tareas)
+
+        # Generar reporte de calidad
+        async with AsyncSessionLocal() as session:
+            from src.infra.quality_report import generar_reporte_calidad
+
+            report_path = Path("reports") / f"quality_report_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.md"
+            try:
+                await generar_reporte_calidad(session, report_path)
+            except Exception as e:
+                logger.error("Error generando reporte de calidad", exc=e, run_id=run_id)
+
+        if failed_fuentes:
+            msg = f"Fuentes con error en batch: {', '.join(failed_fuentes)}"
+            logger.error("Fuentes con error en batch", count=len(failed_fuentes), fuentes=failed_fuentes)
+            raise ScrapingError(msg)
+
         logger.info("Batch completado sin errores", total_fuentes=len(fuentes_activas))
-    clear_run_id()
+    finally:
+        clear_run_id()
 
 
 async def sync_single_source_config(filepath: Path) -> None:
     """Carga un archivo YAML de reglas y lo sincroniza con la base de datos sin ejecutar el monitoreo."""
     rules_config = load_rules_from_yaml(filepath)
+    from src.infra.sources.catalog import source_profile_for_name
+
     source_profile = source_profile_for_name(rules_config.nombre)
     if source_profile:
         from pydantic import HttpUrl, TypeAdapter
@@ -414,7 +419,7 @@ async def sync_single_source_config(filepath: Path) -> None:
                 fuente_db.activa = rules_config.activa
 
             fuente_db = _apply_source_profile(fuente_db)
-            print(f"DEBUG fuente_db.id: {repr(fuente_db.id)} ({type(fuente_db.id)})")
+            logger.debug("Fuente normalizada antes de persistir", fuente=rules_config.nombre, fuente_id=str(fuente_db.id))
             await fuente_repo.save(fuente_db)
             await session.commit()
             logger.info("Configuración de fuente sincronizada exitosamente", fuente=rules_config.nombre)
@@ -429,26 +434,31 @@ async def sync_all_rules() -> None:
     from src.infra.config import settings
 
     run_id = new_run_id()
-    rules_path = Path(settings.RULES_DIR)
-    if not rules_path.exists():
-        logger.error(f"Directorio de reglas no encontrado: {rules_path}", run_id=run_id)
-        return
+    try:
+        rules_path = Path(settings.RULES_DIR)
+        if not rules_path.exists():
+            msg = f"Directorio de reglas no encontrado: {rules_path}"
+            logger.error(msg, run_id=run_id)
+            raise ConfigurationError(msg)
 
-    failed_files: list[str] = []
+        failed_files: list[str] = []
 
-    for yaml_file in rules_path.glob("*.yaml"):
-        logger.info(f"Sincronizando regla: {yaml_file.name}")
-        try:
-            await sync_single_source_config(yaml_file)
-        except Exception as e:
-            logger.error(f"Error procesando {yaml_file.name}", exc=e)
-            failed_files.append(yaml_file.name)
+        for yaml_file in rules_path.glob("*.yaml"):
+            logger.info(f"Sincronizando regla: {yaml_file.name}")
+            try:
+                await sync_single_source_config(yaml_file)
+            except Exception as e:
+                logger.error(f"Error procesando {yaml_file.name}", exc=e)
+                failed_files.append(yaml_file.name)
 
-    if failed_files:
-        logger.error("Archivos con error en sync-rules", count=len(failed_files), archivos=failed_files)
-    else:
+        if failed_files:
+            msg = f"Archivos con error en sync-rules: {', '.join(failed_files)}"
+            logger.error("Archivos con error en sync-rules", count=len(failed_files), archivos=failed_files)
+            raise ConfigurationError(msg)
+
         logger.info("sync-rules completado sin errores")
-    clear_run_id()
+    finally:
+        clear_run_id()
 
 
 def main() -> None:

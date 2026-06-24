@@ -4,7 +4,10 @@ Implementación del adaptador de notificaciones para Email usando SMTP asíncron
 
 from email.message import EmailMessage
 
-import aiosmtplib
+try:
+    import aiosmtplib
+except ModuleNotFoundError:  # pragma: no cover - depende del entorno
+    aiosmtplib = None
 
 from src.core.domain.entities import Convocatoria, EventoCambio, Fuente, NotificacionResult
 from src.core.domain.exceptions import NotificationError
@@ -41,6 +44,11 @@ class EmailNotificationAdapter(NotificationPort):
         self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente
     ) -> NotificacionResult:
         dest = ", ".join(self.target_emails) if self.target_emails else "no_configurado"
+
+        if aiosmtplib is None:
+            msg = "aiosmtplib no está instalado; el canal Email no está disponible en este entorno"
+            logger.error(msg, fuente=fuente.nombre)
+            raise NotificationError(msg)
 
         if not self.host or not self.target_emails:
             logger.warning("Email no configurado. Saltando notificación.", fuente=fuente.nombre)

@@ -2,15 +2,25 @@
 Servicios de dominio que orquestan lógica de negocio compleja, como la detección de cambios.
 """
 
+from difflib import SequenceMatcher
 from typing import Any
 
-import jellyfish
+try:
+    import jellyfish
+except ModuleNotFoundError:  # pragma: no cover - depende del entorno
+    jellyfish = None
 
 from src.core.domain.entities import Convocatoria, Delta, EventoCambio, Fuente
 from src.core.domain.exceptions import RuleEngineError
 from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def _jaro_winkler_similarity(left: str, right: str) -> float:
+    if jellyfish is not None:
+        return jellyfish.jaro_winkler_similarity(left, right)
+    return SequenceMatcher(None, left, right).ratio()
 
 
 class ChangeDetectorService:
@@ -80,7 +90,7 @@ class ChangeDetectorService:
                     nueva_titulo = str(nueva.titulo).lower()
                     for antigua in unmatched_antiguas:
                         if antigua.titulo:
-                            score = jellyfish.jaro_winkler_similarity(nueva_titulo, str(antigua.titulo).lower())
+                            score = _jaro_winkler_similarity(nueva_titulo, str(antigua.titulo).lower())
                             if score > best_score:
                                 best_score = score
                                 best_match = antigua

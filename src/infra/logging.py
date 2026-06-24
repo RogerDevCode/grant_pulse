@@ -6,6 +6,7 @@ Configura el logging del sistema para inyectar contexto operacional (run_id, fue
 import json
 import logging
 import sys
+from pathlib import Path
 from typing import Any, cast
 
 from src.infra.config import settings
@@ -110,22 +111,33 @@ class GrantPulseLogger:
 
     def _write_to_errors_log(self, level: str, msg: str, context: dict[str, Any], exc: Exception | None = None) -> None:
         try:
-            import os
+            from datetime import UTC, datetime
+            import traceback
 
-            if os.path.exists("data"):
-                with open("data/errors.log", "a", encoding="utf-8") as f:
-                    from datetime import UTC, datetime
+            errors_path = Path("data/errors.log")
+            errors_path.parent.mkdir(parents=True, exist_ok=True)
 
-                    ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
-                    ctx_str = " | ".join(f"{k}={v}" for k, v in context.items())
-                    exc_str = ""
-                    if exc:
-                        import traceback
-
-                        exc_str = "\n" + "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
-                    f.write(f"[{ts}] {level} {self._logger.name}: {msg} | {ctx_str}{exc_str}\n")
-        except Exception:
-            pass
+            with errors_path.open("a", encoding="utf-8") as f:
+                ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+                ctx_str = " | ".join(f"{k}={v}" for k, v in context.items())
+                exc_str = ""
+                if exc:
+                    exc_str = "\n" + "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+                f.write(f"[{ts}] {level} {self._logger.name}: {msg} | {ctx_str}{exc_str}\n")
+        except Exception as file_exc:
+            fallback_logger = logging.getLogger(self._logger.name)
+            fallback_logger.error(
+                "No se pudo persistir errors.log",
+                extra={
+                    "extra_context": {
+                        "level": level,
+                        "original_message": msg,
+                        **context,
+                        "errors_log_path": "data/errors.log",
+                    }
+                },
+                exc_info=(type(file_exc), file_exc, file_exc.__traceback__),
+            )
 
     def warning(self, msg: str, **context: Any) -> None:
         enriched = self._enrich(context)
@@ -135,7 +147,7 @@ class GrantPulseLogger:
     def error(self, msg: str, exc: Exception | None = None, **context: Any) -> None:
         enriched = self._enrich(context)
         if exc:
-            self._logger.error(msg, exc_info=exc, extra={"extra_context": enriched})
+            self._logger.error(msg, exc_info=(type(exc), exc, exc.__traceback__), extra={"extra_context": enriched})
         else:
             self._logger.error(msg, extra={"extra_context": enriched})
         self._write_to_errors_log("ERROR", msg, enriched, exc)

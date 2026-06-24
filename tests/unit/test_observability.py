@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+
+import pytest
+
 from src.core.application.run_context import clear_run_id, get_run_id, new_run_id
 from src.infra.logging import GrantPulseLogger
 
@@ -68,3 +73,16 @@ class TestLoggerEnrichment:
         logger_instance = GrantPulseLogger("test.enrich.empty")
         enriched = logger_instance._enrich({})  # noqa: SLF001
         assert enriched == {"run_id": run_id}
+
+    def test_write_to_errors_log_falls_back_when_file_write_fails(self, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch) -> None:
+        logger_instance = GrantPulseLogger("test.errors.log")
+        caplog.set_level(logging.ERROR)
+
+        def _raise(*_args: object, **_kwargs: object) -> object:
+            raise OSError("disk full")
+
+        monkeypatch.setattr(Path, "open", _raise)
+
+        logger_instance._write_to_errors_log("ERROR", "boom", {"fuente": "corfo"})  # noqa: SLF001
+
+        assert any("No se pudo persistir errors.log" in record.message for record in caplog.records)

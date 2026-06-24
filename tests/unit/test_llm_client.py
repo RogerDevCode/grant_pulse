@@ -155,7 +155,7 @@ async def test_chat_completion_cascada_modelo_falla() -> None:
     """
     Verifica que el cliente salta al siguiente modelo cuando el primero retorna 429.
     """
-    import respx
+    respx = pytest.importorskip("respx")
     from httpx import Response
 
     from src.infra.llm.client import OpenRouterClient
@@ -187,7 +187,7 @@ async def test_chat_completion_todos_modelos_fallan_lanza_scraping_error() -> No
     """
     Verifica que se lanza ScrapingError cuando todos los modelos fallan.
     """
-    import respx
+    respx = pytest.importorskip("respx")
     from httpx import Response
 
     from src.core.domain.exceptions import ScrapingError

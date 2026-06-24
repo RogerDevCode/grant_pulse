@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from types import ModuleType
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -60,10 +60,13 @@ class TestHealthcheck:
         fake_factory = _FakeSessionFactory(execute_return=None)
         original = _patch_session_local(fake_factory)
         try:
-            app = create_app()
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as client:
-                response = await client.get("/health")
+            with patch("src.presentation.api.main._ensure_startup_schema", new=AsyncMock(return_value=None)), patch(
+                "src.infra.cli.sync_all_rules", new=AsyncMock(return_value=None)
+            ):
+                app = create_app()
+                transport = ASGITransport(app=app)
+                async with AsyncClient(transport=transport, base_url="http://test") as client:
+                    response = await client.get("/health")
         finally:
             _restore_session_local(original)
 
@@ -77,10 +80,13 @@ class TestHealthcheck:
         fake_factory = _FakeSessionFactory(execute_side_effect=Exception("connection refused"))
         original = _patch_session_local(fake_factory)
         try:
-            app = create_app()
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as client:
-                response = await client.get("/health")
+            with patch("src.presentation.api.main._ensure_startup_schema", new=AsyncMock(return_value=None)), patch(
+                "src.infra.cli.sync_all_rules", new=AsyncMock(return_value=None)
+            ):
+                app = create_app()
+                transport = ASGITransport(app=app)
+                async with AsyncClient(transport=transport, base_url="http://test") as client:
+                    response = await client.get("/health")
         finally:
             _restore_session_local(original)
 

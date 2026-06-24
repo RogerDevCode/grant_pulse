@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.core.domain.entities import Fuente, RulesConfig
+from src.core.domain.exceptions import ScrapingError
 from src.infra.cli import run_all_active_sources
 
 
@@ -90,7 +91,8 @@ async def test_run_all_active_sources_concurrency(mock_fuentes):
 @pytest.mark.asyncio
 async def test_run_all_active_sources_handles_exceptions(mock_fuentes):
     """
-    Verifica que si una fuente falla, las demás se siguen procesando.
+    Verifica que si una fuente falla, las demás se siguen procesando y al final
+    se propaga un error agregado para no ocultar el fallo operativo.
     """
 
     async def mock_ejecutar_monitoreo(fuente, *_args, **_kwargs):
@@ -122,7 +124,8 @@ async def test_run_all_active_sources_handles_exceptions(mock_fuentes):
          patch("src.infra.cli.MonitoreoUseCase", return_value=mock_use_case), \
          patch("src.infra.quality_report.generar_reporte_calidad", new_callable=AsyncMock):
 
-        await run_all_active_sources()
+        with pytest.raises(ScrapingError):
+            await run_all_active_sources()
 
     # Verificar que se intentaron procesar todas
     assert mock_use_case.ejecutar_monitoreo.call_count == 5

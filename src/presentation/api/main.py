@@ -4,6 +4,7 @@ Instancia principal de la aplicación FastAPI.
 # ruff: noqa: E402
 
 import os
+from copy import deepcopy
 
 # Desactivar variables de entorno de proxy que rompen curl_cffi en Railway
 os.environ.pop("HTTP_PROXY", None)
@@ -31,47 +32,42 @@ from src.presentation.api.routes import router
 logger = get_logger(__name__)
 
 
+async def _ensure_startup_schema() -> None:
+    """Verifica el esquema mínimo requerido antes de aceptar tráfico.
+
+    El arranque no debe mutar columnas ya existentes. Las migraciones
+    Alembic son la fuente de verdad para cambios de esquema.
+    """
+
+    from src.infra.db.connection import engine
+    from src.infra.db.models import Base
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
+def _build_uvicorn_log_config() -> dict[str, object]:
+    """Devuelve una configuración de logging de Uvicorn que emite a stdout."""
+    from uvicorn.config import LOGGING_CONFIG
+
+    config = deepcopy(LOGGING_CONFIG)
+    handlers = config["handlers"]
+    handlers["default"]["stream"] = "ext://sys.stdout"
+    handlers["access"]["stream"] = "ext://sys.stdout"
+    return config
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
     logger.info("Iniciando aplicación API GrantPulse")
 
-    # Ejecutar migraciones de Alembic para asegurar esquema actualizado (ej. añadir columnas)
+    # Verificar y completar el esquema mínimo requerido.
     try:
-        pass
+        await _ensure_startup_schema()
+        logger.info("Esquema de base de datos verificado correctamente")
     except Exception as e:
-        logger.warning("No se pudieron aplicar migraciones de Alembic (probablemente tabla ya existe)", exc=e)
-
-    # FORZAR ADD COLUMN EN PRODUCCION
-    try:
-        from sqlalchemy import text
-
-        from src.infra.db.connection import engine
-        async with engine.connect() as conn:
-            try:
-                await conn.execute(text("ALTER TABLE convocatorias ADD COLUMN estado_enriquecimiento VARCHAR DEFAULT 'PENDIENTE'"))
-                await conn.commit()
-                logger.info("Columna estado_enriquecimiento agregada via SQL")
-            except Exception:
-                pass
-            try:
-                await conn.execute(text("ALTER TABLE convocatorias ADD COLUMN detalles_llm JSON"))
-                await conn.commit()
-                logger.info("Columna detalles_llm agregada via SQL")
-            except Exception:
-                pass
-    except Exception as e:
-        logger.warning("No se pudo agregar columnas de enriquecimiento", exc=e)
-
-    # Crear tablas si no existen — usa el mismo engine de la app
-    try:
-        from src.infra.db.connection import engine
-        from src.infra.db.models import Base
-
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("Tablas de base de datos verificadas/creadas exitosamente")
-    except Exception as e:
-        logger.warning("No se pudieron verificar tablas", exc=e)
+        logger.error("No se pudo verificar el esquema de base de datos", exc=e)
+        raise
 
     # Sincronizar reglas YAML → BD de forma síncrona antes de aceptar requests
     try:
@@ -80,7 +76,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
         await sync_all_rules()
         logger.info("Reglas sincronizadas exitosamente")
     except Exception as e:
-        logger.warning("Error en sync inicial de reglas (no crítico)", exc=e)
+        logger.error("Error en sync inicial de reglas", exc=e)
+        raise
 
     yield
     logger.info("Cerrando aplicación API GrantPulse")
@@ -175,7 +172,13 @@ def run() -> None:
     import uvicorn
 
     port = int(os.environ.get("PORT", "8000"))
-    uvicorn.run("src.presentation.api.main:app", host="0.0.0.0", port=port, log_level="info")
+    uvicorn.run(
+        "src.presentation.api.main:app",
+        host="0.0.0.0",
+        port=port,
+        log_level="info",
+        log_config=_build_uvicorn_log_config(),
+    )
 
 
 if __name__ == "__main__":

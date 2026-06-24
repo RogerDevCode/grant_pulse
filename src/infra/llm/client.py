@@ -19,8 +19,11 @@ from typing import Any, Protocol, runtime_checkable
 from urllib.parse import urljoin, urlparse
 
 import httpx
-from markdownify import markdownify as md
-from selectolax.parser import HTMLParser
+
+try:
+    from selectolax.parser import HTMLParser as _HTMLParser
+except ModuleNotFoundError:  # pragma: no cover - depende del entorno
+    _HTMLParser = None
 
 from src.core.domain.entities import SelectorConfig
 from src.core.domain.exceptions import ExtractionError, ScrapingError
@@ -28,6 +31,11 @@ from src.infra.config import settings
 from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
+
+try:
+    from markdownify import markdownify as _markdownify_impl
+except ModuleNotFoundError:  # pragma: no cover - depende del entorno
+    _markdownify_impl = None
 
 _SKIP_STATUS_CODES = {400, 404, 429, 502, 503, 529}
 _NOISE_SELECTORS = (
@@ -59,6 +67,18 @@ _DEFAULT_FIELDS_SCHEMA: dict[str, str] = {
 }
 _FIELD_ORDER = ("identificador", "titulo", "descripcion", "url_detalle", "estado", "fecha_cierre", "monto")
 _CANDIDATE_LIST_KEYS = ("items", "convocatorias", "fondos", "results", "data", "concursos", "proyectos", "entries")
+
+
+def _markdownify(html: str, **kwargs: Any) -> str:
+    if _markdownify_impl is None:
+        raise ScrapingError("markdownify no está instalado; la extracción LLM no está disponible en este entorno")
+    return _markdownify_impl(html, **kwargs)
+
+
+def _parse_html(html: str) -> Any:
+    if _HTMLParser is None:
+        raise ScrapingError("selectolax no está instalado; la extracción LLM no está disponible en este entorno")
+    return _HTMLParser(html)
 
 
 @runtime_checkable
@@ -271,7 +291,7 @@ def _summarize_item_node(
             lines.append(f"- url_detalle: {_resolve_relative_url(href_val.strip(), base_url)}")
 
     raw_html = getattr(node, "html", "") or ""
-    snippet = md(raw_html, bullets="-", strip=["img"])
+    snippet = _markdownify(raw_html, bullets="-", strip=["img"])
     snippet = _normalize_whitespace(snippet)
     if snippet:
         lines.append("")
@@ -287,7 +307,7 @@ def _build_markdown_context(
     selectors: SelectorConfig | None,
     max_chars: int,
 ) -> str:
-    tree = HTMLParser(html_content)
+    tree = _parse_html(html_content)
     for tag in tree.css(", ".join(_NOISE_SELECTORS)):
         tag.decompose()
 
@@ -317,7 +337,7 @@ def _build_markdown_context(
         return _normalize_whitespace("\n\n---\n\n".join(fragments))
 
     body_html = tree.body.html if tree.body and tree.body.html is not None else html_content
-    markdown_content = md(body_html, bullets="-", strip=["img"])
+    markdown_content = _markdownify(body_html, bullets="-", strip=["img"])
     markdown_content = _normalize_whitespace(markdown_content)
     if len(markdown_content) > max_chars:
         markdown_content = markdown_content[:max_chars]
@@ -772,12 +792,12 @@ class OpenRouterClient:
         Se mantiene como utilidad de frontera, no como flujo principal.
         """
 
-        tree = HTMLParser(html_content)
+        tree = _parse_html(html_content)
         for tag in tree.css("script, style, iframe, svg, noscript"):
             tag.decompose()
 
         clean_html: str = tree.body.html if tree.body and tree.body.html is not None else html_content
-        markdown_nav: str = _normalize_whitespace(md(clean_html, strip=["img"]))
+        markdown_nav: str = _normalize_whitespace(_markdownify(clean_html, strip=["img"]))
 
         parsed_base = urlparse(base_url)
         domain = f"{parsed_base.scheme}://{parsed_base.netloc}"
@@ -1088,14 +1108,11 @@ class CommandCodeClient(StructuredLLMClient):
 
     async def discover_funding_url(self, html_content: str, base_url: str) -> str | None:
         """Descubre el link de la sección de financiamiento en la página."""
-        from markdownify import markdownify as _md
-        from selectolax.parser import HTMLParser as _HTMLParser
-
-        tree = _HTMLParser(html_content)
+        tree = _parse_html(html_content)
         for tag in tree.css("script, style, iframe, svg, noscript"):
             tag.decompose()
         clean_html: str = tree.body.html if tree.body and tree.body.html is not None else html_content
-        markdown_nav = _normalize_whitespace(_md(clean_html, strip=["img"]))
+        markdown_nav = _normalize_whitespace(_markdownify(clean_html, strip=["img"]))
 
         prompt = (
             f"Página de inicio: {base_url}\n\n"

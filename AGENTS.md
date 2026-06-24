@@ -170,3 +170,48 @@ Reglas complejas y transversales en Python.
 - **Tono formal entre colegas profesionales**. Tratar como "usted", no tutear.
 - **Sin relleno, sin justificaciones extendidas, sin marketing**. Frases cortas y técnicas.
 - **Inglés aceptado para términos técnicos universales** (commit, push, deploy, endpoint, scraper, etc.) cuando su traducción al español resulte forzada o menos precisa.
+
+## 15. Reconstrucción mínima del proyecto
+
+Si una LLM necesita reconstruir el proyecto desde cero, el orden correcto es:
+
+1. Instalar Python 3.13 y PostgreSQL 17.
+2. Sincronizar dependencias con `uv sync --frozen --no-group dev --extra browser`.
+3. Configurar variables de entorno desde `.env` o el entorno de despliegue.
+4. Aplicar migraciones con `alembic upgrade head`.
+5. Verificar que `rules/*.yaml` y `src/infra/sources/catalog.py` estén alineados.
+6. Levantar la API con `grantpulse-api` o `python -m src.presentation.api.main`.
+7. Ejecutar sincronización/worker con `grantpulse-sync` o `python -m src.infra.cli <comando>`.
+8. Validar con `make validate` antes de considerar terminado el cambio.
+
+Reglas de reconstrucción:
+
+- Nunca usar SQLite.
+- Nunca reintroducir mutaciones de esquema ad hoc en startup si la migración ya existe.
+- Nunca asumir que un `ALTER TABLE` en caliente es aceptable si el cambio pertenece a Alembic.
+- Si hay drift entre ORM, Alembic y BD, la fuente de verdad es Alembic.
+- Si los logs de Uvicorn aparecen como error por ir a `stderr`, configurar `log_config` para `stdout`.
+
+## 16. Mapa operativo para una LLM
+
+Archivos que una LLM debe leer primero para reconstruir contexto real:
+
+- `pyproject.toml` — dependencias, scripts y toolchain.
+- `Makefile` — comandos de validación y despliegue local.
+- `README.md` — flujo operativo esperado.
+- `src/presentation/api/main.py` — arranque API, lifespan, healthcheck y logging.
+- `src/infra/cli.py` — sincronización de reglas, workers y comandos de mantenimiento.
+- `src/infra/config.py` — variables de entorno, URLs, límites y proveedores.
+- `src/infra/db/models.py` — esquema ORM canónico.
+- `src/infra/db/repository.py` — contratos de persistencia.
+- `src/infra/sources/catalog.py` — catálogo duro canónico de fuentes.
+- `src/infra/rules_loader.py` — carga y validación de YAML.
+- `src/core/domain/entities.py` y `src/core/domain/exceptions.py` — contratos del dominio.
+- `alembic/versions/*` — historial de migraciones reales.
+
+Reglas de edición para la LLM:
+
+- Si se cambia un contrato de dominio, actualizar repositorios, casos de uso y tests en el mismo bloque.
+- Si se cambia el esquema, actualizar modelo ORM, migración Alembic y validaciones asociadas.
+- Si se agrega una fuente, mantener sincronizados YAML, catálogo duro y tests de reglas.
+- Si se toca logging, conservar contexto operativo y no perder `run_id`, `fuente_id` o `evento_id`.
