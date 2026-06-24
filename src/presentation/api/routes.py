@@ -183,6 +183,7 @@ async def list_convocatorias(
     search: str | None = Query(None, description="Buscar en título"),
     orden: str | None = Query("actualizacion", description="Orden"),
     region: str | None = Query(None, description="Filtrar por región (Nacional, Metropolitana, etc.)"),
+    include_unavailable: bool = Query(False, description="Incluir convocatorias con URLs caídas"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[ConvocatoriaResponse]:
@@ -211,6 +212,12 @@ async def list_convocatorias(
         query = query.where(ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre.values()))
     if search:
         query = query.where(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
+
+    if not include_unavailable:
+        from sqlalchemy import String, cast
+        query = query.where(
+            func.coalesce(cast(ConvocatoriaORM.metadatos["url_check_failed"], String), "false") != "true"
+        )
 
     if orden == "por_vencer":
         # Ordenar primero las que vencen en el futuro (ascendente),
@@ -256,6 +263,7 @@ async def list_convocatorias_filtradas(
     activo: bool | None = Query(None, description="Filtrar por convocatorias vigentes (ABIERTO) y fuentes activas"),
     institucion: str | None = Query(None, description="Filtrar por nombre de la institución (fuente)"),
     region: str | None = Query(None, description="Filtrar por región asociada"),
+    include_unavailable: bool = Query(False, description="Incluir convocatorias con URLs caídas"),
     limit: int = Query(500, ge=1, le=1000),
 ) -> list[dict[str, Any]]:
     """Endpoint simple para recuperar convocatorias filtradas en formato JSON puro.
@@ -287,6 +295,12 @@ async def list_convocatorias_filtradas(
         region_search = region.replace("á", "%").replace("é", "%").replace("í", "%").replace("ó", "%").replace("ú", "%")
         region_search = region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
         query = query.where(ConvocatoriaORM.regiones.cast(String).ilike(f"%{region_search}%"))
+
+    if not include_unavailable:
+        from sqlalchemy import cast, func
+        query = query.where(
+            func.coalesce(cast(ConvocatoriaORM.metadatos["url_check_failed"], String), "false") != "true"
+        )
 
     query = query.order_by(ConvocatoriaORM.actualizado_en.desc()).limit(limit)
 
@@ -322,6 +336,7 @@ async def count_convocatorias(
     fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
     region: str | None = Query(None),
     search: str | None = Query(None, description="Buscar por término en título"),
+    include_unavailable: bool = Query(False, description="Incluir convocatorias con URLs caídas"),
 ) -> dict[str, int]:
     fuente_ids_por_nombre: list[int] = []
     if fuente_nombre:
@@ -346,6 +361,12 @@ async def count_convocatorias(
         query = query.where(ConvocatoriaORM.regiones.cast(String).ilike(f"%{region_search}%"))
     if search:
         query = query.where(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
+
+    if not include_unavailable:
+        from sqlalchemy import String, cast
+        query = query.where(
+            func.coalesce(cast(ConvocatoriaORM.metadatos["url_check_failed"], String), "false") != "true"
+        )
     total = (await session.execute(query)).scalar() or 0
     return {"total": total}
 
@@ -358,6 +379,7 @@ async def get_convocatorias_kpi(
     fuente_nombre: str | None = Query(None, description="Filtrar por nombre de fuente"),
     region: str | None = Query(None),
     search: str | None = Query(None, description="Buscar por término en título"),
+    include_unavailable: bool = Query(False, description="Incluir convocatorias con URLs caídas"),
 ) -> dict[str, int]:
     fuente_ids_por_nombre: list[int] = []
     if fuente_nombre:
@@ -383,6 +405,12 @@ async def get_convocatorias_kpi(
         filters.append(ConvocatoriaORM.regiones.cast(String).ilike(f"%{region_search}%"))
     if search:
         filters.append(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
+
+    if not include_unavailable:
+        from sqlalchemy import String, cast
+        filters.append(
+            func.coalesce(cast(ConvocatoriaORM.metadatos["url_check_failed"], String), "false") != "true"
+        )
 
     abiertas_q = select(func.count(ConvocatoriaORM.id)).where(ConvocatoriaORM.estado == "ABIERTO")
     if filters:
