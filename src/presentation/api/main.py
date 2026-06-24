@@ -64,11 +64,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
     # Sincronizar reglas YAML → BD de forma síncrona antes de aceptar requests
     try:
         from src.infra.cli import sync_all_rules
+        from src.infra.maintenance import normalize_existing_urls
+
+        await normalize_existing_urls()
+        logger.info("URLs normalizadas en startup")
 
         await sync_all_rules()
         logger.info("Reglas sincronizadas exitosamente")
     except Exception as e:
-        logger.error("Error en sync inicial de reglas", exc=e)
+        logger.error("Error en sync o normalización inicial", exc=e)
         raise
 
     yield
