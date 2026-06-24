@@ -36,8 +36,7 @@ json_mapping:
 # cuando el pipeline implementa extracción de fecha desde HTML embebido.
 normalizadores:
   fecha_cierre:
-    regex_extraction: "(?:Cierre|Fecha\\s+de\\s+cierre|Plazo)[:\\s]+([\\d]{1,2}[/\\-\\.][\\d]{1,2}[/\\-\\.][\\d]{2,4})"
-    formato_salida: "%d/%m/%Y"
+    regex_extraction: "(?:Cierre|Fecha\\s+de\\s+cierre|Plazo)[:\\s]+(?:el\\s+)?(\\d{1,2}\\s+de\\s+[A-Za-z]+\\s+de\\s+\\d{4}|\\d{1,2}[/\\-\\.]\\d{1,2}[/\\-\\.]\\d{2,4})"
   cupo:
     regex_extraction: "[Cc]upo[s]?:\\s*(\\d+)"
     tipo_dato: "int"

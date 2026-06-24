@@ -245,6 +245,10 @@ def _infer_region_with_llm(
 
 def _apply_regex(text: str, regex_pattern: str, field_name: str) -> str:
     """Aplica una expresión regular a un texto y extrae el primer grupo o el match completo."""
+    import html
+    # Desescapar entidades HTML (como &nbsp;) y remover tags HTML antes de buscar
+    text = html.unescape(text)
+    text = re.sub(r"<[^>]+>", "", text)
     try:
         match = re.search(regex_pattern, text)
         if not match:
@@ -396,6 +400,8 @@ class DataNormalizer:
                         fecha_apertura_val = _parse_date(
                             texto_fecha, norm_config.fecha_apertura.formato_salida, "fecha_apertura"
                         )
+                    else:
+                        fecha_apertura_val = parse_fecha_chilena(texto_fecha)
                 elif raw_fecha_apertura:
                     fecha_apertura_val = parse_fecha_chilena(raw_fecha_apertura)
             except NormalizationError as e:
@@ -415,10 +421,13 @@ class DataNormalizer:
                             texto_fecha, norm_config.fecha_cierre.formato_salida, "fecha_cierre"
                         )
                     else:
-                        logger.warning(
-                            "fecha_cierre extraída pero sin formato_salida definido.",
-                            item_id=identificador,
-                        )
+                        fecha_cierre_val = parse_fecha_chilena(texto_fecha)
+                        if not fecha_cierre_val:
+                            logger.debug(
+                                "fecha_cierre presente pero no reconocida por parse_fecha_chilena",
+                                item_id=identificador,
+                                raw=texto_fecha,
+                            )
                 elif raw_fecha_cierre:
                     fecha_cierre_val = parse_fecha_chilena(raw_fecha_cierre)
                     if not fecha_cierre_val:
