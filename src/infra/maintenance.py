@@ -216,6 +216,7 @@ async def run_clean_db() -> None:
 async def normalize_existing_urls() -> int:
     """Normaliza las URLs guardadas en BD y resetea su estado de error."""
     from sqlalchemy.orm.attributes import flag_modified
+
     from src.core.application.normalizer import _is_valid_url
 
     run_id = new_run_id()
@@ -232,7 +233,7 @@ async def normalize_existing_urls() -> int:
 
             for conv_orm, fuente_orm in rows:
                 changed = False
-                
+
                 # 1. Normalizar url_detail
                 if conv_orm.url_detail:
                     url_temp = conv_orm.url_detail
@@ -256,10 +257,10 @@ async def normalize_existing_urls() -> int:
                     flag_modified(conv_orm, "metadatos")
                     changed = True
                     reset_count += 1
-                    
+
                 if changed:
                     updated_count += 1
-                    
+
             if updated_count > 0:
                 await session.commit()
                 logger.info("Normalización completada", actualizados=updated_count, resets_error_url=reset_count, run_id=run_id)

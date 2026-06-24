@@ -9,7 +9,8 @@ async def main():
         repo = SQLFuenteRepository(session)
         f = await repo.get_by_nombre("CORFO")
         print("f:", f)
-        if f: print("f.id:", f.id, type(f.id))
+        if f:
+            print("f.id:", f.id, type(f.id))
 
 if __name__ == "__main__":
     asyncio.run(main())

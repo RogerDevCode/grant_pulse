@@ -3,7 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "sh -c '/app/.venv/bin/alembic upgrade head && /app/.venv/bin/grantpulse-api'"
+startCommand = "sh -c '/app/.venv/bin/python scripts/fix_alembic_drift.py && /app/.venv/bin/alembic upgrade head && /app/.venv/bin/grantpulse-api'"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"

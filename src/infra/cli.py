@@ -349,7 +349,7 @@ async def run_all_active_sources() -> None:
 
                         try:
                             audit = AuditLogORM(
-                                fuente_id=int(fuente_inst.id) if str(fuente_inst.id).isdigit() else None,
+                                fuente_id=int(str(fuente_inst.id)) if str(fuente_inst.id).isdigit() else None,
                                 nivel="ERROR",
                                 modulo="cli.run_all_active_sources",
                                 mensaje=f"Worker falló para fuente {fuente_inst.nombre}: {e}",
@@ -558,7 +558,7 @@ def main() -> None:
             asyncio.run(run_enrichment_worker(batch_size=args.batch_size))
         elif args.command == "normalize-urls":
             from src.infra.maintenance import normalize_existing_urls
-            
+
             actualizados = asyncio.run(normalize_existing_urls())
             print(f"Normalización completada: {actualizados} convocatorias actualizadas.")
     except GrantPulseError as e:

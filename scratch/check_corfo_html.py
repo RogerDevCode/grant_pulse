@@ -18,7 +18,7 @@ async def main():
         items = soup.select(".caja-resultados_uno")
         for item in items:
             title_node = item.select_one("h4")
-            estado_node = item.select_one("h6")
+            _ = item.select_one("h6")
             cierre_node = item.select_one(".cierre span")
 
             if title_node and ("INNOVA" in title_node.text.upper() or "SEMILLA" in title_node.text.upper()):

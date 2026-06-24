@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Script de backfill de regiones para convocatorias existentes.
 
 Idempotente: ejecutable múltiples veces sin efecto acumulativo.

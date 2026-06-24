@@ -32,18 +32,7 @@ from src.presentation.api.routes import router
 logger = get_logger(__name__)
 
 
-async def _ensure_startup_schema() -> None:
-    """Verifica el esquema mínimo requerido antes de aceptar tráfico.
 
-    El arranque no debe mutar columnas ya existentes. Las migraciones
-    Alembic son la fuente de verdad para cambios de esquema.
-    """
-
-    from src.infra.db.connection import engine
-    from src.infra.db.models import Base
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
 
 def _build_uvicorn_log_config() -> dict[str, object]:
@@ -60,14 +49,6 @@ def _build_uvicorn_log_config() -> dict[str, object]:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
     logger.info("Iniciando aplicación API GrantPulse")
-
-    # Verificar y completar el esquema mínimo requerido.
-    try:
-        await _ensure_startup_schema()
-        logger.info("Esquema de base de datos verificado correctamente")
-    except Exception as e:
-        logger.error("No se pudo verificar el esquema de base de datos", exc=e)
-        raise
 
     # Sincronizar reglas YAML → BD de forma síncrona antes de aceptar requests
     try:
