@@ -21,6 +21,59 @@ from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
 
+_URL_CACHE: dict[str, bool] = {}
+
+def _is_valid_url(url: str) -> bool:
+    if not url:
+        return False
+    lower_url = url.lower().strip()
+    if lower_url in ("null", "none", "undefined", "", "#"):
+        return False
+    if lower_url.startswith("javascript:"):
+        return False
+    
+    if url in _URL_CACHE:
+        return _URL_CACHE[url]
+        
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            _URL_CACHE[url] = False
+            return False
+        if parsed.scheme not in ("http", "https"):
+            _URL_CACHE[url] = False
+            return False
+    except Exception:
+        _URL_CACHE[url] = False
+        return False
+
+    try:
+        import httpx
+        with httpx.Client(timeout=3.0, verify=False, follow_redirects=True) as client:
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            resp = client.head(url, headers=headers)
+            if resp.status_code >= 400:
+                if resp.status_code in (403, 404, 405):
+                    resp_get = client.get(url, headers=headers)
+                    if resp_get.status_code >= 400:
+                        _URL_CACHE[url] = False
+                        return False
+                else:
+                    _URL_CACHE[url] = False
+                    return False
+        _URL_CACHE[url] = True
+        return True
+    except httpx.TimeoutException:
+        _URL_CACHE[url] = True
+        return True
+    except httpx.RequestError:
+        _URL_CACHE[url] = False
+        return False
+    except Exception:
+        _URL_CACHE[url] = False
+        return False
+
 REGIONES_CHILE: tuple[str, ...] = (
     "Arica y Parinacota",
     "Tarapacá",
@@ -376,11 +429,13 @@ class DataNormalizer:
 
             url_final: str | None = None
             if url_detalle:
-                url_final = (
+                url_temp = (
                     str(fuente.url_base).rstrip("/") + "/" + url_detalle.lstrip("/")
                     if url_detalle.startswith("/")
                     else url_detalle
                 )
+                if _is_valid_url(url_temp):
+                    url_final = url_temp
 
             fecha_apertura_val: datetime | None = None
             fecha_cierre_val: datetime | None = None
@@ -515,6 +570,21 @@ class DataNormalizer:
             elif estado == "DESCONOCIDO" and fecha_cierre_val is None:
                 # Fondo concursable permanente: sin fecha de cierre
                 estado = "PERMANENTE"
+
+            # Regla de negocio: Si la URL es nula/inválida, verificar si es postulación offline.
+            # Si no hay indicios de offline, forzar a CERRADO para no mostrar un "callejón sin salida" al usuario.
+            if not url_final and estado in ("ABIERTO", "PERMANENTE", "PROXIMAMENTE", "DESCONOCIDO"):
+                texto_completo = f"{titulo} {descripcion}".lower() if descripcion else titulo.lower()
+                indicios_offline = ["@", "correo", "presencial", "oficina de partes", "postulación en papel", "oficina de fomento", "oficina municipal"]
+                es_offline = any(ind in texto_completo for ind in indicios_offline)
+                
+                if not es_offline:
+                    logger.info(
+                        "Forzando estado CERRADO por URL inválida sin indicios de postulación offline", 
+                        titulo=titulo, 
+                        identificador=identificador
+                    )
+                    estado = "CERRADO"
 
             # Intentar extraer región desde el campo crudo (puede ser texto largo como el título)
             region_raw = item.get("region")

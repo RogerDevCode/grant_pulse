@@ -1,3 +1,4 @@
+from unittest.mock import patch
 """
 Tests unitarios para el normalizador de datos.
 """
@@ -35,6 +36,12 @@ def mock_fuente_normalizador() -> Fuente:
         ),
     )
 
+
+
+@pytest.fixture(autouse=True)
+def mock_valid_url():
+    with patch("src.core.application.normalizer._is_valid_url", return_value=True):
+        yield
 
 def test_normalize_and_map_success(mock_fuente_normalizador: Fuente) -> None:
     raw_items: list[dict[str, str | None]] = [
