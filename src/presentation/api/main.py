@@ -50,6 +50,17 @@ def _build_uvicorn_log_config() -> dict[str, object]:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
     logger.info("Iniciando aplicación API GrantPulse")
 
+    # Forzar ejecución de migraciones en caso de que startCommand sea ignorado en Railway
+    try:
+        import subprocess
+        import sys
+        logger.info("Verificando y aplicando migraciones de base de datos...")
+        subprocess.run([sys.executable, "scripts/fix_alembic_drift.py"], check=True)
+        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+        logger.info("Migraciones aplicadas exitosamente")
+    except Exception as e:
+        logger.error("Error al aplicar migraciones en el startup", exc=e)
+
     # Sincronizar reglas YAML → BD de forma síncrona antes de aceptar requests
     try:
         from src.infra.cli import sync_all_rules
