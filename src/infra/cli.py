@@ -54,9 +54,9 @@ def _apply_source_profile(fuente: Fuente) -> Fuente:
     """Normaliza una fuente usando el registry duro si existe."""
     from pydantic import HttpUrl, TypeAdapter
 
-    from src.infra.sources.catalog import source_profile_for_name
+    from src.infra.sources.catalog import resolve_source_profile
 
-    source_profile = source_profile_for_name(fuente.nombre)
+    source_profile = resolve_source_profile(fuente.nombre)
     if not source_profile:
         return fuente
 
@@ -213,9 +213,9 @@ async def run_single_source(filepath: Path) -> None:
 
     try:
         rules_config = load_rules_from_yaml(filepath)
-        from src.infra.sources.catalog import source_profile_for_name
+        from src.infra.sources.catalog import resolve_source_profile
 
-        source_profile = source_profile_for_name(rules_config.nombre)
+        source_profile = resolve_source_profile(rules_config.nombre)
         if source_profile:
             from pydantic import HttpUrl, TypeAdapter
 
@@ -405,9 +405,9 @@ async def run_all_active_sources() -> None:
 async def sync_single_source_config(filepath: Path) -> None:
     """Carga un archivo YAML de reglas y lo sincroniza con la base de datos sin ejecutar el monitoreo."""
     rules_config = load_rules_from_yaml(filepath)
-    from src.infra.sources.catalog import source_profile_for_name
+    from src.infra.sources.catalog import resolve_source_profile
 
-    source_profile = source_profile_for_name(rules_config.nombre)
+    source_profile = resolve_source_profile(rules_config.nombre)
     if source_profile:
         from pydantic import HttpUrl, TypeAdapter
 
