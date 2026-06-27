@@ -58,6 +58,9 @@ async def test_run_all_active_sources_concurrency(mock_fuentes):
     # Mock de repositorios y usecase
     mock_session = AsyncMock()
     mock_session.add = MagicMock()
+    mock_execute_result = MagicMock()
+    mock_execute_result.scalar.return_value = True
+    mock_session.execute = AsyncMock(return_value=mock_execute_result)
     mock_session_cls = MagicMock(return_value=mock_session)
     mock_session.__aenter__.return_value = mock_session
     mock_session.__aexit__.return_value = None
@@ -103,6 +106,9 @@ async def test_run_all_active_sources_handles_exceptions(mock_fuentes):
     # Mock de repositorios y usecase
     mock_session = AsyncMock()
     mock_session.add = MagicMock()
+    mock_execute_result = MagicMock()
+    mock_execute_result.scalar.return_value = True
+    mock_session.execute = AsyncMock(return_value=mock_execute_result)
     mock_session_cls = MagicMock(return_value=mock_session)
     mock_session.__aenter__.return_value = mock_session
     mock_session.__aexit__.return_value = None
