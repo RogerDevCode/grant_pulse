@@ -46,25 +46,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
 
     # Sincronizar reglas YAML → BD y normalizar URLs en segundo plano después de iniciar
     # Para evitar bloqueos en startup que puedan causar timeouts en health checks
-    async def _background_initialization():
+    async def _background_initialization() -> None:
         try:
-            # Normalizar URLs existentes con timeout
-            try:
-                from src.infra.maintenance import normalize_existing_urls
-                await asyncio.wait_for(normalize_existing_urls(), timeout=60.0)
-                logger.info("URLs normalizadas en background")
-            except TimeoutError:
-                logger.warning("Timeout normalizando URLs - se continuará en segundo plano")
-                # Reintentar en segundo plano
-                asyncio.create_task(normalize_existing_urls())
-            except Exception as e:
-                logger.error("Error en normalización inicial: %s", e)
-                # Reintentar en segundo plano
-                asyncio.create_task(normalize_existing_urls())
-
             # Sincronizar reglas con timeout
             try:
                 from src.infra.cli import sync_all_rules
+
                 await asyncio.wait_for(sync_all_rules(), timeout=60.0)
                 logger.info("Reglas sincronizadas en background")
             except TimeoutError:
