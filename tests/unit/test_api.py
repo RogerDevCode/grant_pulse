@@ -70,7 +70,7 @@ async def test_list_fuentes_success() -> None:
     )
 
     mock_execute_res = MagicMock()
-    mock_execute_res.scalars.return_value.all.return_value = [mock_fuente]
+    mock_execute_res.all.return_value = [(mock_fuente, 1, 1, 0, None)]
     
     mock_session = AsyncMock()
     mock_session.execute.return_value = mock_execute_res
@@ -97,17 +97,11 @@ async def test_list_fuentes_success() -> None:
 async def test_get_dashboard_stats_success() -> None:
     from unittest.mock import MagicMock
 
-    mock_execute_res1 = MagicMock()
-    mock_execute_res1.scalar.return_value = 10
-    
-    mock_execute_res2 = MagicMock()
-    mock_execute_res2.scalar.return_value = 5
-    
-    mock_execute_res3 = MagicMock()
-    mock_execute_res3.scalar.return_value = 2
+    mock_execute_res = MagicMock()
+    mock_execute_res.scalar.return_value = 5
 
     mock_session = AsyncMock()
-    mock_session.execute.side_effect = [mock_execute_res1, mock_execute_res2, mock_execute_res3]
+    mock_session.execute.return_value = mock_execute_res
 
     async def temp_mock_db_session() -> AsyncGenerator[Any]:
         yield mock_session
@@ -120,9 +114,9 @@ async def test_get_dashboard_stats_success() -> None:
                 response = await client.get("/api/v1/dashboard")
                 assert response.status_code == 200
                 data = response.json()
-                assert data["total_convocatorias"] == 10
+                assert data["total_convocatorias"] == 5
                 assert data["convocatorias_activas"] == 5
-                assert data["total_fuentes"] == 2
+                assert data["total_fuentes"] == 5
     finally:
         app.dependency_overrides[get_db_session] = mock_get_db_session
 
