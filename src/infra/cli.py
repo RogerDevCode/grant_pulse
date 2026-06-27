@@ -381,15 +381,27 @@ async def run_all_active_sources() -> None:
             tareas = [procesar_fuente(fuente) for fuente in fuentes_activas]
             await asyncio.gather(*tareas)
 
-            # Generar reporte de calidad
+            # Generar reporte de calidad y enviar resumen a Telegram
             async with AsyncSessionLocal() as session:
-                from src.infra.quality_report import generar_reporte_calidad
+                from src.infra.quality_report import generar_reporte_calidad, obtener_resumen_calidad
 
                 report_path = Path("reports") / f"quality_report_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.md"
                 try:
                     await generar_reporte_calidad(session, report_path)
+
+                    # Generar resumen e intentar notificar a administradores vía Telegram
+                    resumen_calidad = await obtener_resumen_calidad(session)
+
+                    from src.infra.notifications.composite_adapter import CompositeNotificationAdapter
+                    from src.infra.notifications.telegram_adapter import TelegramNotificationAdapter
+
+                    notifier = await _get_notifier(session)
+                    if isinstance(notifier, CompositeNotificationAdapter):
+                        for adapter in notifier.adapters:
+                            if isinstance(adapter, TelegramNotificationAdapter):
+                                await adapter.send_message(resumen_calidad)
                 except Exception as e:
-                    logger.error("Error generando reporte de calidad", exc=e, run_id=run_id)
+                    logger.error("Error al generar/enviar reporte de calidad", exc=e, run_id=run_id)
 
             if failed_fuentes:
                 msg = f"Fuentes con error en batch: {', '.join(failed_fuentes)}"

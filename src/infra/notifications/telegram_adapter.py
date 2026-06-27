@@ -130,3 +130,25 @@ class TelegramNotificationAdapter(NotificationPort):
         if val is None:
             return "No definido"
         return f"${val:,.0f}".replace(",", ".")
+
+    async def send_message(self, text: str) -> bool:
+        """Envía un mensaje de texto plano o HTML directamente al chat de Telegram."""
+        if not self.bot_token or not self.chat_id:
+            return False
+        import httpx
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(
+                    self.api_url,
+                    json={
+                        "chat_id": self.chat_id,
+                        "text": text,
+                        "parse_mode": "HTML",
+                        "disable_web_page_preview": True,
+                    },
+                )
+                response.raise_for_status()
+                return True
+        except Exception as e:
+            logger.error("Error al enviar mensaje directo a Telegram", exc=e)
+            return False

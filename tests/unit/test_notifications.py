@@ -294,3 +294,23 @@ async def test_telegram_adapter_retry_fatal_fails_immediately(dummy_fuente: Fuen
         assert "Error de Telegram API (400)" in str(exc_info.value)
         assert mock_post.call_count == 1
         mock_sleep.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_telegram_adapter_send_message_direct() -> None:
+    from unittest.mock import AsyncMock
+    from src.infra.notifications.telegram_adapter import TelegramNotificationAdapter
+
+    adapter = TelegramNotificationAdapter(bot_token="test_token", chat_id="test_chat")
+
+    mock_response_ok = MagicMock()
+    mock_response_ok.raise_for_status = MagicMock()
+
+    mock_post = AsyncMock(return_value=mock_response_ok)
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        res = await adapter.send_message("Hola mundo E2E")
+        assert res is True
+        assert mock_post.call_count == 1
+        call_args = mock_post.call_args[1]
+        assert call_args["json"]["text"] == "Hola mundo E2E"

@@ -72,3 +72,52 @@ async def generar_reporte_calidad(session: AsyncSession, output_path: Path) -> N
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(reporte_str, encoding="utf-8")
     logger.info("Reporte de calidad guardado exitosamente.")
+
+
+async def obtener_resumen_calidad(session: AsyncSession) -> str:
+    """
+    Retorna un texto resumen formateado en HTML listo para enviar por Telegram.
+    """
+    # Obtener todas las fuentes activas
+    query_fuentes = select(FuenteORM).where(FuenteORM.activa)
+    res_fuentes = await session.execute(query_fuentes)
+    fuentes = res_fuentes.scalars().all()
+
+    total_fuentes = len(fuentes)
+    fuentes_ok = 0
+    lineas = [
+        "<b>📊 RESUMEN DE CALIDAD DE DATOS (Data Quality)</b>",
+        f"Fecha: {datetime.now(UTC).strftime('%d/%m/%Y %H:%M')} UTC",
+        f"Fuentes activas: {total_fuentes}",
+        ""
+    ]
+
+    for f in sorted(fuentes, key=lambda x: x.nombre):
+        q_stats = select(
+            func.count(ConvocatoriaORM.id).label("total"),
+            func.count(ConvocatoriaORM.fecha_cierre).label("con_cierre"),
+            func.count(ConvocatoriaORM.monto).label("con_monto"),
+        ).where(ConvocatoriaORM.fuente_id == f.id)
+
+        res_stats = await session.execute(q_stats)
+        stats = res_stats.first()
+
+        if not stats or stats.total == 0:
+            lineas.append(f"⚠️ <b>{f.nombre}</b>: 0 convocatorias")
+            continue
+
+        p_cierre = (stats.con_cierre / stats.total) * 100
+        p_monto = (stats.con_monto / stats.total) * 100
+
+        # Consideramos una fuente saludable si tiene buena tasa de campos críticos
+        icono = "✅" if p_monto > 50 else "🟨"
+        lineas.append(
+            f"{icono} <b>{f.nombre}</b>: {stats.total} items | "
+            f"📅 {p_cierre:.0f}% | 💰 {p_monto:.0f}%"
+        )
+        if p_monto >= 50:
+            fuentes_ok += 1
+
+    lineas.append("")
+    lineas.append(f"Salud de integración: {fuentes_ok}/{total_fuentes} fuentes OK")
+    return "\n".join(lineas)
