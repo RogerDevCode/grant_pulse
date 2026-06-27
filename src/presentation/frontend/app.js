@@ -1292,7 +1292,7 @@ async function loadSystemLogs() {
   if(btn) btn.classList.add('spinning');
   
   try {
-    const res = await apiFetch('/debug/errors');
+    const res = await apiFetch(`/debug/errors?t=${Date.now()}`);
     if (res.error) {
       content.style.display = 'none';
       emptyMsg.style.display = 'block';
@@ -1662,7 +1662,7 @@ async function cargarLogs() {
   if (!content) return;
   content.textContent = "Cargando logs...";
   try {
-    const res = await fetch(`${API}/debug/errors`);
+    const res = await fetch(`${API}/debug/errors?t=${Date.now()}`);
     if (!res.ok) throw new Error("No se pudieron obtener los logs");
     const data = await res.json();
     if (data.error) {
