@@ -295,111 +295,132 @@ async def run_all_active_sources() -> None:
     run_id = new_run_id()
     logger.info("Iniciando worker para todas las fuentes activas", run_id=run_id)
 
+    from sqlalchemy import text
+    lock_session = AsyncSessionLocal()
     try:
-        fuentes_activas: list[Fuente] = []
-        async with AsyncSessionLocal() as session:
-            fuente_repo = SQLFuenteRepository(session)
-            fuentes_activas = await fuente_repo.get_all_active()
-            await session.commit()
-        if not fuentes_activas:
-            logger.warning("No hay fuentes activas configuradas en la base de datos.")
+        # Intentar adquirir advisory lock a nivel de sesión exclusivo (ID: 178199)
+        lock_res = await lock_session.execute(text("SELECT pg_try_advisory_lock(178199)"))
+        if not lock_res.scalar():
+            logger.warning(
+                "Ya existe otra instancia de GrantPulse ejecutando el monitoreo masivo (Advisory Lock ocupado). "
+                "Abortando ejecución concurrente para evitar colisiones."
+            )
+            await lock_session.close()
             return
 
-        failed_fuentes: list[str] = []
+        try:
+            fuentes_activas: list[Fuente] = []
+            async with AsyncSessionLocal() as session:
+                fuente_repo = SQLFuenteRepository(session)
+                fuentes_activas = await fuente_repo.get_all_active()
+                await session.commit()
+            if not fuentes_activas:
+                logger.warning("No hay fuentes activas configuradas en la base de datos.")
+                return
 
-        # Fase 1: Limitar la concurrencia a maximo 3 tareas simultaneas en el event loop
-        sem = asyncio.Semaphore(3)
+            failed_fuentes: list[str] = []
 
-        async def procesar_fuente(fuente_inst: Fuente) -> None:
-            async with sem:
-                fuente_run_id = new_run_id()
-                async with AsyncSessionLocal() as session:
-                    try:
-                        snapshot_repo = SQLSnapshotRepository(session)
-                        convocatoria_repo = SQLConvocatoriaRepository(session)
-                        notificacion_repo = SQLNotificacionRepository(session)
-                        fuente_normalizada = _apply_source_profile(fuente_inst)
-                        scraper = _get_scraper(fuente_normalizada)
-                        notifier = await _get_notifier(session)
+            # Fase 1: Limitar la concurrencia a maximo 3 tareas simultaneas en el event loop
+            sem = asyncio.Semaphore(3)
 
-                        use_case = MonitoreoUseCase(
-                            scraper=scraper,
-                            snapshot_repo=snapshot_repo,
-                            convocatoria_repo=convocatoria_repo,
-                            notifier=notifier,
-                            notificacion_repo=notificacion_repo,
-                        )
-
-                        await use_case.ejecutar_monitoreo(fuente_normalizada)
-                        await session.commit()
-                    except Exception as e:
-                        await session.rollback()
-                        logger.error(
-                            f"Worker falló para fuente {fuente_inst.nombre}: {e}",
-                            exc=e,
-                            fuente_id=str(fuente_inst.id),
-                            run_id=fuente_run_id,
-                        )
-                        failed_fuentes.append(fuente_inst.nombre)
-
-                        # Guardar error estructurado en base de datos para observabilidad
-                        import traceback
-
-                        from src.infra.db.models import AuditLogORM
-
+            async def procesar_fuente(fuente_inst: Fuente) -> None:
+                async with sem:
+                    fuente_run_id = new_run_id()
+                    async with AsyncSessionLocal() as session:
                         try:
-                            audit = AuditLogORM(
-                                fuente_id=int(str(fuente_inst.id)) if str(fuente_inst.id).isdigit() else None,
-                                nivel="ERROR",
-                                modulo="cli.run_all_active_sources",
-                                mensaje=f"Worker falló para fuente {fuente_inst.nombre}: {e}",
-                                detalles={
-                                    "run_id": fuente_run_id,
-                                    "error": str(e),
-                                    "traceback": traceback.format_exc(),
-                                },
+                            snapshot_repo = SQLSnapshotRepository(session)
+                            convocatoria_repo = SQLConvocatoriaRepository(session)
+                            notificacion_repo = SQLNotificacionRepository(session)
+                            fuente_normalizada = _apply_source_profile(fuente_inst)
+                            scraper = _get_scraper(fuente_normalizada)
+                            notifier = await _get_notifier(session)
+
+                            use_case = MonitoreoUseCase(
+                                scraper=scraper,
+                                snapshot_repo=snapshot_repo,
+                                convocatoria_repo=convocatoria_repo,
+                                notifier=notifier,
+                                notificacion_repo=notificacion_repo,
                             )
-                            session.add(audit)
+
+                            await use_case.ejecutar_monitoreo(fuente_normalizada)
                             await session.commit()
-                        except Exception as inner_e:
-                            logger.error("No se pudo guardar el audit log en base de datos", exc=inner_e)
+                        except Exception as e:
+                            await session.rollback()
+                            logger.error(
+                                f"Worker falló para fuente {fuente_inst.nombre}: {e}",
+                                exc=e,
+                                fuente_id=str(fuente_inst.id),
+                                run_id=fuente_run_id,
+                            )
+                            failed_fuentes.append(fuente_inst.nombre)
 
-        # Ejecutar concurrentemente todas las tareas con control de concurrencia
-        tareas = [procesar_fuente(fuente) for fuente in fuentes_activas]
-        await asyncio.gather(*tareas)
+                            # Guardar error estructurado en base de datos para observabilidad
+                            import traceback
 
-        # Generar reporte de calidad
-        async with AsyncSessionLocal() as session:
-            from src.infra.quality_report import generar_reporte_calidad
+                            from src.infra.db.models import AuditLogORM
 
-            report_path = Path("reports") / f"quality_report_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.md"
-            try:
-                await generar_reporte_calidad(session, report_path)
-            except Exception as e:
-                logger.error("Error generando reporte de calidad", exc=e, run_id=run_id)
+                            try:
+                                audit = AuditLogORM(
+                                    fuente_id=int(str(fuente_inst.id)) if str(fuente_inst.id).isdigit() else None,
+                                    nivel="ERROR",
+                                    modulo="cli.run_all_active_sources",
+                                    mensaje=f"Worker falló para fuente {fuente_inst.nombre}: {e}",
+                                    detalles={
+                                        "run_id": fuente_run_id,
+                                        "error": str(e),
+                                        "traceback": traceback.format_exc(),
+                                    },
+                                )
+                                session.add(audit)
+                                await session.commit()
+                            except Exception as inner_e:
+                                logger.error("No se pudo guardar el audit log en base de datos", exc=inner_e)
 
-        if failed_fuentes:
-            msg = f"Fuentes con error en batch: {', '.join(failed_fuentes)}"
-            logger.error("Fuentes con error en batch", count=len(failed_fuentes), fuentes=failed_fuentes)
-            raise ScrapingError(msg)
+            # Ejecutar concurrentemente todas las tareas con control de concurrencia
+            tareas = [procesar_fuente(fuente) for fuente in fuentes_activas]
+            await asyncio.gather(*tareas)
 
-        logger.info("Batch completado sin errores", total_fuentes=len(fuentes_activas))
+            # Generar reporte de calidad
+            async with AsyncSessionLocal() as session:
+                from src.infra.quality_report import generar_reporte_calidad
+
+                report_path = Path("reports") / f"quality_report_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.md"
+                try:
+                    await generar_reporte_calidad(session, report_path)
+                except Exception as e:
+                    logger.error("Error generando reporte de calidad", exc=e, run_id=run_id)
+
+            if failed_fuentes:
+                msg = f"Fuentes con error en batch: {', '.join(failed_fuentes)}"
+                logger.error("Fuentes con error en batch", count=len(failed_fuentes), fuentes=failed_fuentes)
+                raise ScrapingError(msg)
+
+            logger.info("Batch completado sin errores", total_fuentes=len(fuentes_activas))
+        finally:
+            clear_run_id()
+
+        # Purga automática de convocatorias vencidas/no disponibles
+        try:
+            from src.infra.maintenance import clean_expired_convocatorias, clean_unavailable_convocatorias
+
+            purgadas = await clean_expired_convocatorias(dias_vencida=7)
+            if purgadas > 0:
+                logger.info("Limpieza automática de vencidas completada", eliminadas=purgadas)
+
+            purgadas_unav = await clean_unavailable_convocatorias(dias_gracia=30)
+            if purgadas_unav > 0:
+                logger.info("Limpieza automática de no disponibles completada", eliminadas=purgadas_unav)
+        except Exception as e:
+            logger.warning("Limpieza automática falló (no crítica)", exc=e)
+
     finally:
-        clear_run_id()
-
-    # Purga automática de convocatorias vencidas/no disponibles
-    try:
-        from src.infra.maintenance import clean_expired_convocatorias, clean_unavailable_convocatorias
-
-        purgadas = await clean_expired_convocatorias(dias_vencida=7)
-        if purgadas > 0:
-            logger.info("Limpieza automática de vencidas completada", eliminadas=purgadas)
-
-        purgadas_unav = await clean_unavailable_convocatorias(dias_gracia=30)
-        if purgadas_unav > 0:
-            logger.info("Limpieza automática de no disponibles completada", eliminadas=purgadas_unav)
-    except Exception as e:
-        logger.warning("Limpieza automática falló (no crítica)", exc=e)
+        # Liberar el lock y cerrar la sesión de bloqueo
+        try:
+            await lock_session.execute(text("SELECT pg_advisory_unlock(178199)"))
+            await lock_session.close()
+        except Exception as e:
+            logger.error("Error liberando Advisory Lock de GrantPulse", exc=e)
 
 
 async def sync_single_source_config(filepath: Path) -> None:
@@ -438,7 +459,9 @@ async def sync_single_source_config(filepath: Path) -> None:
                 fuente_db.activa = rules_config.activa
 
             fuente_db = _apply_source_profile(fuente_db)
-            logger.debug("Fuente normalizada antes de persistir", fuente=rules_config.nombre, fuente_id=str(fuente_db.id))
+            logger.debug(
+                "Fuente normalizada antes de persistir", fuente=rules_config.nombre, fuente_id=str(fuente_db.id)
+            )
             await fuente_repo.save(fuente_db)
             await session.commit()
             logger.info("Configuración de fuente sincronizada exitosamente", fuente=rules_config.nombre)
@@ -521,9 +544,7 @@ def main() -> None:
     )
     enrich_parser.add_argument("--batch-size", type=int, default=5, help="Tamaño del lote a procesar (default: 5)")
 
-    subparsers.add_parser(
-        "normalize-urls", help="Normaliza las URLs guardadas en BD y resetea su estado de error"
-    )
+    subparsers.add_parser("normalize-urls", help="Normaliza las URLs guardadas en BD y resetea su estado de error")
 
     args = parser.parse_args()
 
@@ -538,10 +559,11 @@ def main() -> None:
             from src.infra.maintenance import run_clean_db
 
             asyncio.run(run_clean_db())
-        elif args.command == "backfill-regions":
-            from src.infra.maintenance import run_backfill_regions
 
-            asyncio.run(run_backfill_regions())
+        elif args.command == "enrich-details":
+            from src.infra.workers.enrichment_worker import run_enrichment_worker
+
+            asyncio.run(run_enrichment_worker(batch_size=args.batch_size))
         elif args.command == "purge-expired":
             from src.infra.maintenance import clean_expired_convocatorias
 
@@ -552,15 +574,6 @@ def main() -> None:
 
             eliminadas = asyncio.run(clean_unavailable_convocatorias(args.dias))
             print(f"Purga completada: {eliminadas} convocatorias no disponibles eliminadas.")
-        elif args.command == "enrich-details":
-            from src.infra.workers.enrichment_worker import run_enrichment_worker
-
-            asyncio.run(run_enrichment_worker(batch_size=args.batch_size))
-        elif args.command == "normalize-urls":
-            from src.infra.maintenance import normalize_existing_urls
-
-            actualizados = asyncio.run(normalize_existing_urls())
-            print(f"Normalización completada: {actualizados} convocatorias actualizadas.")
     except GrantPulseError as e:
         logger.error("Error de dominio finalizando el worker", exc=e)
         sys.exit(1)
