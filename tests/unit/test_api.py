@@ -115,7 +115,7 @@ async def test_get_dashboard_stats_success() -> None:
                 assert response.status_code == 200
                 data = response.json()
                 assert data["total_convocatorias"] == 5
-                assert data["convocatorias_activas"] == 5
+                assert data["convocatorias_abiertas"] == 5
                 assert data["total_fuentes"] == 5
     finally:
         app.dependency_overrides[get_db_session] = mock_get_db_session
