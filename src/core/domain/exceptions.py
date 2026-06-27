@@ -56,7 +56,6 @@ class NormalizationError(ScrapingError):
         self.code = code
 
 
-
 class RuleEngineError(GrantPulseError):
     """Se lanza cuando ocurre un error procesando o comparando las reglas de cambio."""
 

@@ -33,11 +33,7 @@ class TrafilaturaScraper(ScraperPort):
         """Extrae el contenido usando Trafilatura de forma síncrona."""
         # Trafilatura extract retorna el texto limpio
         extracted_text = trafilatura.extract(
-            html_crudo,
-            include_links=True,
-            include_formatting=True,
-            include_images=False,
-            url=str(url_base)
+            html_crudo, include_links=True, include_formatting=True, include_images=False, url=str(url_base)
         )
         if not extracted_text:
             return []
@@ -51,16 +47,21 @@ class TrafilaturaScraper(ScraperPort):
         # Si hubiera necesidad de particionarlo, se puede mejorar después.
 
         # Ojo: esto es un fallback. El enriquecedor posterior se encarga de parsear mejor si es necesario.
-        return [{
-            "identificador": "TRAF-AUTO",
-            "titulo": "Contenido Extraído (Trafilatura)",
-            "descripcion": extracted_text,
-            "url_detalle": str(url_base),
-            "estado": "DESCONOCIDO",
-        }]
+        return [
+            {
+                "identificador": "TRAF-AUTO",
+                "titulo": "Contenido Extraído (Trafilatura)",
+                "descripcion": extracted_text,
+                "url_detalle": str(url_base),
+                "estado": "DESCONOCIDO",
+            }
+        ]
 
     async def extract(
-        self, snapshot: Snapshot, fuente: Fuente, **kwargs: Any  # noqa: ARG002
+        self,
+        snapshot: Snapshot,
+        fuente: Fuente,
+        **kwargs: Any,  # noqa: ARG002
     ) -> list[dict[str, str | None]]:
         """Ejecuta la extracción de Trafilatura en un thread pool."""
         try:

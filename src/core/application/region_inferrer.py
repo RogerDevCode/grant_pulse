@@ -36,17 +36,24 @@ def _normalizar(texto: str) -> str:
     """Minúsculas + sin tildes + sin apostrofes, para matching robusto."""
     texto = texto.lower()
     reemplazos = {
-        "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
-        "ñ": "n", "'": "", "’": "", "–": " ", "—": " ", "-": " ",
+        "á": "a",
+        "é": "e",
+        "í": "i",
+        "ó": "o",
+        "ú": "u",
+        "ñ": "n",
+        "'": "",
+        "’": "",
+        "–": " ",
+        "—": " ",
+        "-": " ",
     }
     for origen, destino in reemplazos.items():
         texto = texto.replace(origen, destino)
     return texto
 
 
-_REGIONES_NORMALIZADAS: dict[str, str] = {
-    r: _normalizar(r) for r in REGIONES_CANONICAS
-}
+_REGIONES_NORMALIZADAS: dict[str, str] = {r: _normalizar(r) for r in REGIONES_CANONICAS}
 
 _PATRONES: tuple[re.Pattern[str], ...] = (
     # "REGIÓN DE X" — captura hasta delimitador fuerte (greedy, se limpia después)

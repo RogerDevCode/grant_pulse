@@ -122,6 +122,7 @@ class CompositeFundingScraper(ScraperPort):
         if kind == "cloudflare":
             if self._cloudflare is None:
                 from src.infra.scraping.cloudflare_scraper import CloudflareBrowserScraper
+
                 self._cloudflare = CloudflareBrowserScraper()
             return await self._cloudflare.fetch(fuente)
         raise ScrapingError(f"Fetch kind no soportado: {kind}")
@@ -198,7 +199,7 @@ class CompositeFundingScraper(ScraperPort):
             res = await asyncio.gather(
                 self._html_static.extract(snapshot, fuente, **kwargs),
                 self._trafilatura.extract(snapshot, fuente, **kwargs),
-                return_exceptions=True
+                return_exceptions=True,
             )
             res_html: Any = res[0]
             res_traf: Any = res[1]
@@ -244,6 +245,7 @@ class CompositeFundingScraper(ScraperPort):
         if kind == "cloudflare":
             if self._cloudflare is None:
                 from src.infra.scraping.cloudflare_scraper import CloudflareBrowserScraper
+
                 self._cloudflare = CloudflareBrowserScraper()
             return await self._cloudflare.extract(snapshot, fuente, **kwargs)
         raise ScrapingError(f"Extract kind no soportado: {kind}")
@@ -387,7 +389,9 @@ class CompositeFundingScraper(ScraperPort):
                                 from src.core.domain.entities import SelectorConfig
 
                                 healed_selectors = SelectorConfig(**healed)
-                            healed_rules = fuente.configuracion_reglas.model_copy(update={"selectores": healed_selectors})
+                            healed_rules = fuente.configuracion_reglas.model_copy(
+                                update={"selectores": healed_selectors}
+                            )
                             healed_fuente = fuente.model_copy(update={"configuracion_reglas": healed_rules})
 
                             resultados = await self._html_static.extract(current_snapshot, healed_fuente, **kwargs)
@@ -396,14 +400,19 @@ class CompositeFundingScraper(ScraperPort):
 
                                 # Auto-guardar los selectores sanados en el YAML de la fuente
                                 from src.infra.rules_loader import update_selectors_in_yaml
+
                                 try:
                                     update_selectors_in_yaml(fuente.nombre, healed)
                                 except Exception as save_exc:
-                                    logger.warning("No se pudo auto-guardar el YAML con selectores sanados", exc=save_exc)
+                                    logger.warning(
+                                        "No se pudo auto-guardar el YAML con selectores sanados", exc=save_exc
+                                    )
 
                                 return resultados
                         except ValidationError as ve:
-                            logger.warning("Auto-healing devolvió selectores inválidos, omitiendo", fuente=fuente.nombre, exc=ve)
+                            logger.warning(
+                                "Auto-healing devolvió selectores inválidos, omitiendo", fuente=fuente.nombre, exc=ve
+                            )
 
                 if self._explicit_empty(current_snapshot.contenido_crudo):
                     self._metrics.total_items = 0
@@ -479,6 +488,7 @@ def build_scraper_for_source(fuente: Fuente, fallback_strategy: str | None = Non
         return FosisMultiPageScraper()
     if estrategia == "cloudflare":
         from src.infra.scraping.cloudflare_scraper import CloudflareBrowserScraper
+
         return CloudflareBrowserScraper()
     return HtmlStaticScraper(timeout=15)
 

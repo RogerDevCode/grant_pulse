@@ -146,7 +146,7 @@ class MonitoreoUseCase:
                             tipo="MODIFICACION",
                             es_relevante=True,
                             deltas=[Delta(campo="estado", valor_anterior=conv.estado, valor_nuevo="CERRADO")],
-                            fecha_deteccion=ahora
+                            fecha_deteccion=ahora,
                         )
                         eventos.append(evento_cierre)
 
@@ -159,7 +159,7 @@ class MonitoreoUseCase:
                             "Convocatoria cerrada por URL permanentemente caída",
                             convocatoria_id=str(conv.id),
                             identificador=conv.identificador_externo,
-                            url=str(conv.url_detalle)
+                            url=str(conv.url_detalle),
                         )
                         # Ensure it gets saved
                         if conv.identificador_externo not in [c.identificador_externo for c in nuevas_convocatorias]:

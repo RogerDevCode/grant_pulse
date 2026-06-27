@@ -85,7 +85,9 @@ class ConvocatoriaORM(Base):
     metadatos: Mapped[dict[str, int | float | str | bool | None]] = mapped_column(JSON, nullable=False, default=dict)
     url_check_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     ultimo_check_url: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    estado_enriquecimiento: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDIENTE", server_default="PENDIENTE")
+    estado_enriquecimiento: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="PENDIENTE", server_default="PENDIENTE"
+    )
     detalles_llm: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     actualizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)

@@ -99,6 +99,7 @@ class EnriquecerConvocatoriaUseCase:
         await self.convocatoria_repo.save_enriched_data(convocatoria)
         return convocatoria
 
+
 class EnriquecerLoteUseCase:
     """Implementa el patrón Outbox para el enriquecimiento diferido."""
 

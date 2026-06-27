@@ -56,6 +56,7 @@ def load_rules_from_yaml(filepath: Path) -> RulesConfig:
         logger.error(msg, filepath=str(filepath), errors=exc.errors())
         raise ConfigurationError(f"Esquema de reglas inválido en {filepath.name}: {exc}") from exc
 
+
 def update_selectors_in_yaml(fuente_nombre: str, healed_selectors: dict[str, str]) -> None:
     """Busca el archivo YAML de la fuente y actualiza sus selectores permanentemente."""
     from pathlib import Path
@@ -83,4 +84,3 @@ def update_selectors_in_yaml(fuente_nombre: str, healed_selectors: dict[str, str
                 return
         except Exception as exc:
             logger.warning("Fallo al intentar actualizar YAML con auto-healing", filepath=str(filepath), exc=exc)
-

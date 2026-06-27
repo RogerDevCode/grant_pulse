@@ -13,6 +13,7 @@ from src.infra.scraping.html_static import HtmlStaticScraper
 
 logger = get_logger(__name__)
 
+
 class CloudflareBrowserScraper(ScraperPort):
     """
     Scraper que utiliza Cloudflare Browser Rendering (Workers Browser Run) para
@@ -37,20 +38,11 @@ class CloudflareBrowserScraper(ScraperPort):
             raise NetworkError(msg)
 
         cloudflare_url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/browser-rendering/content"
-        headers = {
-            "Authorization": f"Bearer {self.api_token}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
 
         # Opciones más adecuadas para CORFO y sitios SPA (Single Page Applications)
         # waitUntil: "networkidle2" asegura que se esperen las llamadas AJAX y carga de la tabla
-        payload = {
-            "url": url,
-            "gotoOptions": {
-                "waitUntil": "networkidle2",
-                "timeout": 45000
-            }
-        }
+        payload = {"url": url, "gotoOptions": {"waitUntil": "networkidle2", "timeout": 45000}}
 
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
