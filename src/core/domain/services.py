@@ -8,7 +8,7 @@ from typing import Any
 try:
     import jellyfish
 except ModuleNotFoundError:  # pragma: no cover - depende del entorno
-    jellyfish = None
+    jellyfish = None  # type: ignore[assignment]
 
 from src.core.domain.entities import Convocatoria, Delta, EventoCambio, Fuente
 from src.core.domain.exceptions import RuleEngineError
@@ -76,8 +76,7 @@ class ChangeDetectorService:
 
             # Fase 2: Fuzzy Matching por título para las nuevas no emparejadas
             unmatched_antiguas = [
-                a for a in antiguas_convocatorias.values()
-                if a.identificador_externo not in matched_antiguas_ids
+                a for a in antiguas_convocatorias.values() if a.identificador_externo not in matched_antiguas_ids
             ]
 
             FUZZY_THRESHOLD = 0.85
@@ -102,7 +101,7 @@ class ChangeDetectorService:
                         fuente_id=str(fuente.id),
                         score=round(best_score, 3),
                         titulo_nuevo=nueva.titulo,
-                        titulo_antiguo=best_match.titulo
+                        titulo_antiguo=best_match.titulo,
                     )
                     unmatched_antiguas.remove(best_match)
                     matched_antiguas_ids.add(best_match.identificador_externo)
@@ -112,29 +111,35 @@ class ChangeDetectorService:
 
                     # Añadir un delta implícito para el identificador externo si cambió
                     if nueva.identificador_externo != best_match.identificador_externo:
-                        deltas.append(Delta(
-                            campo="identificador_externo",
-                            valor_anterior=best_match.identificador_externo,
-                            valor_nuevo=nueva.identificador_externo
-                        ))
+                        deltas.append(
+                            Delta(
+                                campo="identificador_externo",
+                                valor_anterior=best_match.identificador_externo,
+                                valor_nuevo=nueva.identificador_externo,
+                            )
+                        )
 
                     if deltas:
                         es_relevante = any(d.campo in alertas_config.campos_sensibles for d in deltas)
-                        eventos.append(EventoCambio(
-                            convocatoria_id=nueva.id,
-                            identificador_externo=nueva.identificador_externo,
-                            tipo="MODIFICACION",
-                            deltas=deltas,
-                            es_relevante=es_relevante,
-                        ))
+                        eventos.append(
+                            EventoCambio(
+                                convocatoria_id=nueva.id,
+                                identificador_externo=nueva.identificador_externo,
+                                tipo="MODIFICACION",
+                                deltas=deltas,
+                                es_relevante=es_relevante,
+                            )
+                        )
                 else:
                     # Si no hay match difuso, es realmente una APERTURA nueva
-                    eventos.append(EventoCambio(
-                        convocatoria_id=nueva.id,
-                        identificador_externo=nueva.identificador_externo,
-                        tipo="APERTURA",
-                        es_relevante=True,
-                    ))
+                    eventos.append(
+                        EventoCambio(
+                            convocatoria_id=nueva.id,
+                            identificador_externo=nueva.identificador_externo,
+                            tipo="APERTURA",
+                            es_relevante=True,
+                        )
+                    )
 
         except Exception as e:
             msg = f"Error en el motor de reglas detectando cambios para fuente {fuente.id}: {e}"

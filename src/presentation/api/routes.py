@@ -87,30 +87,34 @@ async def get_logs_report() -> dict[str, str]:
 @router.get("/debug/test")
 async def debug_query(session: DbSession) -> dict[str, Any]:
     import traceback
+
     try:
-        from sqlalchemy import cast, String, func
+        from sqlalchemy import String, cast, func
+
         query = select(ConvocatoriaORM, FuenteORM.nombre).join(FuenteORM, ConvocatoriaORM.fuente_id == FuenteORM.id)
         query = query.where(
             func.coalesce(cast(ConvocatoriaORM.metadatos["url_check_failed"], String), "false") != "true"
         )
         query = query.order_by(ConvocatoriaORM.actualizado_en.desc())
         query = query.limit(10).offset(0)
-        
+
         # Test just the execution
         result = await session.execute(query)
         rows = result.all()
-        
+
         # Test just the dict comprehension
         data = []
-        for orm, fuente_nombre in rows:
-            data.append({
-                "id": orm.id,
-                "url_detalle": str(orm.url_detail),
-                "monto": float(orm.monto) if orm.monto is not None else None,
-                "regiones": orm.regiones
-            })
+        for orm, _ in rows:
+            data.append(
+                {
+                    "id": orm.id,
+                    "url_detalle": str(orm.url_detail),
+                    "monto": float(orm.monto) if orm.monto is not None else None,
+                    "regiones": orm.regiones,
+                }
+            )
         return {"status": "success", "count": len(rows), "data": data}
-    except Exception as e:
+    except Exception:
         return {"status": "error", "traceback": traceback.format_exc()}
 
 
@@ -233,8 +237,11 @@ async def list_convocatorias(
         query = query.where(ConvocatoriaORM.estado == estado)
     if region:
         from sqlalchemy import String
+
         region_search = region.replace("á", "%").replace("é", "%").replace("í", "%").replace("ó", "%").replace("ú", "%")
-        region_search = region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        region_search = (
+            region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        )
         query = query.where(ConvocatoriaORM.regiones.cast(String).ilike(f"%{region_search}%"))
     if fuente_id:
         query = query.where(ConvocatoriaORM.fuente_id == fuente_id)
@@ -245,6 +252,7 @@ async def list_convocatorias(
 
     if not include_unavailable:
         from sqlalchemy import String, cast
+
         query = query.where(
             func.coalesce(cast(ConvocatoriaORM.metadatos["url_check_failed"], String), "false") != "true"
         )
@@ -257,7 +265,7 @@ async def list_convocatorias(
             # Si ya venció (fecha_cierre < now), le damos prioridad 1 (va al final). Si no, prioridad 0 (va al inicio)
             # Para SQL Standard y Postgres:
             func.coalesce(ConvocatoriaORM.fecha_cierre < now, False).asc(),
-            ConvocatoriaORM.fecha_cierre.asc().nullslast()
+            ConvocatoriaORM.fecha_cierre.asc().nullslast(),
         )
     elif orden == "recientes_creacion":
         query = query.order_by(ConvocatoriaORM.creado_en.desc())
@@ -307,27 +315,23 @@ async def list_convocatorias_filtradas(
 
     if activo is not None:
         if activo:
-            query = query.where(
-                and_(
-                    ConvocatoriaORM.estado == "ABIERTO",
-                    FuenteORM.activa.is_(True)
-                )
-            )
+            query = query.where(and_(ConvocatoriaORM.estado == "ABIERTO", FuenteORM.activa.is_(True)))
         else:
-            query = query.where(
-                (ConvocatoriaORM.estado != "ABIERTO") | (FuenteORM.activa.is_(False))
-            )
+            query = query.where((ConvocatoriaORM.estado != "ABIERTO") | (FuenteORM.activa.is_(False)))
 
     if institucion:
         query = query.where(FuenteORM.nombre.ilike(f"%{institucion}%"))
 
     if region:
         region_search = region.replace("á", "%").replace("é", "%").replace("í", "%").replace("ó", "%").replace("ú", "%")
-        region_search = region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        region_search = (
+            region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        )
         query = query.where(ConvocatoriaORM.regiones.cast(String).ilike(f"%{region_search}%"))
 
     if not include_unavailable:
         from sqlalchemy import cast, func
+
         query = query.where(
             func.coalesce(cast(ConvocatoriaORM.metadatos["url_check_failed"], String), "false") != "true"
         )
@@ -386,14 +390,18 @@ async def count_convocatorias(
         query = query.where(ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre))
     if region:
         from sqlalchemy import String
+
         region_search = region.replace("á", "%").replace("é", "%").replace("í", "%").replace("ó", "%").replace("ú", "%")
-        region_search = region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        region_search = (
+            region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        )
         query = query.where(ConvocatoriaORM.regiones.cast(String).ilike(f"%{region_search}%"))
     if search:
         query = query.where(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
 
     if not include_unavailable:
         from sqlalchemy import String, cast
+
         query = query.where(
             func.coalesce(cast(ConvocatoriaORM.metadatos["url_check_failed"], String), "false") != "true"
         )
@@ -430,17 +438,19 @@ async def get_convocatorias_kpi(
         filters.append(ConvocatoriaORM.fuente_id.in_(fuente_ids_por_nombre))
     if region:
         from sqlalchemy import String
+
         region_search = region.replace("á", "%").replace("é", "%").replace("í", "%").replace("ó", "%").replace("ú", "%")
-        region_search = region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        region_search = (
+            region_search.replace("Á", "%").replace("É", "%").replace("Í", "%").replace("Ó", "%").replace("Ú", "%")
+        )
         filters.append(ConvocatoriaORM.regiones.cast(String).ilike(f"%{region_search}%"))
     if search:
         filters.append(ConvocatoriaORM.titulo.ilike(f"%{search}%"))
 
     if not include_unavailable:
         from sqlalchemy import String, cast
-        filters.append(
-            func.coalesce(cast(ConvocatoriaORM.metadatos["url_check_failed"], String), "false") != "true"
-        )
+
+        filters.append(func.coalesce(cast(ConvocatoriaORM.metadatos["url_check_failed"], String), "false") != "true")
 
     abiertas_q = select(func.count(ConvocatoriaORM.id)).where(ConvocatoriaORM.estado == "ABIERTO")
     if filters:
@@ -830,11 +840,13 @@ async def get_scrape_status() -> dict[str, bool]:
     return {"en_curso": _scrape_en_curso}
 
 
-
-
 @router.delete("/debug/wipe", status_code=204)
 async def debug_wipe_data(session: DbSession) -> None:
     """Borra todos los proyectos y datos relacionados (solo debug)."""
+    from src.infra.config import settings
+    if settings.ENV == "prod":
+        raise HTTPException(status_code=403, detail="Operación no permitida en producción")
+
     try:
         await session.execute(delete(HistorialCambiosORM))
         await session.execute(delete(NotificacionORM))

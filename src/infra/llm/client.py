@@ -23,7 +23,7 @@ import httpx
 try:
     from selectolax.parser import HTMLParser as _HTMLParser
 except ModuleNotFoundError:  # pragma: no cover - depende del entorno
-    _HTMLParser = None
+    _HTMLParser = None  # type: ignore[assignment, misc]
 
 from src.core.domain.entities import SelectorConfig
 from src.core.domain.exceptions import ExtractionError, ScrapingError
@@ -35,7 +35,7 @@ logger = get_logger(__name__)
 try:
     from markdownify import markdownify as _markdownify_impl
 except ModuleNotFoundError:  # pragma: no cover - depende del entorno
-    _markdownify_impl = None
+    _markdownify_impl = None  # type: ignore[assignment]
 
 _SKIP_STATUS_CODES = {400, 404, 429, 502, 503, 529}
 _NOISE_SELECTORS = (
@@ -90,7 +90,9 @@ class StructuredLLMClient(Protocol):
     max_output_tokens: int
     request_timeout_seconds: int
 
-    async def chat_completion(self, prompt: str | list[dict[str, Any]], system_prompt: str = ..., timeout: int | None = ...) -> str: ...
+    async def chat_completion(
+        self, prompt: str | list[dict[str, Any]], system_prompt: str = ..., timeout: int | None = ...
+    ) -> str: ...
 
     async def extract_from_html(
         self,
@@ -598,7 +600,9 @@ class OpenRouterClient:
                 self.strategy.record_failure(model_id, last_error)
                 continue
 
-            logger.info("LLM respondió exitosamente", provider=self.provider_name, model=model_id, chars=len(res_content))
+            logger.info(
+                "LLM respondió exitosamente", provider=self.provider_name, model=model_id, chars=len(res_content)
+            )
             return str(res_content)
 
         msg = (

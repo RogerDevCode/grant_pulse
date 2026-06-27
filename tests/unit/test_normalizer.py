@@ -270,3 +270,23 @@ def test_html_limpio_titulo(mock_fuente_normalizador: Fuente) -> None:
     convs = DataNormalizer.normalize_and_map(raw_items, mock_fuente_normalizador)
     assert len(convs) == 1
     assert convs[0].titulo == "Capital Semilla"
+
+
+def test_parse_float_algorithmic() -> None:
+    from src.core.application.normalizer import _parse_float
+    
+    # 1. Montos únicos con símbolo $
+    assert _parse_float("$15.000.000", "monto") == 15000000.0
+    
+    # 2. Rangos de montos con "a" y "hasta" (deben elegir el valor máximo)
+    assert _parse_float("$3.000.000 a $75.000.000", "monto") == 75000000.0
+    assert _parse_float("$1.000.000 hasta $6.000.000", "monto") == 6000000.0
+    
+    # 3. Monto limpio
+    assert _parse_float("15000000", "monto") == 15000000.0
+    
+    # 4. Decimales con punto y coma
+    assert _parse_float("15.000.000,50", "monto") == 15000000.5
+    
+    # 5. Fallback con otros textos mezclados
+    assert _parse_float("El monto máximo es de $500.000 para personas naturales", "monto") == 500000.0

@@ -7,7 +7,7 @@ from email.message import EmailMessage
 try:
     import aiosmtplib
 except ModuleNotFoundError:  # pragma: no cover - depende del entorno
-    aiosmtplib = None
+    aiosmtplib = None  # type: ignore[assignment]
 
 from src.core.domain.entities import Convocatoria, EventoCambio, Fuente, NotificacionResult
 from src.core.domain.exceptions import NotificationError

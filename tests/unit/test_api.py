@@ -26,9 +26,7 @@ async def test_list_convocatorias_db_error() -> None:
     # La DB real está reemplazada por `None`, así que la ruta debe fallar al intentar usarla.
     # Validamos que el cableado de la API sigue exponiendo el error y no lo oculta.
 
-    with patch.object(api_main, "_ensure_startup_schema", new=AsyncMock(return_value=None)), patch(
-        "src.infra.cli.sync_all_rules", new=AsyncMock(return_value=None)
-    ):
+    with patch("src.infra.cli.sync_all_rules", new=AsyncMock(return_value=None)):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             with pytest.raises(AttributeError):

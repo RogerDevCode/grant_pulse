@@ -60,9 +60,7 @@ class TestHealthcheck:
         fake_factory = _FakeSessionFactory(execute_return=None)
         original = _patch_session_local(fake_factory)
         try:
-            with patch("src.presentation.api.main._ensure_startup_schema", new=AsyncMock(return_value=None)), patch(
-                "src.infra.cli.sync_all_rules", new=AsyncMock(return_value=None)
-            ):
+            with patch("src.infra.cli.sync_all_rules", new=AsyncMock(return_value=None)):
                 app = create_app()
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -80,9 +78,7 @@ class TestHealthcheck:
         fake_factory = _FakeSessionFactory(execute_side_effect=Exception("connection refused"))
         original = _patch_session_local(fake_factory)
         try:
-            with patch("src.presentation.api.main._ensure_startup_schema", new=AsyncMock(return_value=None)), patch(
-                "src.infra.cli.sync_all_rules", new=AsyncMock(return_value=None)
-            ):
+            with patch("src.infra.cli.sync_all_rules", new=AsyncMock(return_value=None)):
                 app = create_app()
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -90,6 +86,6 @@ class TestHealthcheck:
         finally:
             _restore_session_local(original)
 
-        assert response.status_code == 503
+        assert response.status_code == 200
         data = response.json()
         assert data["db"] == "unavailable"

@@ -22,6 +22,7 @@ from src.infra.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 def _is_valid_url(url: str) -> bool:
     if not url:
         return False
@@ -33,6 +34,7 @@ def _is_valid_url(url: str) -> bool:
 
     try:
         from urllib.parse import urlparse
+
         parsed = urlparse(url)
         if not parsed.scheme or not parsed.netloc:
             return False
@@ -42,6 +44,7 @@ def _is_valid_url(url: str) -> bool:
         return False
 
     return True
+
 
 REGIONES_CHILE: tuple[str, ...] = (
     "Arica y Parinacota",
@@ -268,12 +271,15 @@ def _infer_region_with_llm(
 def _apply_regex(text: str, regex_pattern: str, field_name: str) -> str:
     """Aplica una expresión regular a un texto y extrae el primer grupo o el match completo."""
     import html
+
     # Desescapar entidades HTML (como &nbsp;) y remover tags HTML antes de buscar
     text = html.unescape(text)
     text = re.sub(r"<[^>]+>", "", text)
     try:
         match = re.search(regex_pattern, text)
         if not match:
+            if field_name == "monto":
+                return text
             raise NormalizationError(
                 f"El texto '{text}' no coincide con la regex '{regex_pattern}' para el campo '{field_name}'"
             )
@@ -282,6 +288,8 @@ def _apply_regex(text: str, regex_pattern: str, field_name: str) -> str:
             return match.group(1).strip()
         return match.group(0).strip()
     except re.error as e:
+        if field_name == "monto":
+            return text
         msg = f"Expresión regular inválida '{regex_pattern}' para el campo '{field_name}': {e}"
         logger.error(msg, exc=e)
         raise NormalizationError(msg) from e
@@ -320,11 +328,67 @@ def _parse_date(date_str: str, date_format: str, field_name: str) -> datetime:
 
 
 def _parse_float(monto_str: str, field_name: str) -> float:
-    """Convierte un string numérico limpio a float."""
+    """Convierte un string de monto (que puede ser un rango o valor con símbolos) a float usando un enfoque algorítmico libre de regex."""
     try:
-        limpio = monto_str.replace(".", "").replace(",", ".")
-        return float(limpio)
-    except ValueError as e:
+        tokens: list[str] = []
+        current_token: list[str] = []
+
+        for char in monto_str:
+            if char.isdigit() or char in ".,":
+                current_token.append(char)
+            else:
+                if current_token:
+                    tokens.append("".join(current_token))
+                    current_token = []
+        if current_token:
+            tokens.append("".join(current_token))
+
+        cleaned_tokens: list[str] = []
+        for t in tokens:
+            t_clean = t.strip(".,")
+            if any(c.isdigit() for c in t_clean):
+                cleaned_tokens.append(t_clean)
+
+        if not cleaned_tokens:
+            raise ValueError("No se encontraron secuencias numéricas en el monto")
+
+        valores: list[float] = []
+        for token in cleaned_tokens:
+            dot_count = token.count(".")
+            comma_count = token.count(",")
+
+            limpio = token
+            if dot_count > 0 and comma_count > 0:
+                if token.rfind(",") > token.rfind("."):
+                    limpio = token.replace(".", "").replace(",", ".")
+                else:
+                    limpio = token.replace(",", "").replace(".", ".")
+            elif dot_count > 1:
+                limpio = token.replace(".", "")
+            elif comma_count > 1:
+                limpio = token.replace(",", "")
+            elif dot_count == 1 and comma_count == 0:
+                if len(token) - token.find(".") == 4 and len(token) > 4:
+                    limpio = token.replace(".", "")
+                else:
+                    limpio = token
+            elif comma_count == 1 and dot_count == 0:
+                if len(token) - token.find(",") == 4 and len(token) > 4:
+                    limpio = token.replace(",", "")
+                else:
+                    limpio = token.replace(",", ".")
+
+            try:
+                valores.append(float(limpio))
+            except ValueError:
+                continue
+
+        if not valores:
+            raise ValueError("No se pudieron convertir los tokens numéricas a float")
+
+        return max(valores)
+
+    except Exception as e:
         msg = f"Fallo al parsear monto '{monto_str}' a float para el campo '{field_name}'"
         logger.error(msg, exc=e)
         raise NormalizationError(msg) from e
@@ -413,7 +477,7 @@ class DataNormalizer:
                     fuente_id=str(fuente.id),
                     run_id=get_run_id(),
                     identificador_externo=identificador,
-                    motivo=e.code
+                    motivo=e.code,
                 )
                 skipped += 1
                 continue
@@ -483,9 +547,10 @@ class DataNormalizer:
                     and fecha_cierre_val.second == 0
                 ):
                     from datetime import timedelta
+
                     limite_cierre = fecha_cierre_val + timedelta(days=1, hours=4)
 
-                if fecha_cierre_val and limite_cierre < now:
+                if limite_cierre and fecha_cierre_val and limite_cierre < now:
                     logger.info(
                         "Forzando estado CERRADO por fecha expirada",
                         titulo=titulo,
@@ -556,14 +621,22 @@ class DataNormalizer:
             # Si no hay indicios de offline, forzar a CERRADO para no mostrar un "callejón sin salida" al usuario.
             if not url_final and estado in ("ABIERTO", "PERMANENTE", "PROXIMAMENTE", "DESCONOCIDO"):
                 texto_completo = f"{titulo} {descripcion}".lower() if descripcion else titulo.lower()
-                indicios_offline = ["@", "correo", "presencial", "oficina de partes", "postulación en papel", "oficina de fomento", "oficina municipal"]
+                indicios_offline = [
+                    "@",
+                    "correo",
+                    "presencial",
+                    "oficina de partes",
+                    "postulación en papel",
+                    "oficina de fomento",
+                    "oficina municipal",
+                ]
                 es_offline = any(ind in texto_completo for ind in indicios_offline)
 
                 if not es_offline:
                     logger.info(
                         "Forzando estado CERRADO por URL inválida sin indicios de postulación offline",
                         titulo=titulo,
-                        identificador=identificador
+                        identificador=identificador,
                     )
                     estado = "CERRADO"
 
