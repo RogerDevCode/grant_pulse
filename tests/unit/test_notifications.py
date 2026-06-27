@@ -3,6 +3,8 @@ Tests unitarios para la capa de notificaciones.
 """
 
 import logging
+import httpx
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -41,7 +43,7 @@ def dummy_fuente() -> Fuente:
 def dummy_convocatoria(dummy_fuente: Fuente) -> Convocatoria:
     return Convocatoria(
         id=1,
-        fuente_id=dummy_fuente.id,
+        fuente_id=dummy_fuente.id,  # type: ignore[arg-type]
         identificador_externo="123",
         titulo="Fondo Prueba",
         url_detalle="https://test.com/123",  # type: ignore
@@ -212,3 +214,83 @@ async def test_notificacion_result_entity() -> None:
         error_log="timeout",
     )
     assert result_fail.error_log == "timeout"
+
+
+@pytest.mark.asyncio
+async def test_telegram_adapter_retry_success(dummy_fuente: Fuente, dummy_convocatoria: Convocatoria) -> None:
+    from unittest.mock import AsyncMock
+    from src.infra.notifications.telegram_adapter import TelegramNotificationAdapter
+
+    evento = EventoCambio(id=1, convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
+    adapter = TelegramNotificationAdapter(bot_token="test_token", chat_id="test_chat")
+
+    # Mock response classes
+    mock_response_ok = MagicMock()
+    mock_response_ok.raise_for_status = MagicMock()
+
+    # Mock post calls: first fails with network error, second succeeds
+    mock_post = AsyncMock(side_effect=[
+        httpx.RequestError("Network glitch"),
+        mock_response_ok
+    ])
+
+    with patch("httpx.AsyncClient.post", mock_post), patch("asyncio.sleep", AsyncMock()) as mock_sleep:
+        res = await adapter.notify_event(evento, dummy_convocatoria, dummy_fuente)
+        assert res.estado == "ENVIADO"
+        assert mock_post.call_count == 2
+        mock_sleep.assert_called_once_with(1.0)
+
+
+@pytest.mark.asyncio
+async def test_telegram_adapter_retry_429_backoff(dummy_fuente: Fuente, dummy_convocatoria: Convocatoria) -> None:
+    from unittest.mock import AsyncMock
+    from src.infra.notifications.telegram_adapter import TelegramNotificationAdapter
+
+    evento = EventoCambio(id=1, convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
+    adapter = TelegramNotificationAdapter(bot_token="test_token", chat_id="test_chat")
+
+    # Mock 429 response with Retry-After header
+    mock_response_429 = MagicMock()
+    mock_response_429.status_code = 429
+    mock_response_429.headers = {"Retry-After": "5"}
+    mock_response_429.raise_for_status = MagicMock(side_effect=httpx.HTTPStatusError("Too Many Requests", request=MagicMock(), response=mock_response_429))
+
+    mock_response_ok = MagicMock()
+    mock_response_ok.raise_for_status = MagicMock()
+
+    mock_post = AsyncMock(side_effect=[
+        mock_response_429,
+        mock_response_ok
+    ])
+
+    with patch("httpx.AsyncClient.post", mock_post), patch("asyncio.sleep", AsyncMock()) as mock_sleep:
+        res = await adapter.notify_event(evento, dummy_convocatoria, dummy_fuente)
+        assert res.estado == "ENVIADO"
+        assert mock_post.call_count == 2
+        mock_sleep.assert_called_once_with(5.0)
+
+
+@pytest.mark.asyncio
+async def test_telegram_adapter_retry_fatal_fails_immediately(dummy_fuente: Fuente, dummy_convocatoria: Convocatoria) -> None:
+    from unittest.mock import AsyncMock
+    from src.infra.notifications.telegram_adapter import TelegramNotificationAdapter
+    from typing import Any
+
+    evento = EventoCambio(id=1, convocatoria_id=dummy_convocatoria.id, tipo="APERTURA", es_relevante=True)
+    adapter = TelegramNotificationAdapter(bot_token="test_token", chat_id="test_chat")
+
+    mock_response_400 = MagicMock()
+    mock_response_400.status_code = 400
+    mock_response_400.text = "Bad Request"
+
+    async def side_effect_func(*args: Any, **kwargs: Any) -> Any:
+        raise httpx.HTTPStatusError("Bad Request", request=MagicMock(), response=mock_response_400)
+
+    mock_post = AsyncMock(side_effect=side_effect_func)
+
+    with patch("httpx.AsyncClient.post", mock_post), patch("asyncio.sleep", AsyncMock()) as mock_sleep:
+        with pytest.raises(NotificationError) as exc_info:
+            await adapter.notify_event(evento, dummy_convocatoria, dummy_fuente)
+        assert "Error de Telegram API (400)" in str(exc_info.value)
+        assert mock_post.call_count == 1
+        mock_sleep.assert_not_called()

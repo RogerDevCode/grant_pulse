@@ -54,33 +54,56 @@ class TelegramNotificationAdapter(NotificationPort):
 
         mensaje = self._format_message(evento, convocatoria, fuente)
 
-        try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.post(
-                    self.api_url,
-                    json={
-                        "chat_id": self.chat_id,
-                        "text": mensaje,
-                        "parse_mode": "HTML",
-                        "disable_web_page_preview": False,
-                    },
+        import asyncio
+        max_retries = 3
+        backoff = 1.0
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    response = await client.post(
+                        self.api_url,
+                        json={
+                            "chat_id": self.chat_id,
+                            "text": mensaje,
+                            "parse_mode": "HTML",
+                            "disable_web_page_preview": False,
+                        },
+                    )
+                    response.raise_for_status()
+                    logger.info("Notificación Telegram enviada exitosamente", fuente=fuente.nombre)
+                    return NotificacionResult(
+                        evento_id=evento.id,
+                        canal="TELEGRAM",
+                        destinatario=self.chat_id,
+                        estado="ENVIADO",
+                    )
+            except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                # Si es un error de autenticación/malformación (400, 401, 403), no reintentar
+                if isinstance(e, httpx.HTTPStatusError) and e.response.status_code in {400, 401, 403}:
+                    msg = f"Error de Telegram API ({e.response.status_code}): {e.response.text}"
+                    logger.error(msg, exc=e)
+                    raise NotificationError(msg) from e
+
+                if attempt == max_retries:
+                    msg = f"Error de red/API final para Telegram tras {max_retries} intentos: {e}"
+                    logger.error(msg, exc=e)
+                    raise NotificationError(msg) from e
+
+                delay = backoff * (2 ** (attempt - 1))
+                if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
+                    retry_after = e.response.headers.get("Retry-After")
+                    if retry_after and retry_after.isdigit():
+                        delay = float(retry_after)
+
+                logger.warning(
+                    f"Intento {attempt} fallido para Telegram. Reintentando en {delay:.1f}s...",
+                    fuente=fuente.nombre,
+                    exc=e,
                 )
-                response.raise_for_status()
-                logger.info("Notificación Telegram enviada exitosamente", fuente=fuente.nombre)
-                return NotificacionResult(
-                    evento_id=evento.id,
-                    canal="TELEGRAM",
-                    destinatario=self.chat_id,
-                    estado="ENVIADO",
-                )
-        except httpx.HTTPStatusError as e:
-            msg = f"Error de Telegram API ({e.response.status_code}): {e.response.text}"
-            logger.error(msg, exc=e)
-            raise NotificationError(msg) from e
-        except httpx.RequestError as e:
-            msg = f"Error de red enviando a Telegram: {e}"
-            logger.error(msg, exc=e)
-            raise NotificationError(msg) from e
+                await asyncio.sleep(delay)
+
+        raise NotificationError("Error inesperado en loop de reintentos Telegram")
 
     def _format_message(self, evento: EventoCambio, convocatoria: Convocatoria, fuente: Fuente) -> str:
         """Formatea el mensaje usando etiquetas HTML soportadas por Telegram."""
