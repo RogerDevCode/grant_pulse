@@ -215,3 +215,22 @@ Reglas de edición para la LLM:
 - Si se cambia el esquema, actualizar modelo ORM, migración Alembic y validaciones asociadas.
 - Si se agrega una fuente, mantener sincronizados YAML, catálogo duro y tests de reglas.
 - Si se toca logging, conservar contexto operativo y no perder `run_id`, `fuente_id` o `evento_id`.
+
+## 17. Decisiones de Arquitectura y Mitigaciones Implementadas
+
+Cualquier cambio futuro debe respetar las siguientes soluciones implementadas y validadas:
+
+### 17a. Mitigaciones de Seguridad y Robustez (Red Team)
+- **Prompt Injection**: Todo contenido crudo de portales (HTML/Markdown) inyectable a los LLMs debe envolverse en etiquetas XML `<document_content>` y `</document_content>`. El `system_prompt` debe ordenar omitir instrucciones internas de estas etiquetas y tratarlas estrictamente como datos.
+- **Evitar Colisiones (Locks)**: El worker de monitoreo masivo (`run_all_active_sources()`) implementa un advisory lock exclusivo a nivel de sesión sobre PostgreSQL (`SELECT pg_try_advisory_lock(178199)`). Si el lock está ocupado, la ejecución concurrente aborta inmediatamente de forma segura para evitar alertas duplicadas.
+- **Protección de datos**: Los endpoints destructivos de base de datos como `/debug/wipe` arrojan HTTP `403 Forbidden` si `settings.ENV == "prod"`.
+
+### 17b. Normalización Algorítmica de Datos
+- **Monto y Rangos**: El normalizador de montos prefiere un parser algorítmico limpio en lugar de expresiones regulares propensas a fallos. Si se detecta un rango de financiamiento, la política es extraer y registrar el **monto máximo** disponible.
+- **Cache Busting en Frontend**: Los endpoints de depuración expuestos en la interfaz (como logs de errores) se solicitan agregando un cache-buster dinámico (`?t=${Date.now()}`) para evitar que la caché local del navegador muestre registros desactualizados.
+
+### 17c. Resiliencia de Notificaciones y Healthcheck
+- **Retry Backoff en Telegram**: Ante caídas temporales de red o límites de tasa de la API de Telegram, las notificaciones implementan reintentos con backoff exponencial. Si retorna HTTP 429, respeta la cabecera `Retry-After`. Se aborta el reintento inmediatamente ante errores fatales del cliente (HTTP 400, 401, 403) para evitar bucles infinitos.
+- **Observabilidad de Calidad**: El scheduler recopila y envía automáticamente un resumen estructurado sobre la salud y cobertura de los metadatos de las fuentes (Data Quality) al canal de Telegram al finalizar el batch.
+- **Resiliencia de Railway**: El endpoint `/health` de la API retorna código HTTP `200` y `"db": "unavailable"` si PostgreSQL no responde, evitando reinicios erróneos del contenedor web por parte del orquestador durante congestiones de red externas.
+
